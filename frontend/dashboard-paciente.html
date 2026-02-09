@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Paciente | MediConnect</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="grain-overlay"></div>
+    
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="8" fill="#2D5F5D"/>
+                        <path d="M20 10V30M10 20H30" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <span class="logo-text">MediConnect</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="datos-personales">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M4 16C4 12.6863 6.68629 10 10 10C13.3137 10 16 12.6863 16 16" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Datos Personales</span>
+                </button>
+
+                <button class="nav-item" data-view="citas-agendadas">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M3 8H17M7 3V5M13 3V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Citas Agendadas</span>
+                </button>
+
+                <button class="nav-item" data-view="agendar-cita">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 6V14M6 10H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Agendar Nueva Cita</span>
+                </button>
+
+                <button class="nav-item" data-view="historial-medico">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M7 10H13M7 13H11M7 7H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <path d="M5 3H15C15.5523 3 16 3.44772 16 4V16C16 16.5523 15.5523 17 15 17H5C4.44772 17 4 16.5523 4 16V4C4 3.44772 4.44772 3 5 3Z" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Historial Médico</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="nav-item logout-btn" id="logoutBtn">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M13 3H16C16.5523 3 17 3.44772 17 4V16C17 16.5523 16.5523 17 16 17H13M8 14L12 10L8 6M12 10H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="content-header">
+                <div>
+                    <h1 id="pageTitle">Datos Personales</h1>
+                    <p id="pageSubtitle">Gestiona tu información personal</p>
+                </div>
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <span id="userInitials">JP</span>
+                    </div>
+                    <div class="user-info">
+                        <strong id="userName">Juan Pérez</strong>
+                        <span>Paciente</span>
+                    </div>
+                </div>
+            </header>
+
+            <div id="contentContainer" class="content-body">
+                </div>
+        </main>
+    </div>
+
+    <template id="datos-personales-template">
+        <div class="view-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">Citas Programadas</div>
+                    <div class="stat-change positive">↑ 1 esta semana</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Citas Completadas</div>
+                    <div class="stat-change positive">↑ 2 este mes</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">💊</div>
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Recetas Activas</div>
+                    <div class="stat-change">Sin cambios</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">🏥</div>
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">Consultas este Año</div>
+                    <div class="stat-change positive">↑ 33% vs año pasado</div>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Información Personal</h3>
+                        <button class="btn-icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M14 3L17 6L7 16H4V13L14 3Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="info-body">
+                        <div class="info-row">
+                            <span class="label">Nombre Completo</span>
+                            <span class="value">Juan Alberto Pérez García</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">CURP</span>
+                            <span class="value">PEGJ900101HDFRJN05</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Fecha de Nacimiento</span>
+                            <span class="value">01 de Enero, 1990</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Género</span>
+                            <span class="value">Masculino</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Tipo de Sangre</span>
+                            <span class="value">O+</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Contacto</h3>
+                        <button class="btn-icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M14 3L17 6L7 16H4V13L14 3Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="info-body">
+                        <div class="info-row">
+                            <span class="label">Teléfono</span>
+                            <span class="value">55 1234 5678</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Correo Electrónico</span>
+                            <span class="value"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="234956424d0d534651465963464e424a4f0d404c4e">[email&#160;protected]</a></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Dirección</span>
+                            <span class="value">Av. Instituto Politécnico Nacional 2580, CDMX</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="citas-agendadas-template">
+        <div class="view-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Mis Citas Agendadas</h3>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Buscar...">
+                        <select class="filter-select">
+                            <option>Todas</option>
+                            <option>Pendientes de Pago</option>
+                            <option>Pagadas</option>
+                            <option>Completadas</option>
+                            <option>Canceladas</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Especialidad</th>
+                            <th>Doctor</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#00125</td>
+                            <td>10 Feb 2026</td>
+                            <td>10:00 AM</td>
+                            <td>Cardiología</td>
+                            <td>Dr. García López</td>
+                            <td><span class="status-badge success">Pagada</span></td>
+                            <td>
+                                <button class="btn-icon">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                        <circle cx="10" cy="10" r="2" fill="currentColor"/>
+                                        <circle cx="10" cy="4" r="2" fill="currentColor"/>
+                                        <circle cx="10" cy="16" r="2" fill="currentColor"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>#00124</td>
+                            <td>08 Feb 2026</td>
+                            <td>03:00 PM</td>
+                            <td>Oftalmología</td>
+                            <td>Dra. Martínez Cruz</td>
+                            <td><span class="status-badge warning">Pendiente de Pago</span></td>
+                            <td>
+                                <button class="btn-icon">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                        <circle cx="10" cy="10" r="2" fill="currentColor"/>
+                                        <circle cx="10" cy="4" r="2" fill="currentColor"/>
+                                        <circle cx="10" cy="16" r="2" fill="currentColor"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>#00120</td>
+                            <td>05 Feb 2026</td>
+                            <td>11:30 AM</td>
+                            <td>Medicina General</td>
+                            <td>Dr. Rodríguez Pérez</td>
+                            <td><span class="status-badge success">Completada</span></td>
+                            <td>
+                                <button class="btn-icon">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                        <circle cx="10" cy="10" r="2" fill="currentColor"/>
+                                        <circle cx="10" cy="4" r="2" fill="currentColor"/>
+                                        <circle cx="10" cy="16" r="2" fill="currentColor"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="agendar-cita-template">
+        <div class="view-content">
+            <div class="form-container">
+                <h3 class="mb-2">Agendar Nueva Cita</h3>
+                <p class="text-secondary mb-3">Selecciona la especialidad, doctor, fecha y horario de tu preferencia</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Especialidad</label>
+                        <select>
+                            <option>Seleccionar especialidad...</option>
+                            <option>Cardiología</option>
+                            <option>Dermatología</option>
+                            <option>Ginecología</option>
+                            <option>Medicina General</option>
+                            <option>Nefrología</option>
+                            <option>Nutriología</option>
+                            <option>Oftalmología</option>
+                            <option>Oncología</option>
+                            <option>Ortopedia</option>
+                            <option>Pediatría</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Doctor</label>
+                        <select>
+                            <option>Seleccionar doctor...</option>
+                            <option>Dr. García López - Cardiología</option>
+                            <option>Dra. Martínez Cruz - Oftalmología</option>
+                            <option>Dr. Rodríguez Pérez - Medicina General</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Horario</label>
+                        <select>
+                            <option>Seleccionar horario...</option>
+                            <option>09:00 AM</option>
+                            <option>10:00 AM</option>
+                            <option>11:00 AM</option>
+                            <option>12:00 PM</option>
+                            <option>03:00 PM</option>
+                            <option>04:00 PM</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Motivo de Consulta</label>
+                        <textarea placeholder="Describe brevemente el motivo de tu consulta..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn btn-secondary">Cancelar</button>
+                    <button class="btn btn-primary">Agendar Cita</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="historial-medico-template">
+        <div class="view-content">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Historial Médico</h3>
+                    </div>
+                    <div class="info-body">
+                        <div class="info-row">
+                            <span class="label">Alergias</span>
+                            <span class="value">Penicilina, Polen</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Tipo de Sangre</span>
+                            <span class="value">O+</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Padecimientos Previos</span>
+                            <span class="value">Hipertensión controlada</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Peso</span>
+                            <span class="value">75 kg</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Estatura</span>
+                            <span class="value">1.75 m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Última Consulta</h3>
+                    </div>
+                    <div class="info-body">
+                        <div class="info-row">
+                            <span class="label">Fecha</span>
+                            <span class="value">05 Feb 2026</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Doctor</span>
+                            <span class="value">Dr. Rodríguez Pérez</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Especialidad</span>
+                            <span class="value">Medicina General</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Diagnóstico</span>
+                            <span class="value">Chequeo general - Estado de salud óptimo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Consultas Anteriores</h3>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Doctor</th>
+                            <th>Especialidad</th>
+                            <th>Diagnóstico</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>05 Feb 2026</td>
+                            <td>Dr. Rodríguez Pérez</td>
+                            <td>Medicina General</td>
+                            <td>Chequeo general</td>
+                            <td>
+                                <button class="btn-icon">Ver Receta</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>15 Ene 2026</td>
+                            <td>Dra. Martínez Cruz</td>
+                            <td>Oftalmología</td>
+                            <td>Revisión de vista</td>
+                            <td>
+                                <button class="btn-icon">Ver Receta</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>20 Dic 2025</td>
+                            <td>Dr. García López</td>
+                            <td>Cardiología</td>
+                            <td>Control de presión</td>
+                            <td>
+                                <button class="btn-icon">Ver Receta</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </tabl

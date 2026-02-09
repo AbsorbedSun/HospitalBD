@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Recepcionista | MediConnect</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="grain-overlay"></div>
+    
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="8" fill="#2D5F5D"/>
+                        <path d="M20 10V30M10 20H30" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <span class="logo-text">MediConnect</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                        <rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                        <rect x="3" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                        <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </button>
+
+                <button class="nav-item" data-view="citas">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M3 8H17M7 3V5M13 3V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Gestión de Citas</span>
+                </button>
+
+                <button class="nav-item" data-view="pacientes">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M4 16C4 12.6863 6.68629 10 10 10C13.3137 10 16 12.6863 16 16" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Pacientes</span>
+                </button>
+
+                <button class="nav-item" data-view="doctores">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 2L12 8L18 10L12 12L10 18L8 12L2 10L8 8L10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Doctores</span>
+                </button>
+
+                <button class="nav-item" data-view="farmacia">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="4" y="8" width="12" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M7 8V6C7 4.34315 8.34315 3 10 3C11.6569 3 13 4.34315 13 6V8" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 11V14M8 12.5H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Farmacia</span>
+                </button>
+
+                <button class="nav-item" data-view="bitacora">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M7 10H13M7 13H11M7 7H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <path d="M5 3H15C15.5523 3 16 3.44772 16 4V16C16 16.5523 15.5523 17 15 17H5C4.44772 17 4 16.5523 4 16V4C4 3.44772 4.44772 3 5 3Z" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Bitácora</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="nav-item logout-btn" id="logoutBtn">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M13 3H16C16.5523 3 17 3.44772 17 4V16C17 16.5523 16.5523 17 16 17H13M8 14L12 10L8 6M12 10H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="content-header">
+                <div>
+                    <h1 id="pageTitle">Dashboard General</h1>
+                    <p id="pageSubtitle">Gestión integral del hospital</p>
+                </div>
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <span id="userInitials">AR</span>
+                    </div>
+                    <div class="user-info">
+                        <strong id="userName">Ana Rodríguez</strong>
+                        <span>Recepcionista</span>
+                    </div>
+                </div>
+            </header>
+
+            <div id="contentContainer" class="content-body">
+                </div>
+        </main>
+    </div>
+
+    <template id="dashboard-template">
+        <div class="view-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value">1,234</div>
+                    <div class="stat-label">Pacientes Totales</div>
+                    <div class="stat-change positive">↑ 45 este mes</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">👨‍⚕️</div>
+                    <div class="stat-value">42</div>
+                    <div class="stat-label">Doctores Activos</div>
+                    <div class="stat-change">10 Especialidades</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value">87</div>
+                    <div class="stat-label">Citas de Hoy</div>
+                    <div class="stat-change positive">↑ 12 vs ayer</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">💊</div>
+                    <div class="stat-value">156</div>
+                    <div class="stat-label">Medicamentos</div>
+                    <div class="stat-change">En inventario</div>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Acciones Rápidas</h3>
+                    </div>
+                    <div class="info-body">
+                        <button class="btn btn-primary mb-2" style="width: 100%;">Registrar Nuevo Paciente</button>
+                        <button class="btn btn-primary mb-2" style="width: 100%;">Registrar Nuevo Doctor</button>
+                        <button class="btn btn-primary mb-2" style="width: 100%;">Agendar Cita</button>
+                        <button class="btn btn-primary" style="width: 100%;">Gestionar Consultorios</button>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-header">
+                        <h3>Especialidades Activas</h3>
+                    </div>
+                    <div class="info-body">
+                        <div class="info-row">
+                            <span class="label">Cardiología</span>
+                            <span class="value">4 Doctores</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Dermatología</span>
+                            <span class="value">4 Doctores</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Medicina General</span>
+                            <span class="value">6 Doctores</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Oftalmología</span>
+                            <span class="value">3 Doctores</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="citas-template">
+        <div class="view-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Gestión de Citas</h3>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Buscar...">
+                        <select class="filter-select">
+                            <option>Todas las Citas</option>
+                            <option>Pendientes de Pago</option>
+                            <option>Confirmadas</option>
+                            <option>Atendidas</option>
+                            <option>Canceladas</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Paciente</th>
+                            <th>Doctor</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Especialidad</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#00125</td>
+                            <td>Juan Pérez</td>
+                            <td>Dr. García</td>
+                            <td>10 Feb 2026</td>
+                            <td>10:00 AM</td>
+                            <td>Cardiología</td>
+                            <td><span class="status-badge success">Confirmada</span></td>
+                            <td>
+                                <button class="btn-icon">Editar</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>#00124</td>
+                            <td>María González</td>
+                            <td>Dra. Martínez</td>
+                            <td>08 Feb 2026</td>
+                            <td>03:00 PM</td>
+                            <td>Oftalmología</td>
+                            <td><span class="status-badge warning">Pendiente Pago</span></td>
+                            <td>
+                                <button class="btn-icon">Editar</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="pacientes-template">
+        <div class="view-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Lista de Pacientes</h3>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Buscar paciente...">
+                        <button class="btn btn-primary">Nuevo Paciente</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>CURP</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#001</td>
+                            <td>Juan Pérez García</td>
+                            <td>PEGJ900101HDFRJN05</td>
+                            <td>55 1234 5678</td>
+                            <td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="bed4cbdfd090cedbccdbc4fedbd3dfd7d290ddd1d3">[email&#160;protected]</a></td>
+                            <td>
+                                <button class="btn-icon">Ver</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>#002</td>
+                            <td>María González López</td>
+                            <td>GOLM850615MDFNPR03</td>
+                            <td>55 9876 5432</td>
+                            <td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f79a96859e96d99098998d969b928db7929a969e9bd994989a">[email&#160;protected]</a></td>
+                            <td>
+                                <button class="btn-icon">Ver</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="doctores-template">
+        <div class="view-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Lista de Doctores</h3>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Buscar doctor...">
+                        <button class="btn btn-primary">Nuevo Doctor</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Cédula</th>
+                            <th>Especialidad</th>
+                            <th>Consultorio</th>
+                            <th>Horario</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Dr. Carlos Méndez</td>
+                            <td>CED-123456</td>
+                            <td>Cardiología</td>
+                            <td>Consultorio 3</td>
+                            <td>9:00 AM - 6:00 PM</td>
+                            <td>
+                                <button class="btn-icon">Ver</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Dra. Laura Martínez</td>
+                            <td>CED-789012</td>
+                            <td>Oftalmología</td>
+                            <td>Consultorio 5</td>
+                            <td>10:00 AM - 5:00 PM</td>
+                            <td>
+                                <button class="btn-icon">Ver</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="farmacia-template">
+        <div class="view-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Inventario de Farmacia</h3>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Buscar medicamento...">
+                        <button class="btn btn-primary">Agregar Medicamento</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Medicamento</th>
+                            <th>Presentación</th>
+                            <th>Existencia</th>
+                            <th>Precio</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Paracetamol</td>
+                            <td>500mg - 20 tabletas</td>
+                            <td>150</td>
+                            <td>$45.00</td>
+                            <td><span class="status-badge success">Disponible</span></td>
+                            <td>
+                                <button class="btn-icon">Editar</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Ibuprofeno</td>
+                            <td>400mg - 30 cápsulas</td>
+                            <td>12</td>
+                            <td>$89.00</td>
+                            <td><span class="status-badge warning">Stock Bajo</span></td>
+                            <td>
+                                <button class="btn-icon">Editar</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="bitacora-template">
+        <div class="view-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Bitácora de Actividades</h3>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Buscar...">
+                        <select class="filter-select">
+                            <option>Todas las Actividades</option>
+                            <option>Citas</option>
+                            <option>Pacientes</option>
+                            <option>Doctores</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Usuario</th>
+                            <th>Actividad</th>
+                            <th>Detalles</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>07 Feb 2026, 10:30 AM</td>
+                            <td>Ana Rodríguez</td>
+                            <td>Cita Creada</td>
+                            <td>Cita #00125 - Juan Pérez</td>
+                        </tr>
+                        <tr>
+                            <td>07 Feb 2026, 09:15 AM</td>
+                            <td>Ana Rodríguez</td>
+                            <td>Paciente Registrado</td>
+                            <
