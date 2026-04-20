@@ -1,441 +1,223 @@
-# 🏥 Sistema de Gestión Hospitalaria
+# 🏥 MediConnect – Sistema de Gestión Hospitalaria
 
-**Proyecto Final - Bases de Datos**  
-Instituto Politécnico Nacional - Escuela Superior de Cómputo  
-Periodo: 26-2
+**IPN · ESCOM · Bases de Datos · Periodo 26-2 · Equipo 4 · Grupo 3CM3**
 
----
-
-## 📋 Descripción del Proyecto
-
-Sistema completo de gestión hospitalaria que maneja:
-- 🏥 Citas médicas con validación de reglas de negocio
-- 💊 Farmacia e inventario de medicamentos
-- 📝 Recetas médicas digitales
-- 💰 Sistema de pagos y políticas de cancelación
-- 📊 Bitácoras de auditoría
-- 👥 Gestión de pacientes, doctores y recepcionistas
+Sistema web para la gestión hospitalaria con frontend en HTML/CSS/JavaScript, backend en Python/Flask y base de datos en Microsoft SQL Server.
 
 ---
 
-## 🏗️ Arquitectura del Proyecto
+## Descripción general
+
+El proyecto administra el flujo principal de un hospital: autenticación de usuarios, registro de pacientes, agendado y cancelación de citas con política de reembolso, asignación de doctores por especialidad, generación de recetas, gestión de farmacia y servicios, bitácoras de auditoría y aprobación de cancelaciones por recepcionista.
+
+Trabaja con tres perfiles activos: **Paciente**, **Doctor** y **Recepcionista / Admin**.
+
+---
+
+## Tecnologías
+
+| Capa | Tecnología |
+|---|---|
+| Frontend | HTML5, CSS3, JavaScript vanilla |
+| Backend | Python 3, Flask |
+| Base de datos | Microsoft SQL Server 2019+ |
+| Autenticación | JWT (`flask-jwt-extended`) |
+| Cifrado de contraseñas | bcrypt |
+
+---
+
+## Estructura del proyecto
 
 ```
-proyecto-hospital/
+HospitalBD_v2/
+├── frontend/
+│   ├── index.html
+│   ├── login.html
+│   ├── register.html
+│   ├── dashboard-paciente.html
+│   ├── dashboard-doctor.html
+│   ├── dashboard-recepcionista.html
+│   ├── css/
+│   │   ├── home.css
+│   │   ├── auth.css
+│   │   └── dashboard.css
+│   └── js/
+│       ├── api.js                    ← Cliente HTTP hacia Flask (puerto 5000)
+│       ├── auth.js                   ← Login y registro (integrado con backend)
+│       ├── home.js                   ← Efectos página de inicio
+│       ├── dashboard-paciente.js     ← Navegación SPA del paciente
+│       ├── dashboard-doctor.js       ← Navegación SPA del doctor
+│       └── dashboard-recepcionista.js
 │
-├── 📂 backend/                    # API REST (Node.js + Express)
-│   ├── config/                    # Configuración de BD
-│   ├── database/                  # Scripts SQL
-│   ├── middleware/                # Autenticación y validaciones
-│   ├── routes/                    # Endpoints de la API
-│   └── server.js                  # Servidor principal
-│
-├── 📂 frontend/                   # Interfaz de Usuario
-│   ├── css/                       # Estilos
-│   ├── js/                        # Lógica del cliente
-│   │   ├── api.js                 # Cliente API (NUEVO)
-│   │   ├── auth-integrated.js     # Auth con backend (NUEVO)
-│   │   └── ...
-│   ├── *.html                     # Páginas
-│   └── README.md
-│
-├── 📄 INSTALACION.md              # Guía de instalación
-├── 📄 INICIO_RAPIDO.md            # Inicio rápido
-└── 📄 README.md                   # Este archivo
+└── backend/
+    ├── app.py                        ← Punto de entrada
+    ├── config.py
+    ├── requirements.txt
+    ├── .env.example
+    ├── database/
+    │   ├── connection.py
+    │   ├── schema.sql                ← Ejecutar PRIMERO en SSMS
+    │   └── seed.sql                  ← Ejecutar SEGUNDO en SSMS
+    ├── routes/
+    │   ├── auth.py
+    │   ├── pacientes.py
+    │   ├── doctores.py
+    │   ├── citas.py
+    │   ├── recepcionistas.py
+    │   ├── especialidades.py
+    │   └── farmacia.py
+    └── utils/
+        ├── helpers.py
+        └── decorators.py
 ```
 
 ---
 
-## ✨ Características Principales
+## Instalación y ejecución
 
-### ✅ Backend (API REST)
-- **Node.js + Express**: Framework robusto y escalable
-- **SQL Server**: Base de datos relacional completa
-- **JWT**: Autenticación segura con tokens
-- **30+ Endpoints**: CRUD completo para todas las entidades
-- **Validaciones**: Express-validator para datos de entrada
-- **Triggers**: Lógica automática en base de datos
-- **Procedimientos Almacenados**: Operaciones complejas optimizadas
+### Paso 1 — Base de datos
+1. Abrir SQL Server Management Studio (SSMS).
+2. Ejecutar `backend/database/schema.sql`.
+3. Ejecutar `backend/database/seed.sql`.
 
-### ✅ Frontend (Interfaz Web)
-- **HTML5 + CSS3**: Diseño moderno y responsivo
-- **JavaScript Vanilla**: Sin dependencias externas
-- **SPA**: Navegación fluida sin recargas
-- **Dashboards**: Tres interfaces según rol de usuario
-- **Validaciones**: Cliente y servidor
-- **API Client**: Comunicación asíncrona con backend
-
-### ✅ Base de Datos
-- **18 Tablas**: Estructura normalizada
-- **5 Procedimientos**: Lógica de negocio encapsulada
-- **4 Triggers**: Automatización de procesos
-- **2 Bitácoras**: Auditoría completa
-- **Índices**: Optimización de consultas
-
----
-
-## 🚀 Inicio Rápido
-
-### Prerequisitos
-
-- ✅ Node.js v16+ ([Descargar](https://nodejs.org/))
-- ✅ SQL Server 2019+ ([Descargar Express](https://www.microsoft.com/es-mx/sql-server/sql-server-downloads))
-- ✅ Git (opcional)
-
-### Instalación en 3 Pasos
-
-#### 1️⃣ Configurar Base de Datos (5 min)
-
-```bash
-# Abrir SQL Server Management Studio o Azure Data Studio
-# Ejecutar en orden:
-1. backend/database/01_create_database.sql
-2. backend/database/02_triggers_procedures.sql
-3. backend/database/03_test_data.sql
-```
-
-#### 2️⃣ Iniciar Backend (2 min)
-
+### Paso 2 — Backend
 ```bash
 cd backend
-npm install
-cp .env.example .env
-
-# Editar .env con tus credenciales de SQL Server
-# Iniciar servidor
-npm run dev
-
-# Deberías ver: 🚀 Servidor ejecutándose en http://localhost:3000
+pip install -r requirements.txt
+cp .env.example .env        # Editar con credenciales SQL Server
+python app.py               # Servidor en http://localhost:5000
 ```
 
-#### 3️⃣ Iniciar Frontend (1 min)
-
+### Paso 3 — Frontend
+Abrir `frontend/login.html` directamente en el navegador o servir la carpeta con un servidor local:
 ```bash
-cd frontend
-
-# Opción A: Live Server (VSCode)
-# Clic derecho en index.html > "Open with Live Server"
-
-# Opción B: Python
-python -m http.server 5500
-
-# Opción C: Node
-npx http-server -p 5500
+python -m http.server 8080  # desde la carpeta frontend/
 ```
-
-### 🎉 ¡Listo!
-
-- **Frontend**: http://localhost:5500
-- **Backend**: http://localhost:3000
-- **API Health**: http://localhost:3000/health
 
 ---
 
-## 🧪 Probar el Sistema
+## Credenciales de prueba
 
-### Credenciales de Prueba
-
-**Password para todas las cuentas:** `hospital123`
-
-| Rol | Email |
-|-----|-------|
-| 👤 **Paciente** | paciente1@email.com |
-| 👨‍⚕️ **Doctor** | dr.garcia@hospital.com |
-| 📋 **Recepcionista** | recep.gonzalez@hospital.com |
-
-### Flujo de Prueba
-
-1. **Login como Paciente**
-   - Agendar una cita
-   - Ver especialidades
-   - Ver comprobante de pago
-   - Cancelar cita
-
-2. **Login como Doctor**
-   - Ver citas del día
-   - Consultar pacientes
-   - Crear receta médica
-   - Ver historial médico
-
-3. **Login como Recepcionista**
-   - Ver dashboard con estadísticas
-   - Gestionar citas
-   - Realizar ventas de farmacia
-   - Consultar bitácoras
+| Rol | Email | Contraseña |
+|---|---|---|
+| Recepcionista | recepcion@hospital.com | Hospital123! |
+| Doctor | dr.garcia@hospital.com | Hospital123! |
+| Paciente | paciente@test.com | Hospital123! |
 
 ---
 
-## 📊 Endpoints de la API
+## Esquema de base de datos
 
-### Autenticación
-```
-POST   /api/auth/login          # Iniciar sesión
-POST   /api/auth/register       # Registrar paciente
-GET    /api/auth/verify         # Verificar token
-```
+El esquema contiene 21 tablas. Las correcciones aplicadas respecto al MER original fueron:
 
-### Citas
-```
-GET    /api/citas                          # Obtener citas
-POST   /api/citas/agendar                  # Agendar cita
-POST   /api/citas/cancelar/:folio          # Cancelar cita
-POST   /api/citas/pagar                    # Confirmar pago
-GET    /api/citas/horarios-disponibles/:id # Horarios disponibles
-```
+| Problema original | Corrección aplicada |
+|---|---|
+| Referencia circular Paciente ↔ HistorialMedico | Eliminada FK en Paciente; solo Historial → Paciente |
+| Referencia circular Cita ↔ Pago | Cita sin FK a Pago; `Pago.Folio_Cita` nullable |
+| EstatusCita sin normalizar | Tabla catálogo `EstatusCita` con clave y descripción |
+| Sin flujo de cancelación por doctor | Nueva tabla `SolicitudCancelacion` |
+| Bitácoras sin control de permisos | RBAC en backend; BD sin triggers de borrado |
 
-### Especialidades
-```
-GET    /api/especialidades              # Listar todas
-GET    /api/especialidades/:id          # Ver detalles
-GET    /api/especialidades/:id/doctores # Doctores por especialidad
-```
-
-### Pacientes
-```
-GET    /api/pacientes                 # Listar (recepcionista)
-GET    /api/pacientes/perfil          # Ver perfil
-GET    /api/pacientes/historial-medico # Ver historial
-PUT    /api/pacientes/perfil          # Actualizar perfil
-```
-
-### Doctores
-```
-GET    /api/doctores                     # Listar todos
-GET    /api/doctores/perfil              # Ver perfil
-GET    /api/doctores/pacientes           # Mis pacientes
-GET    /api/doctores/pacientes/:id/historial # Historial de paciente
-POST   /api/doctores/recetas             # Crear receta
-```
-
-### Farmacia
-```
-GET    /api/farmacia/medicamentos       # Inventario
-GET    /api/farmacia/servicios          # Servicios disponibles
-POST   /api/farmacia/ventas             # Realizar venta
-GET    /api/farmacia/ventas             # Historial de ventas
-```
-
-Ver documentación completa: `backend/README.md`
+Tablas presentes: `TipoUsuario`, `EstatusCita`, `Horario`, `Especialidad`, `Usuario`, `Empleado`, `Recepcionista`, `Doctor`, `Consultorio`, `Paciente`, `Historial_medico`, `Cita`, `Pago`, `SolicitudCancelacion`, `Receta`, `Farmacia`, `Servicio`, `Venta`, `Detalle_Venta`, `Bitacora_EstatusCita`, `Bitacora_HistorialCitas`.
 
 ---
 
-## 📁 Estructura de Archivos
+## Estado actual de implementación
 
-### Backend
+### Backend — implementado
 
-```
-backend/
-├── config/
-│   └── database.js              # Conexión SQL Server
-├── database/
-│   ├── 01_create_database.sql   # Estructura de BD
-│   ├── 02_triggers_procedures.sql # Lógica de negocio
-│   └── 03_test_data.sql         # Datos de prueba
-├── middleware/
-│   └── auth.js                  # JWT y permisos
-├── routes/
-│   ├── auth.js                  # Autenticación
-│   ├── cita.js                  # Gestión de citas
-│   ├── doctor.js                # Módulo doctor
-│   ├── especialidad.js          # Especialidades
-│   ├── farmacia.js              # Farmacia y ventas
-│   ├── paciente.js              # Módulo paciente
-│   └── recepcionista.js         # Módulo recepcionista
-├── .env.example                 # Variables de entorno
-├── .gitignore
-├── package.json
-├── README.md
-└── server.js                    # Servidor principal
-```
+**Autenticación** (`/api/auth`)
+- `POST /login` — Login con JWT y bcrypt.
+- `POST /register` — Registro de pacientes.
+- `GET /verify` — Verificación de token.
+
+**Especialidades** (`/api/especialidades`)
+- CRUD completo: listar, obtener por id, obtener doctores de una especialidad, crear, actualizar.
+
+**Pacientes** (`/api/pacientes`)
+- Perfil propio: consulta y actualización.
+- Historial médico propio.
+- Listar todos (recepcionista/admin).
+- Obtener paciente por id (doctor/recepcionista/admin).
+- Historial por doctor: consulta y actualización.
+
+**Doctores** (`/api/doctores`)
+- Perfil propio.
+- Listar todos y obtener por id.
+- Lista de pacientes atendidos.
+- Crear receta y listar recetas propias.
+- Solicitar cancelación de cita.
+- Consultar horarios disponibles por rango de fechas.
+- Crear nuevo doctor (recepcionista/admin).
+
+**Citas** (`/api/citas`)
+- Listar citas (filtradas por rol).
+- Agendar con validaciones de disponibilidad y horario laboral.
+- Confirmar pago (ventana de 8 horas).
+- Cancelar (paciente, doctor o vencimiento de pago) con política de reembolso.
+- Marcar como atendida o no acudió.
+- Verificar y cancelar citas vencidas por falta de pago.
+- Registro automático en bitácora al cambiar de estatus.
+
+**Recepcionistas** (`/api/recepcionistas`)
+- Dashboard general (resumen de citas, pacientes, doctores).
+- Bitácora de estatus de cita.
+- Bitácora de historial médico-paciente.
+- Listar, aprobar y rechazar solicitudes de cancelación de doctores.
+- Alta de nuevos recepcionistas.
+
+**Farmacia** (`/api/farmacia`)
+- Medicamentos: listar, obtener por id, crear, actualizar.
+- Servicios: listar, crear, actualizar.
+- Ventas: listar, ver detalle, registrar nueva venta.
+
+---
+
+### Frontend — implementado
+
+- **Página de inicio** (`index.html`): efectos visuales con `home.js`.
+- **Login y registro** (`login.html`, `register.html`): completamente integrados con el backend a través de `api.js` y `auth.js`, incluyendo redirección por rol.
+- **`api.js`**: cliente HTTP completo con funciones definidas para todos los módulos (auth, especialidades, citas, pacientes, doctores, recepcionistas, farmacia y utilidades de formato).
+- **Dashboards** — los tres dashboards tienen estructura SPA con navegación entre secciones:
+  - Paciente: datos personales, citas agendadas, agendar cita, historial médico.
+  - Doctor: datos del doctor, citas, pacientes, recetas.
+  - Recepcionista: dashboard general, citas, pacientes, doctores, farmacia, bitácora.
+
+---
+
+## Pendientes y limitaciones conocidas
 
 ### Frontend
-
-```
-frontend/
-├── css/
-│   ├── auth.css                 # Estilos login/registro
-│   ├── dashboard.css            # Estilos dashboards
-│   └── home.css                 # Estilos página principal
-├── js/
-│   ├── api.js                   # 🆕 Cliente API completo
-│   ├── auth.js                  # Auth original (offline)
-│   ├── auth-integrated.js       # 🆕 Auth con backend
-│   ├── dashboard-paciente.js    # Lógica dashboard paciente
-│   ├── dashboard-doctor.js      # Lógica dashboard doctor
-│   ├── dashboard-recepcionista.js # Lógica dashboard recepcionista
-│   └── home.js                  # Lógica home
-├── dashboard-paciente.html
-├── dashboard-doctor.html
-├── dashboard-recepcionista.html
-├── index.html
-├── login.html
-├── register.html
-└── README.md
-```
-
----
-
-## 🔧 Tecnologías Utilizadas
+- Los dashboards tienen navegación funcional pero **no cargan datos reales del backend**. `api.js` tiene todas las funciones definidas, pero los archivos `dashboard-*.js` aún no las invocan; las vistas se renderizan desde templates HTML sin fetch real.
+- Falta integrar formularios de alta y edición con llamadas a la API y manejo de respuestas.
+- No existe vista de consultorios (la tabla sí existe en la BD).
+- No existe vista de cobros o tickets.
+- Los dashboards de doctor y recepcionista son mayormente estáticos.
 
 ### Backend
-- **Node.js** v16+
-- **Express** 4.18
-- **mssql** 10.0 (Driver SQL Server)
-- **jsonwebtoken** 9.0 (Autenticación)
-- **bcryptjs** 2.4 (Encriptación)
-- **express-validator** 7.0 (Validaciones)
-- **dotenv** 16.3 (Variables de entorno)
-- **cors** 2.8 (Cross-Origin)
-- **morgan** 1.10 (Logging)
-
-### Frontend
-- **HTML5**
-- **CSS3** (Grid, Flexbox, Animations)
-- **JavaScript ES6+**
-- **Fetch API** (Peticiones HTTP)
-
-### Base de Datos
-- **Microsoft SQL Server** 2019+
-- **T-SQL** (Triggers, Procedimientos)
+- No hay módulo de **consultorios** (la tabla `Consultorio` existe en la BD pero no hay endpoints ni CRUD).
+- La gestión de recepcionistas solo cuenta con alta (`POST`); falta la actualización y baja.
+- El flujo de **tickets y cobros** puede ampliarse para cubrir mejor la venta combinada de servicios y medicamentos.
+- Los perfiles **Cajero** y **Farmacéutico** no están implementados como roles separados.
+- No hay reportes, impresión de comprobantes ni exportaciones.
 
 ---
 
-## ✅ Cumplimiento de Requisitos
+## Notas de implementación
 
-| Requisito | Estado |
-|-----------|--------|
-| Microsoft SQL Server | ✅ Implementado |
-| Módulo de login | ✅ JWT + 3 roles |
-| 3 perfiles mínimos | ✅ Paciente, Doctor, Recepcionista |
-| 11 entidades mínimas | ✅ 18 tablas |
-| 10 especialidades | ✅ Implementado |
-| 4 doctores/especialidad | ✅ Estructura lista |
-| Citas prepago (8hrs) | ✅ Con trigger automático |
-| Agendamiento 48hrs-3 meses | ✅ Validado en SP |
-| Política de cancelación | ✅ Automática (100%/50%/0%) |
-| Bitácoras | ✅ 2 tablas (estatus + historial) |
-| Farmacia/Servicios | ✅ Inventario + ventas |
-| Recetas médicas | ✅ Completo |
-| Historial médico | ✅ Por paciente |
+- Las contraseñas se almacenan cifradas con bcrypt.
+- El acceso a endpoints está controlado por rol mediante decoradores JWT en el backend.
+- Un paciente puede comprar servicios o medicamentos sin necesidad de tener cita activa.
+- Las citas se cancelan con registro automático en bitácora.
+- La BD está orientada exclusivamente a SQL Server (no compatible con SQLite o PostgreSQL sin ajustes).
 
 ---
 
-## 📚 Documentación Adicional
+## Equipo
 
-- 📖 [Instalación Detallada](INSTALACION.md)
-- ⚡ [Inicio Rápido](INICIO_RAPIDO.md)
-- 🔗 [Integración Frontend-Backend](backend/INTEGRACION_FRONTEND.md)
-- 📊 [Resumen Ejecutivo](backend/RESUMEN_EJECUTIVO.md)
-- 🔧 [Documentación Backend](backend/README.md)
-
----
-
-## 🐛 Solución de Problemas
-
-### Backend no inicia
-```bash
-# Verificar que SQL Server esté corriendo
-# Windows: SQL Server Configuration Manager
-# Verificar que las credenciales en .env sean correctas
-```
-
-### Error de CORS
-```bash
-# Verificar FRONTEND_URL en backend/.env
-# Debe coincidir con la URL del frontend (ej: http://localhost:5500)
-```
-
-### Token expirado
-```bash
-# Los tokens expiran en 24 horas
-# Hacer logout y volver a iniciar sesión
-```
-
-### Puerto en uso
-```bash
-# Backend (puerto 3000)
-PORT=3001 npm run dev
-
-# Frontend (puerto 5500)
-python -m http.server 8000
-```
-
----
-
-## 👥 Roles y Permisos
-
-### 👤 Paciente
-- ✅ Auto-registro
-- ✅ Ver/editar perfil
-- ✅ Agendar citas
-- ✅ Cancelar citas (con política)
-- ✅ Ver historial de citas
-- ✅ Ver historial médico
-- ❌ No puede crear recetas
-- ❌ No puede acceder a bitácoras
-
-### 👨‍⚕️ Doctor
-- ✅ Ver perfil (limitado)
-- ✅ Ver citas asignadas
-- ✅ Ver pacientes
-- ✅ Consultar historial médico
-- ✅ Crear recetas
-- ✅ Cancelar citas (con aprobación)
-- ❌ No puede editar datos sensibles
-- ❌ No puede crear otros doctores
-
-### 📋 Recepcionista
-- ✅ Dashboard completo
-- ✅ Gestionar pacientes
-- ✅ Gestionar doctores
-- ✅ Gestionar citas
-- ✅ Farmacia y ventas
-- ✅ Consultar bitácoras
-- ❌ No puede ver recetas médicas
-- ❌ No puede ver historiales médicos
-
----
-
-## 🚀 Próximas Mejoras (Opcionales)
-
-- [ ] Notificaciones por email
-- [ ] Recordatorios de citas
-- [ ] Generación de PDFs
-- [ ] Reportes y gráficas
-- [ ] Panel de administrador
-- [ ] App móvil
-- [ ] Videoconsultas
-
----
-
-## 📄 Licencia
-
-Proyecto académico - IPN ESCOM  
-Bases de Datos - Periodo 26-2
-
----
-
-## 🙋 Soporte
-
-Para dudas o problemas:
-1. Revisar la documentación en `/docs`
-2. Verificar logs del servidor
-3. Consultar ejemplos en `/backend/README.md`
-
----
-
-## ⭐ Estado del Proyecto
-
-**✅ COMPLETO Y FUNCIONAL**
-
-- ✅ Backend implementado al 100%
-- ✅ Frontend implementado al 100%
-- ✅ Base de datos completa
-- ✅ Integración lista
-- ✅ Documentación completa
-- ✅ Datos de prueba incluidos
-- ✅ Listo para entrega
-
----
-
-**Desarrollado con ❤️ para el curso de Bases de Datos - IPN ESCOM**
+| Nombre | Boleta |
+|---|---|
+| García Ambrosio Aldo | 2025630171 |
+| Hernández Rodríguez José Eduardo | 2025630494 |
+| Hernández Zetina Jared | 2025630682 |
+| Tinoco Celestino Sunduri Bilgai | 2023301870 |

@@ -1,323 +1,176 @@
-# 🏥 Sistema de Gestión Hospitalaria - Backend
+# 🏥 Backend – Sistema de Gestión Hospitalaria
+**Flask + Python + Microsoft SQL Server**
 
-API REST para el Sistema de Gestión de Citas Médicas, Farmacia y Servicios Hospitalarios.
+---
 
-## 📋 Características
+## Requisitos previos
 
-- ✅ Autenticación JWT
-- ✅ Gestión de Citas Médicas
-- ✅ Sistema de Pagos y Cancelaciones
-- ✅ Farmacia e Inventario
-- ✅ Recetas Médicas
-- ✅ Bitácoras de Auditoría
-- ✅ Roles: Paciente, Doctor, Recepcionista
-- ✅ Base de Datos SQL Server
+| Herramienta | Versión mínima |
+|-------------|---------------|
+| Python      | 3.10+         |
+| SQL Server  | 2019+         |
+| ODBC Driver | 17 for SQL Server |
 
-## 🚀 Instalación
+---
 
-### Prerrequisitos
+## Instalación
 
-- Node.js v16 o superior
-- Microsoft SQL Server 2019 o superior
-- npm o yarn
-
-### 1. Clonar e Instalar Dependencias
-
+### 1. Instalar dependencias Python
 ```bash
-# Instalar dependencias
-npm install
+cd backend
+pip install -r requirements.txt
 ```
 
-### 2. Configurar Variables de Entorno
-
-Crear archivo `.env` basado en `.env.example`:
-
+### 2. Configurar variables de entorno
 ```bash
 cp .env.example .env
 ```
-
-Editar `.env` con tus credenciales:
-
+Edita `.env` con tus datos de SQL Server:
 ```env
-PORT=3000
-NODE_ENV=development
-
-# SQL Server
 DB_SERVER=localhost
 DB_DATABASE=HospitalDB
 DB_USER=sa
 DB_PASSWORD=TuPasswordSegura123!
 DB_PORT=1433
-DB_ENCRYPT=true
-DB_TRUST_SERVER_CERTIFICATE=true
-
-# JWT
-JWT_SECRET=tu_secreto_super_seguro_cambiame_en_produccion
-JWT_EXPIRES_IN=24h
-
-# CORS
-FRONTEND_URL=http://localhost:5500
+JWT_SECRET_KEY=genera_una_clave_segura_aqui
 ```
 
-### 3. Crear Base de Datos
+### 3. Crear la base de datos
+Ejecuta los scripts SQL en SQL Server Management Studio (SSMS) **en este orden**:
+```
+1. database/schema.sql   ← Crea la BD, tablas, catálogos
+2. database/seed.sql     ← Inserta datos de prueba
+```
 
-Ejecutar los scripts SQL en orden:
-
+### 4. Arrancar el servidor
 ```bash
-# En SQL Server Management Studio o Azure Data Studio:
-
-1. 01_create_database.sql      # Crea la base de datos y tablas
-2. 02_triggers_procedures.sql  # Crea triggers y procedimientos
-3. 03_test_data.sql            # Inserta datos de prueba
+python app.py
 ```
+El servidor queda en **http://localhost:5000**
 
-O usar línea de comandos:
+---
 
-```bash
-sqlcmd -S localhost -U sa -P TuPassword -i database/01_create_database.sql
-sqlcmd -S localhost -U sa -P TuPassword -i database/02_triggers_procedures.sql
-sqlcmd -S localhost -U sa -P TuPassword -i database/03_test_data.sql
-```
+## Credenciales de prueba
+| Rol           | Email                      | Contraseña    |
+|---------------|----------------------------|---------------|
+| Recepcionista | recepcion@hospital.com     | Hospital123!  |
+| Doctor        | dr.garcia@hospital.com     | Hospital123!  |
+| Paciente      | paciente@test.com          | Hospital123!  |
 
-### 4. Iniciar el Servidor
+---
 
-```bash
-# Desarrollo (con auto-reload)
-npm run dev
-
-# Producción
-npm start
-```
-
-El servidor estará en: `http://localhost:3000`
-
-## 📚 Endpoints de la API
+## Endpoints principales
 
 ### Autenticación
-
-```
-POST   /api/auth/login       - Iniciar sesión
-POST   /api/auth/register    - Registrar paciente
-GET    /api/auth/verify      - Verificar token
-```
-
-### Citas
-
-```
-GET    /api/citas                          - Obtener citas
-POST   /api/citas/agendar                  - Agendar nueva cita
-POST   /api/citas/cancelar/:folio_cita     - Cancelar cita
-POST   /api/citas/pagar                    - Confirmar pago
-GET    /api/citas/horarios-disponibles/:id_doctor - Horarios disponibles
-```
+| Método | Ruta                  | Descripción              | Rol requerido |
+|--------|-----------------------|--------------------------|---------------|
+| POST   | `/api/auth/login`     | Iniciar sesión           | Público       |
+| POST   | `/api/auth/register`  | Registrar paciente nuevo | Público       |
+| GET    | `/api/auth/verify`    | Verificar token JWT      | Autenticado   |
 
 ### Especialidades
-
-```
-GET    /api/especialidades              - Listar especialidades
-GET    /api/especialidades/:id          - Detalle de especialidad
-GET    /api/especialidades/:id/doctores - Doctores por especialidad
-```
-
-### Pacientes
-
-```
-GET    /api/pacientes                - Listar pacientes (recepcionista)
-GET    /api/pacientes/perfil         - Perfil del paciente
-GET    /api/pacientes/historial-medico - Historial médico
-PUT    /api/pacientes/perfil         - Actualizar perfil
-```
-
-### Doctores
-
-```
-GET    /api/doctores                    - Listar doctores
-GET    /api/doctores/perfil             - Perfil del doctor
-GET    /api/doctores/horarios           - Horarios del doctor
-GET    /api/doctores/pacientes          - Pacientes del doctor
-GET    /api/doctores/pacientes/:id/historial - Historial de paciente
-POST   /api/doctores/recetas            - Crear receta médica
-```
-
-### Recepcionista
-
-```
-GET    /api/recepcionistas/dashboard        - Dashboard con estadísticas
-GET    /api/recepcionistas/bitacora/estatus - Bitácora de estatus
-GET    /api/recepcionistas/bitacora/historial - Bitácora de historial
-```
-
-### Farmacia
-
-```
-GET    /api/farmacia/medicamentos       - Listar medicamentos
-GET    /api/farmacia/servicios          - Listar servicios
-POST   /api/farmacia/ventas             - Realizar venta
-GET    /api/farmacia/ventas             - Historial de ventas
-GET    /api/farmacia/ventas/:id         - Detalle de venta
-```
-
-## 🔐 Autenticación
-
-Todas las rutas protegidas requieren un token JWT en el header:
-
-```
-Authorization: Bearer <token>
-```
-
-### Credenciales de Prueba
-
-**Password para todas las cuentas:** `hospital123`
-
-- **Paciente:** `paciente1@email.com`
-- **Doctor:** `dr.garcia@hospital.com`
-- **Recepcionista:** `recep.gonzalez@hospital.com`
-
-## 📝 Ejemplo de Uso
-
-### 1. Login
-
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "paciente1@email.com",
-    "password": "hospital123",
-    "userType": "paciente"
-  }'
-```
-
-### 2. Agendar Cita
-
-```bash
-curl -X POST http://localhost:3000/api/citas/agendar \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <tu-token>" \
-  -d '{
-    "id_doctor": 1,
-    "fecha_cita": "2026-02-15",
-    "hora_cita": "10:00"
-  }'
-```
-
-## 🗂️ Estructura del Proyecto
-
-```
-hospital-backend/
-├── config/
-│   └── database.js          # Configuración de SQL Server
-├── database/
-│   ├── 01_create_database.sql
-│   ├── 02_triggers_procedures.sql
-│   └── 03_test_data.sql
-├── middleware/
-│   └── auth.js              # Middleware de autenticación
-├── routes/
-│   ├── auth.js              # Rutas de autenticación
-│   ├── cita.js              # Rutas de citas
-│   ├── doctor.js            # Rutas de doctores
-│   ├── especialidad.js      # Rutas de especialidades
-│   ├── farmacia.js          # Rutas de farmacia
-│   ├── paciente.js          # Rutas de pacientes
-│   └── recepcionista.js     # Rutas de recepcionista
-├── .env.example             # Ejemplo de variables de entorno
-├── .gitignore
-├── package.json
-├── README.md
-└── server.js                # Servidor principal
-```
-
-## ⚙️ Reglas de Negocio Implementadas
+| Método | Ruta                              | Descripción                     |
+|--------|-----------------------------------|---------------------------------|
+| GET    | `/api/especialidades`             | Listar todas                    |
+| GET    | `/api/especialidades/<id>/doctores` | Doctores por especialidad     |
+| POST   | `/api/especialidades`             | Crear (recepcionista)          |
 
 ### Citas
+| Método | Ruta                        | Descripción                       |
+|--------|-----------------------------|-----------------------------------|
+| GET    | `/api/citas`                | Listar (filtrado por rol)         |
+| POST   | `/api/citas/agendar`        | Agendar nueva cita                |
+| POST   | `/api/citas/pagar`          | Confirmar pago (8h límite)        |
+| POST   | `/api/citas/cancelar/<id>`  | Cancelar con política             |
+| PUT    | `/api/citas/<id>/atender`   | Marcar atendida (doctor)         |
+| PUT    | `/api/citas/<id>/no-acudio` | Marcar no acudió                 |
+| POST   | `/api/citas/verificar-vencidas` | Cancelar sin pago vencido    |
 
-- ✅ Agendamiento mínimo 48 horas de anticipación
-- ✅ Agendamiento máximo 3 meses
-- ✅ No se pueden agendar citas si el doctor está ocupado
-- ✅ No se puede tener cita pendiente con el mismo doctor
+### Pacientes
+| Método | Ruta                              | Descripción                    |
+|--------|-----------------------------------|--------------------------------|
+| GET    | `/api/pacientes/perfil`           | Mi perfil                      |
+| PUT    | `/api/pacientes/perfil`           | Actualizar datos no sensibles  |
+| GET    | `/api/pacientes/historial-medico` | Mi historial                   |
+| GET    | `/api/pacientes`                  | Listar (recepcionista)        |
+| GET    | `/api/pacientes/<id>/historial`   | Historial por ID (doctor)     |
+| PUT    | `/api/pacientes/<id>/historial`   | Actualizar historial (doctor) |
+
+### Doctores
+| Método | Ruta                                  | Descripción                      |
+|--------|---------------------------------------|----------------------------------|
+| GET    | `/api/doctores/perfil`               | Mi perfil                        |
+| GET    | `/api/doctores`                      | Listar doctores                  |
+| GET    | `/api/doctores/pacientes`            | Mis pacientes                    |
+| POST   | `/api/doctores/recetas`              | Crear receta                     |
+| GET    | `/api/doctores/recetas`              | Listar mis recetas               |
+| POST   | `/api/doctores/solicitar-cancelacion`| Solicitar cancelación            |
+| GET    | `/api/doctores/<id>/horarios-disponibles` | Slots disponibles           |
+| POST   | `/api/doctores`                      | Crear doctor (recepcionista)    |
+
+### Recepcionista
+| Método | Ruta                                          | Descripción              |
+|--------|-----------------------------------------------|--------------------------|
+| GET    | `/api/recepcionistas/dashboard`               | Estadísticas generales   |
+| GET    | `/api/recepcionistas/bitacora/estatus`        | Bitácora estatus citas   |
+| GET    | `/api/recepcionistas/bitacora/historial`      | Bitácora historial       |
+| GET    | `/api/recepcionistas/solicitudes-cancelacion` | Solicitudes pendientes   |
+| POST   | `/api/recepcionistas/solicitudes-cancelacion/<id>/aprobar` | Aprobar |
+| POST   | `/api/recepcionistas/solicitudes-cancelacion/<id>/rechazar` | Rechazar |
+| POST   | `/api/recepcionistas`                         | Crear recepcionista      |
+
+### Farmacia
+| Método | Ruta                          | Descripción              |
+|--------|-------------------------------|--------------------------|
+| GET    | `/api/farmacia/medicamentos`  | Listar medicamentos      |
+| POST   | `/api/farmacia/medicamentos`  | Agregar medicamento      |
+| PUT    | `/api/farmacia/medicamentos/<id>` | Actualizar/stock     |
+| GET    | `/api/farmacia/servicios`     | Listar servicios         |
+| POST   | `/api/farmacia/servicios`     | Agregar servicio         |
+| POST   | `/api/farmacia/ventas`        | Realizar venta           |
+| GET    | `/api/farmacia/ventas`        | Historial de ventas      |
+| GET    | `/api/farmacia/ventas/<id>`   | Detalle de una venta     |
+
+---
+
+## Reglas de negocio implementadas
+- ✅ Citas prepago con ventana de **8 horas** para pagar
+- ✅ Agendado mínimo **48h**, máximo **3 meses** de anticipación
+- ✅ Sin traslape de citas por doctor (índice único en BD)
+- ✅ Sin cita pendiente duplicada paciente-doctor
 - ✅ Validación de horario laboral del doctor
-- ✅ Tiempo límite de pago: 8 horas
+- ✅ Política de cancelación (100% / 50% / 0%)
+- ✅ Cancelación por doctor → aprobación de recepcionista → 100% reembolso
+- ✅ Bitácoras de solo inserción/consulta
+- ✅ Ventas de farmacia y servicios sin necesidad de ser paciente
+- ✅ Contraseñas cifradas con bcrypt
+- ✅ JWT con expiración de 8 horas
+- ✅ Control de acceso por rol (RBAC)
+- ✅ Doctor no puede editar sus datos sensibles
+- ✅ Recepcionista NO puede ver recetas ni historial médico
 
-### Cancelaciones
+---
 
-- ✅ 48+ horas: 100% de reembolso
-- ✅ 24-48 horas: 50% de reembolso
-- ✅ <24 horas: 0% de reembolso
-- ✅ Cancelación por doctor: 100% de reembolso
-
-### Estatus de Citas
-
-1. `agendada_pendiente_pago`
-2. `pagada_pendiente_atender`
-3. `cancelada_falta_pago`
-4. `cancelada_paciente`
-5. `cancelada_doctor`
-6. `atendida`
-7. `no_acudio`
-
-## 🛠️ Tecnologías
-
-- **Node.js** - Runtime
-- **Express** - Framework web
-- **mssql** - Driver SQL Server
-- **bcryptjs** - Encriptación de contraseñas
-- **jsonwebtoken** - Autenticación JWT
-- **express-validator** - Validación de datos
-- **dotenv** - Variables de entorno
-- **morgan** - Logging HTTP
-
-## 📊 Base de Datos
-
-### Tablas Principales
-
-- Usuario
-- Paciente
-- Empleado
-- Doctor
-- Recepcionista
-- Cita
-- Pago
-- Especialidad
-- Consultorio
-- Medicamento
-- Servicio
-- Receta
-- Venta
-- BitacoraEstatusCita
-- BitacoraHistorialCitas
-
-### Procedimientos Almacenados
-
-- `sp_AgendarCita`
-- `sp_CancelarCita`
-- `sp_ConfirmarPago`
-- `sp_ObtenerHorariosDisponibles`
-- `sp_CrearReceta`
-
-## 🔧 Troubleshooting
-
-### Error de conexión a SQL Server
-
-1. Verificar que SQL Server esté corriendo
-2. Verificar credenciales en `.env`
-3. Verificar que el puerto 1433 esté abierto
-4. Verificar configuración de `trustServerCertificate`
-
-### Token expirado
-
-Los tokens JWT expiran en 24 horas. Volver a hacer login.
-
-### Errores de CORS
-
-Asegurarse de que `FRONTEND_URL` en `.env` coincida con la URL del frontend.
-
-## 📄 Licencia
-
-Este proyecto es para uso educativo - IPN ESCOM.
-
-## 👥 Equipo
-
-- Desarrollado para el curso de Bases de Datos
-- Instituto Politécnico Nacional
-- Escuela Superior de Cómputo
-- Periodo: 26-2
+## Estructura de carpetas
+```
+backend/
+├── app.py              # Punto de entrada Flask
+├── config.py           # Configuración central
+├── requirements.txt    # Dependencias Python
+├── .env.example        # Plantilla de variables de entorno
+├── database/
+│   ├── connection.py   # Pool de conexión pyodbc
+│   ├── schema.sql      # DDL completo (tablas, catálogos)
+│   └── seed.sql        # Datos de prueba
+├── routes/
+│   ├── auth.py         # Login, registro
+│   ├── especialidades.py
+│   ├── pacientes.py
+│   ├── doctores.py
+│   ├── citas.py        # Lógica principal de negocio
+│   ├── recepcionistas.py
+│   └── farmacia.py
+└── utils/
+    ├── decorators.py   # @requiere_auth, @requiere_rol
+    └── helpers.py      # Política cancelación, validaciones
+```

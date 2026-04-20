@@ -1,23 +1,20 @@
 /**
- * API Client para Sistema de Gestión Hospitalaria
- * Maneja todas las comunicaciones con el backend
+ * Cliente API para Sistema de Gestión Hospitalaria
+ * Conecta con backend Python/Flask en puerto 5000
  */
 
-// Configuración
 const CONFIG = {
-    API_URL: 'http://localhost:3000/api',
-    TIMEOUT: 10000 // 10 segundos
+    API_URL: 'http://localhost:5000/api',
+    TIMEOUT: 10000
 };
 
 /**
- * Función base para hacer peticiones HTTP
- * @param {string} endpoint - Ruta del endpoint (ej: '/auth/login')
- * @param {object} options - Opciones de fetch
- * @returns {Promise} - Respuesta de la API
+ * Función base para peticiones HTTP al backend Flask.
+ * Adjunta automáticamente el token JWT si existe.
  */
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('authToken');
-    
+
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json',
@@ -28,10 +25,7 @@ async function apiRequest(endpoint, options = {}) {
     const config = {
         ...defaultOptions,
         ...options,
-        headers: {
-            ...defaultOptions.headers,
-            ...options.headers
-        }
+        headers: { ...defaultOptions.headers, ...(options.headers || {}) }
     };
 
     try {
@@ -39,15 +33,12 @@ async function apiRequest(endpoint, options = {}) {
         const data = await response.json();
 
         if (!response.ok) {
-            // Manejar token expirado
             if (response.status === 401 && endpoint !== '/auth/login') {
                 auth.logout();
                 throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
             }
-            
             throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
         }
-
         return data;
     } catch (error) {
         console.error('API Error:', error);
@@ -55,54 +46,34 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
-// =============================================
+// ============================================================
 // AUTENTICACIÓN
-// =============================================
+// ============================================================
 const auth = {
-    /**
-     * Iniciar sesión
-     */
-    login: async (email, password, userType) => {
+    login: async (email, password) => {
         const data = await apiRequest('/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password, userType })
+            body: JSON.stringify({ email, password })
         });
-        
-        // Guardar token y datos de usuario
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
         localStorage.setItem('isLoggedIn', 'true');
-        
         return data;
     },
 
-    /**
-     * Registrar nuevo paciente
-     */
     register: async (userData) => {
         const data = await apiRequest('/auth/register', {
             method: 'POST',
             body: JSON.stringify(userData)
         });
-        
-        // Guardar token y datos de usuario
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
         localStorage.setItem('isLoggedIn', 'true');
-        
         return data;
     },
 
-    /**
-     * Verificar token
-     */
-    verify: async () => {
-        return apiRequest('/auth/verify');
-    },
+    verify: async () => apiRequest('/auth/verify'),
 
-    /**
-     * Cerrar sesión
-     */
     logout: () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
@@ -110,327 +81,192 @@ const auth = {
         window.location.href = 'index.html';
     },
 
-    /**
-     * Verificar si está autenticado
-     */
-    isAuthenticated: () => {
-        return !!localStorage.getItem('authToken');
-    },
+    isAuthenticated: () => !!localStorage.getItem('authToken'),
 
-    /**
-     * Obtener usuario actual
-     */
     getCurrentUser: () => {
         const user = localStorage.getItem('currentUser');
         return user ? JSON.parse(user) : null;
     }
 };
 
-// =============================================
+// ============================================================
 // ESPECIALIDADES
-// =============================================
+// ============================================================
 const especialidades = {
-    /**
-     * Obtener todas las especialidades
-     */
-    obtenerTodas: async () => {
-        return apiRequest('/especialidades');
-    },
-
-    /**
-     * Obtener una especialidad
-     */
-    obtenerPorId: async (id) => {
-        return apiRequest(`/especialidades/${id}`);
-    },
-
-    /**
-     * Obtener doctores de una especialidad
-     */
-    obtenerDoctores: async (idEspecialidad) => {
-        return apiRequest(`/especialidades/${idEspecialidad}/doctores`);
-    }
+    obtenerTodas: () => apiRequest('/especialidades'),
+    obtenerPorId: (id) => apiRequest(`/especialidades/${id}`),
+    obtenerDoctores: (idEspecialidad) => apiRequest(`/especialidades/${idEspecialidad}/doctores`),
+    crear: (datos) => apiRequest('/especialidades', { method: 'POST', body: JSON.stringify(datos) }),
+    actualizar: (id, datos) => apiRequest(`/especialidades/${id}`, { method: 'PUT', body: JSON.stringify(datos) })
 };
 
-// =============================================
+// ============================================================
 // CITAS
-// =============================================
+// ============================================================
 const citas = {
-    /**
-     * Obtener mis citas (con filtros opcionales)
-     */
-    obtenerMisCitas: async (filtros = {}) => {
+    obtenerMisCitas: (filtros = {}) => {
         const params = new URLSearchParams(filtros);
         return apiRequest(`/citas?${params}`);
     },
 
-    /**
-     * Agendar nueva cita
-     */
-    agendarCita: async (citaData) => {
-        return apiRequest('/citas/agendar', {
-            method: 'POST',
-            body: JSON.stringify(citaData)
-        });
-    },
+    agendarCita: (citaData) => apiRequest('/citas/agendar', {
+        method: 'POST',
+        body: JSON.stringify(citaData)
+    }),
 
-    /**
-     * Cancelar cita
-     */
-    cancelarCita: async (folioCita, motivo) => {
-        return apiRequest(`/citas/cancelar/${folioCita}`, {
-            method: 'POST',
-            body: JSON.stringify({ motivo_cancelacion: motivo })
-        });
-    },
+    cancelarCita: (folioCita, motivo) => apiRequest(`/citas/cancelar/${folioCita}`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo_cancelacion: motivo })
+    }),
 
-    /**
-     * Confirmar pago de cita
-     */
-    confirmarPago: async (folioPago, metodoPago) => {
-        return apiRequest('/citas/pagar', {
-            method: 'POST',
-            body: JSON.stringify({ folio_pago: folioPago, metodo_pago: metodoPago })
-        });
-    },
+    confirmarPago: (folioCita, metodoPago) => apiRequest('/citas/pagar', {
+        method: 'POST',
+        body: JSON.stringify({ folio_cita: folioCita, metodo_pago: metodoPago })
+    }),
 
-    /**
-     * Obtener horarios disponibles de un doctor
-     */
-    obtenerHorariosDisponibles: async (idDoctor, fechaInicio, fechaFin) => {
-        return apiRequest(`/citas/horarios-disponibles/${idDoctor}?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
-    }
+    marcarAtendida: (folioCita) => apiRequest(`/citas/${folioCita}/atender`, { method: 'PUT' }),
+
+    marcarNoAcudio: (folioCita) => apiRequest(`/citas/${folioCita}/no-acudio`, { method: 'PUT' }),
+
+    obtenerHorariosDisponibles: (idDoctor, fechaInicio, fechaFin) =>
+        apiRequest(`/doctores/${idDoctor}/horarios-disponibles?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`),
+
+    verificarVencidas: () => apiRequest('/citas/verificar-vencidas', { method: 'POST' })
 };
 
-// =============================================
+// ============================================================
 // PACIENTE
-// =============================================
+// ============================================================
 const paciente = {
-    /**
-     * Obtener perfil del paciente actual
-     */
-    obtenerPerfil: async () => {
-        return apiRequest('/pacientes/perfil');
-    },
-
-    /**
-     * Actualizar perfil
-     */
-    actualizarPerfil: async (datos) => {
-        return apiRequest('/pacientes/perfil', {
-            method: 'PUT',
-            body: JSON.stringify(datos)
-        });
-    },
-
-    /**
-     * Obtener historial médico
-     */
-    obtenerHistorialMedico: async () => {
-        return apiRequest('/pacientes/historial-medico');
-    },
-
-    /**
-     * Listar todos los pacientes (solo recepcionista)
-     */
-    listarTodos: async (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/pacientes?${params}`);
-    }
+    obtenerPerfil: () => apiRequest('/pacientes/perfil'),
+    actualizarPerfil: (datos) => apiRequest('/pacientes/perfil', { method: 'PUT', body: JSON.stringify(datos) }),
+    obtenerHistorialMedico: () => apiRequest('/pacientes/historial-medico'),
+    listarTodos: (filtros = {}) => apiRequest(`/pacientes?${new URLSearchParams(filtros)}`),
+    obtenerPorId: (id) => apiRequest(`/pacientes/${id}`),
+    obtenerHistorial: (id) => apiRequest(`/pacientes/${id}/historial`),
+    actualizarHistorial: (id, datos) => apiRequest(`/pacientes/${id}/historial`, {
+        method: 'PUT',
+        body: JSON.stringify(datos)
+    })
 };
 
-// =============================================
+// ============================================================
 // DOCTOR
-// =============================================
+// ============================================================
 const doctor = {
-    /**
-     * Obtener perfil del doctor actual
-     */
-    obtenerPerfil: async () => {
-        return apiRequest('/doctores/perfil');
-    },
-
-    /**
-     * Obtener horarios del doctor
-     */
-    obtenerHorarios: async () => {
-        return apiRequest('/doctores/horarios');
-    },
-
-    /**
-     * Obtener lista de pacientes
-     */
-    obtenerPacientes: async () => {
-        return apiRequest('/doctores/pacientes');
-    },
-
-    /**
-     * Obtener historial médico de un paciente
-     */
-    obtenerHistorialPaciente: async (idPaciente) => {
-        return apiRequest(`/doctores/pacientes/${idPaciente}/historial`);
-    },
-
-    /**
-     * Crear receta médica
-     */
-    crearReceta: async (recetaData) => {
-        return apiRequest('/doctores/recetas', {
-            method: 'POST',
-            body: JSON.stringify(recetaData)
-        });
-    },
-
-    /**
-     * Listar todos los doctores
-     */
-    listarTodos: async (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/doctores?${params}`);
-    }
+    obtenerPerfil: () => apiRequest('/doctores/perfil'),
+    listarTodos: (filtros = {}) => apiRequest(`/doctores?${new URLSearchParams(filtros)}`),
+    obtenerPorId: (id) => apiRequest(`/doctores/${id}`),
+    obtenerPacientes: () => apiRequest('/doctores/pacientes'),
+    crearReceta: (recetaData) => apiRequest('/doctores/recetas', {
+        method: 'POST',
+        body: JSON.stringify(recetaData)
+    }),
+    listarRecetas: () => apiRequest('/doctores/recetas'),
+    solicitarCancelacion: (folioCita, motivo) => apiRequest('/doctores/solicitar-cancelacion', {
+        method: 'POST',
+        body: JSON.stringify({ folio_cita: folioCita, motivo })
+    }),
+    crear: (datos) => apiRequest('/doctores', { method: 'POST', body: JSON.stringify(datos) })
 };
 
-// =============================================
+// ============================================================
 // RECEPCIONISTA
-// =============================================
+// ============================================================
 const recepcionista = {
-    /**
-     * Obtener datos del dashboard
-     */
-    obtenerDashboard: async () => {
-        return apiRequest('/recepcionistas/dashboard');
-    },
-
-    /**
-     * Obtener bitácora de estatus de citas
-     */
-    obtenerBitacoraEstatus: async (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/recepcionistas/bitacora/estatus?${params}`);
-    },
-
-    /**
-     * Obtener bitácora de historial de citas
-     */
-    obtenerBitacoraHistorial: async (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/recepcionistas/bitacora/historial?${params}`);
-    }
+    obtenerDashboard: () => apiRequest('/recepcionistas/dashboard'),
+    obtenerBitacoraEstatus: (filtros = {}) =>
+        apiRequest(`/recepcionistas/bitacora/estatus?${new URLSearchParams(filtros)}`),
+    obtenerBitacoraHistorial: (filtros = {}) =>
+        apiRequest(`/recepcionistas/bitacora/historial?${new URLSearchParams(filtros)}`),
+    listarSolicitudesCancelacion: () => apiRequest('/recepcionistas/solicitudes-cancelacion'),
+    aprobarCancelacion: (idSolicitud) =>
+        apiRequest(`/recepcionistas/solicitudes-cancelacion/${idSolicitud}/aprobar`, { method: 'POST' }),
+    rechazarCancelacion: (idSolicitud) =>
+        apiRequest(`/recepcionistas/solicitudes-cancelacion/${idSolicitud}/rechazar`, { method: 'POST' }),
+    crear: (datos) => apiRequest('/recepcionistas', { method: 'POST', body: JSON.stringify(datos) })
 };
 
-// =============================================
+// ============================================================
 // FARMACIA
-// =============================================
+// ============================================================
 const farmacia = {
-    /**
-     * Obtener medicamentos
-     */
-    obtenerMedicamentos: async (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/farmacia/medicamentos?${params}`);
-    },
-
-    /**
-     * Obtener servicios
-     */
-    obtenerServicios: async () => {
-        return apiRequest('/farmacia/servicios');
-    },
-
-    /**
-     * Realizar venta
-     */
-    realizarVenta: async (ventaData) => {
-        return apiRequest('/farmacia/ventas', {
-            method: 'POST',
-            body: JSON.stringify(ventaData)
-        });
-    },
-
-    /**
-     * Obtener historial de ventas
-     */
-    obtenerVentas: async (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/farmacia/ventas?${params}`);
-    },
-
-    /**
-     * Obtener detalle de una venta
-     */
-    obtenerDetalleVenta: async (idVenta) => {
-        return apiRequest(`/farmacia/ventas/${idVenta}`);
-    }
+    obtenerMedicamentos: (filtros = {}) =>
+        apiRequest(`/farmacia/medicamentos?${new URLSearchParams(filtros)}`),
+    obtenerMedicamento: (id) => apiRequest(`/farmacia/medicamentos/${id}`),
+    crearMedicamento: (datos) => apiRequest('/farmacia/medicamentos', {
+        method: 'POST', body: JSON.stringify(datos)
+    }),
+    actualizarMedicamento: (id, datos) => apiRequest(`/farmacia/medicamentos/${id}`, {
+        method: 'PUT', body: JSON.stringify(datos)
+    }),
+    obtenerServicios: () => apiRequest('/farmacia/servicios'),
+    crearServicio: (datos) => apiRequest('/farmacia/servicios', {
+        method: 'POST', body: JSON.stringify(datos)
+    }),
+    realizarVenta: (ventaData) => apiRequest('/farmacia/ventas', {
+        method: 'POST', body: JSON.stringify(ventaData)
+    }),
+    obtenerVentas: (filtros = {}) =>
+        apiRequest(`/farmacia/ventas?${new URLSearchParams(filtros)}`),
+    obtenerDetalleVenta: (idVenta) => apiRequest(`/farmacia/ventas/${idVenta}`)
 };
 
-// =============================================
+// ============================================================
 // UTILIDADES
-// =============================================
+// ============================================================
 const utils = {
-    /**
-     * Formatear fecha para mostrar
-     */
     formatearFecha: (fecha) => {
         if (!fecha) return '';
-        const date = new Date(fecha);
-        return date.toLocaleDateString('es-MX', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+        return new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', {
+            year: 'numeric', month: 'long', day: 'numeric'
         });
     },
 
-    /**
-     * Formatear hora
-     */
-    formatearHora: (hora) => {
-        if (!hora) return '';
-        return hora.substring(0, 5); // HH:MM
-    },
+    formatearHora: (hora) => hora ? hora.substring(0, 5) : '',
 
-    /**
-     * Formatear moneda
-     */
-    formatearMoneda: (monto) => {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN'
-        }).format(monto);
-    },
+    formatearMoneda: (monto) => new Intl.NumberFormat('es-MX', {
+        style: 'currency', currency: 'MXN'
+    }).format(monto),
 
-    /**
-     * Obtener color de estatus
-     */
-    obtenerColorEstatus: (estatus) => {
+    obtenerColorEstatus: (clave) => {
         const colores = {
-            'agendada_pendiente_pago': '#FFA500',
-            'pagada_pendiente_atender': '#2D5F5D',
-            'cancelada_falta_pago': '#DC2626',
-            'cancelada_paciente': '#DC2626',
-            'cancelada_doctor': '#DC2626',
-            'atendida': '#059669',
-            'no_acudio': '#6B6B6B'
+            'agendada_pendiente_pago':   '#FFA500',
+            'pagada_pendiente_atender':  '#2D5F5D',
+            'cancelada_falta_pago':      '#DC2626',
+            'cancelada_paciente':        '#DC2626',
+            'cancelada_doctor':          '#B91C1C',
+            'atendida':                  '#059669',
+            'no_acudio':                 '#6B6B6B'
         };
-        return colores[estatus] || '#6B6B6B';
+        return colores[clave] || '#6B6B6B';
     },
 
-    /**
-     * Obtener texto legible de estatus
-     */
-    obtenerTextoEstatus: (estatus) => {
+    obtenerTextoEstatus: (clave) => {
         const textos = {
-            'agendada_pendiente_pago': 'Pendiente de Pago',
-            'pagada_pendiente_atender': 'Confirmada',
-            'cancelada_falta_pago': 'Cancelada - Falta de Pago',
-            'cancelada_paciente': 'Cancelada por Paciente',
-            'cancelada_doctor': 'Cancelada por Doctor',
-            'atendida': 'Atendida',
-            'no_acudio': 'No Acudió'
+            'agendada_pendiente_pago':   'Pendiente de Pago',
+            'pagada_pendiente_atender':  'Confirmada',
+            'cancelada_falta_pago':      'Cancelada – Falta de Pago',
+            'cancelada_paciente':        'Cancelada por Paciente',
+            'cancelada_doctor':          'Cancelada por Doctor',
+            'atendida':                  'Atendida',
+            'no_acudio':                 'No Acudió'
         };
-        return textos[estatus] || estatus;
+        return textos[clave] || clave;
+    },
+
+    /** Redirecciona según el rol guardado en localStorage */
+    redirigirSegunRol: () => {
+        const user = auth.getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; return; }
+        const rutas = {
+            paciente:       'dashboard-paciente.html',
+            doctor:         'dashboard-doctor.html',
+            recepcionista:  'dashboard-recepcionista.html',
+            admin:          'dashboard-recepcionista.html'
+        };
+        window.location.href = rutas[user.rol] || 'login.html';
     }
 };
 
-// Mensaje de carga
-console.log('✓ API Client cargado correctamente');
-console.log('Endpoints disponibles: auth, especialidades, citas, paciente, doctor, recepcionista, farmacia');
+console.log('✓ API Client cargado – Flask backend en', CONFIG.API_URL);

@@ -1,234 +1,156 @@
-// Toggle password visibility
-document.querySelectorAll('.toggle-password').forEach(button => {
-    button.addEventListener('click', function() {
+/**
+ * Manejador de autenticación para Login y Registro.
+ * Conecta directamente con el backend Python/Flask a través de api.js
+ *
+ * NOTA: Este archivo reemplaza a auth.js y auth-integrated.js anteriores.
+ * Requiere que api.js esté cargado antes.
+ */
+
+// ─── Toggle visibilidad de contraseña ────────────────────────────
+document.querySelectorAll('.toggle-password').forEach(btn => {
+    btn.addEventListener('click', function () {
         const input = this.previousElementSibling;
-        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-        input.setAttribute('type', type);
-        
-        // Toggle icon (you can add different SVG for open/closed eye)
+        input.setAttribute('type', input.type === 'password' ? 'text' : 'password');
         this.classList.toggle('active');
     });
 });
 
-// Login Form Handler
-const loginForm = document.getElementById('loginForm');
-if (loginForm) {
-    loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const userType = document.getElementById('userType').value;
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        
-        // Basic validation
-        if (!userType || !email || !password) {
-            showNotification('Por favor completa todos los campos', 'error');
-            return;
-        }
-        
-        // Simulate login (replace with actual API call)
-        showNotification('Iniciando sesión...', 'info');
-        
-        setTimeout(() => {
-            // Store user data
-            const userData = {
-                userType: userType,
-                email: email,
-                name: email.split('@')[0] // Simplified name extraction
-            };
-            localStorage.setItem('currentUser', JSON.stringify(userData));
-            localStorage.setItem('isLoggedIn', 'true');
-            
-            // Redirect based on user type
-            switch(userType) {
-                case 'paciente':
-                    window.location.href = 'dashboard-paciente.html';
-                    break;
-                case 'doctor':
-                    window.location.href = 'dashboard-doctor.html';
-                    break;
-                case 'recepcionista':
-                    window.location.href = 'dashboard-recepcionista.html';
-                    break;
-                default:
-                    showNotification('Tipo de usuario no válido', 'error');
-            }
-        }, 1000);
-    });
-}
-
-// Register Form Handler
-const registerForm = document.getElementById('registerForm');
-if (registerForm) {
-    registerForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const firstName = document.getElementById('firstName').value;
-        const lastName = document.getElementById('lastName').value;
-        const email = document.getElementById('email').value;
-        const phone = document.getElementById('phone').value;
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const termsAccepted = document.querySelector('input[name="terms"]').checked;
-        
-        // Validation
-        if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
-            showNotification('Por favor completa todos los campos', 'error');
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            showNotification('Las contraseñas no coinciden', 'error');
-            document.getElementById('confirmPassword').classList.add('error');
-            return;
-        }
-        
-        if (password.length < 8) {
-            showNotification('La contraseña debe tener al menos 8 caracteres', 'error');
-            document.getElementById('password').classList.add('error');
-            return;
-        }
-        
-        if (!termsAccepted) {
-            showNotification('Debes aceptar los términos y condiciones', 'error');
-            return;
-        }
-        
-        // Simulate registration (replace with actual API call)
-        showNotification('Creando tu cuenta...', 'info');
-        
-        setTimeout(() => {
-            // Store user data
-            const userData = {
-                userType: 'paciente', // New users are patients by default
-                email: email,
-                name: `${firstName} ${lastName}`,
-                phone: phone
-            };
-            localStorage.setItem('currentUser', JSON.stringify(userData));
-            localStorage.setItem('isLoggedIn', 'true');
-            
-            showNotification('¡Cuenta creada exitosamente!', 'success');
-            
-            // Redirect to patient dashboard
-            setTimeout(() => {
-                window.location.href = 'dashboard-paciente.html';
-            }, 1500);
-        }, 1000);
-    });
-}
-
-// Remove error class on input
-document.querySelectorAll('input').forEach(input => {
-    input.addEventListener('input', function() {
-        this.classList.remove('error');
-    });
-});
-
-// Notification System
+// ─── Utilidad de notificaciones ──────────────────────────────────
 function showNotification(message, type = 'info') {
-    // Remove existing notification
-    const existingNotification = document.querySelector('.notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    // Create notification
+    document.querySelector('.notification')?.remove();
+
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
         <div class="notification-content">
             <span>${message}</span>
             <button class="notification-close">&times;</button>
-        </div>
-    `;
-    
-    // Add styles
-    const styles = `
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: white;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            z-index: 10000;
-            animation: slideInRight 0.3s ease-out;
-            max-width: 400px;
-        }
-        
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .notification-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-        
-        .notification-error {
-            border-left: 4px solid #DC2626;
-        }
-        
-        .notification-success {
-            border-left: 4px solid #059669;
-        }
-        
-        .notification-info {
-            border-left: 4px solid #2D5F5D;
-        }
-        
-        .notification-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #6B6B6B;
-            padding: 0;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .notification-close:hover {
-            color: #1A1A1A;
-        }
-    `;
-    
-    // Add styles if not already added
+        </div>`;
+
     if (!document.getElementById('notification-styles')) {
-        const styleSheet = document.createElement('style');
-        styleSheet.id = 'notification-styles';
-        styleSheet.textContent = styles;
-        document.head.appendChild(styleSheet);
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+            .notification{position:fixed;top:20px;right:20px;background:#fff;padding:1rem 1.5rem;
+                border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:10000;
+                animation:slideIn .3s ease-out;max-width:420px}
+            @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+            .notification-content{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+            .notification-error  {border-left:4px solid #DC2626}
+            .notification-success{border-left:4px solid #059669}
+            .notification-info   {border-left:4px solid #2D5F5D}
+            .notification-close{background:none;border:none;font-size:1.5rem;cursor:pointer;
+                color:#6B6B6B;padding:0;width:24px;height:24px;display:flex;align-items:center;
+                justify-content:center}
+            .notification-close:hover{color:#1A1A1A}`;
+        document.head.appendChild(style);
     }
-    
-    // Add to page
+
     document.body.appendChild(notification);
-    
-    // Close button
-    notification.querySelector('.notification-close').addEventListener('click', () => {
-        notification.remove();
-    });
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
-        }
-    }, 5000);
+    notification.querySelector('.notification-close').addEventListener('click', () => notification.remove());
+    setTimeout(() => notification.parentElement && notification.remove(), 5000);
 }
 
-console.log('Auth system loaded ✓');
+// ─── FORMULARIO DE LOGIN ──────────────────────────────────────────
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const email    = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        if (!email || !password) {
+            showNotification('Por favor completa todos los campos.', 'error');
+            return;
+        }
+
+        const submitBtn = loginForm.querySelector('[type="submit"]');
+        submitBtn.disabled = true;
+        showNotification('Iniciando sesión…', 'info');
+
+        try {
+            const data = await auth.login(email, password);
+            showNotification('¡Bienvenido! Redirigiendo…', 'success');
+
+            const rutas = {
+                paciente:      'dashboard-paciente.html',
+                doctor:        'dashboard-doctor.html',
+                recepcionista: 'dashboard-recepcionista.html',
+                admin:         'dashboard-recepcionista.html'
+            };
+            setTimeout(() => {
+                window.location.href = rutas[data.user.rol] || 'dashboard-paciente.html';
+            }, 800);
+
+        } catch (err) {
+            showNotification(err.message || 'Error al iniciar sesión.', 'error');
+            submitBtn.disabled = false;
+        }
+    });
+}
+
+// ─── FORMULARIO DE REGISTRO ───────────────────────────────────────
+const registerForm = document.getElementById('registerForm');
+if (registerForm) {
+    registerForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const nombre    = document.getElementById('firstName').value.trim();
+        const apPaterno = document.getElementById('lastName').value.trim();
+        const email     = document.getElementById('email').value.trim();
+        const telefono  = document.getElementById('phone').value.trim();
+        const curp      = document.getElementById('curp')?.value.trim() || '';
+        const fechaNac  = document.getElementById('fechaNac')?.value || '';
+        const password  = document.getElementById('password').value.trim();
+        const confirmar = document.getElementById('confirmPassword').value.trim();
+        const terminos  = document.querySelector('input[name="terms"]')?.checked;
+
+        // Validaciones
+        if (!nombre || !apPaterno || !email || !password || !confirmar) {
+            showNotification('Por favor completa todos los campos requeridos.', 'error');
+            return;
+        }
+        if (password !== confirmar) {
+            showNotification('Las contraseñas no coinciden.', 'error');
+            document.getElementById('confirmPassword').classList.add('error');
+            return;
+        }
+        if (password.length < 8) {
+            showNotification('La contraseña debe tener al menos 8 caracteres.', 'error');
+            return;
+        }
+        if (!terminos) {
+            showNotification('Debes aceptar los términos y condiciones.', 'error');
+            return;
+        }
+
+        const submitBtn = registerForm.querySelector('[type="submit"]');
+        submitBtn.disabled = true;
+        showNotification('Creando tu cuenta…', 'info');
+
+        try {
+            await auth.register({
+                nombre,
+                ap_paterno: apPaterno,
+                email,
+                telefono,
+                curp,
+                fecha_nac: fechaNac,
+                password
+            });
+            showNotification('¡Cuenta creada exitosamente! Redirigiendo…', 'success');
+            setTimeout(() => { window.location.href = 'dashboard-paciente.html'; }, 1000);
+        } catch (err) {
+            showNotification(err.message || 'Error al crear la cuenta.', 'error');
+            submitBtn.disabled = false;
+        }
+    });
+}
+
+// ─── Limpiar clase error en inputs ───────────────────────────────
+document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', function () { this.classList.remove('error'); });
+});
+
+console.log('✓ Auth system cargado');
