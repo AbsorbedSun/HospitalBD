@@ -1,49 +1,64 @@
 /**
  * Cliente API para Sistema de Gestión Hospitalaria
- * Conecta con backend Python/Flask en puerto 5000
+ * Conecta con backend Python/Flask en http://127.0.0.1:5000
+ *
+ * IMPORTANTE: El frontend debe servirse desde http://127.0.0.1:8080
+ *             comando: python -m http.server 8080 --bind 127.0.0.1
  */
 
 const CONFIG = {
-    API_URL: 'http://localhost:5000/api',
-    TIMEOUT: 10000
+    API_URL: 'http://127.0.0.1:5000/api',
+    TIMEOUT: 15000
 };
 
 /**
- * Función base para peticiones HTTP al backend Flask.
- * Adjunta automáticamente el token JWT si existe.
+ * Función base para todas las peticiones al backend Flask.
+ * - Adjunta el JWT automáticamente si existe.
+ * - Lanza errores con mensajes descriptivos (incluyendo errores de red).
  */
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('authToken');
 
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-        }
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 
-    const config = {
-        ...defaultOptions,
+    const fetchOptions = {
         ...options,
-        headers: { ...defaultOptions.headers, ...(options.headers || {}) }
+        headers: { ...headers, ...(options.headers || {}) }
     };
 
+    let response;
     try {
-        const response = await fetch(`${CONFIG.API_URL}${endpoint}`, config);
-        const data = await response.json();
-
-        if (!response.ok) {
-            if (response.status === 401 && endpoint !== '/auth/login') {
-                auth.logout();
-                throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
-            }
-            throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
-        }
-        return data;
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+        response = await fetch(`${CONFIG.API_URL}${endpoint}`, fetchOptions);
+    } catch (networkError) {
+        // Error de red: servidor caído, CORS bloqueado, sin conexión
+        console.error('[API] Error de red:', networkError);
+        throw new Error(
+            'No se pudo conectar con el servidor. ' +
+            'Verifica que el backend Flask esté corriendo en http://127.0.0.1:5000 ' +
+            '(ejecuta: python app.py)'
+        );
     }
+
+    // Intentar parsear JSON siempre
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        throw new Error(`El servidor respondió con un formato inesperado (HTTP ${response.status})`);
+    }
+
+    if (!response.ok) {
+        // Si el token expiró, limpiar sesión y redirigir
+        if (response.status === 401 && endpoint !== '/auth/login') {
+            auth.logout();
+        }
+        throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
+    }
+
+    return data;
 }
 
 // ============================================================
@@ -55,9 +70,9 @@ const auth = {
             method: 'POST',
             body: JSON.stringify({ email, password })
         });
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('currentUser', JSON.stringify(data.user));
-        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('authToken',    data.token);
+        localStorage.setItem('currentUser',  JSON.stringify(data.user));
+        localStorage.setItem('isLoggedIn',   'true');
         return data;
     },
 
@@ -66,9 +81,9 @@ const auth = {
             method: 'POST',
             body: JSON.stringify(userData)
         });
-        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('authToken',   data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
-        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isLoggedIn',  'true');
         return data;
     },
 
@@ -78,14 +93,14 @@ const auth = {
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
         localStorage.removeItem('isLoggedIn');
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
     },
 
     isAuthenticated: () => !!localStorage.getItem('authToken'),
 
     getCurrentUser: () => {
-        const user = localStorage.getItem('currentUser');
-        return user ? JSON.parse(user) : null;
+        const u = localStorage.getItem('currentUser');
+        return u ? JSON.parse(u) : null;
     }
 };
 
@@ -93,11 +108,11 @@ const auth = {
 // ESPECIALIDADES
 // ============================================================
 const especialidades = {
-    obtenerTodas: () => apiRequest('/especialidades'),
-    obtenerPorId: (id) => apiRequest(`/especialidades/${id}`),
-    obtenerDoctores: (idEspecialidad) => apiRequest(`/especialidades/${idEspecialidad}/doctores`),
-    crear: (datos) => apiRequest('/especialidades', { method: 'POST', body: JSON.stringify(datos) }),
-    actualizar: (id, datos) => apiRequest(`/especialidades/${id}`, { method: 'PUT', body: JSON.stringify(datos) })
+    obtenerTodas:    ()     => apiRequest('/especialidades'),
+    obtenerPorId:    (id)   => apiRequest(`/especialidades/${id}`),
+    obtenerDoctores: (id)   => apiRequest(`/especialidades/${id}/doctores`),
+    crear:   (d)            => apiRequest('/especialidades', { method:'POST', body:JSON.stringify(d) }),
+    actualizar: (id, d)     => apiRequest(`/especialidades/${id}`, { method:'PUT', body:JSON.stringify(d) })
 };
 
 // ============================================================
@@ -105,48 +120,38 @@ const especialidades = {
 // ============================================================
 const citas = {
     obtenerMisCitas: (filtros = {}) => {
-        const params = new URLSearchParams(filtros);
-        return apiRequest(`/citas?${params}`);
+        const p = new URLSearchParams(filtros).toString();
+        return apiRequest(`/citas${p ? '?' + p : ''}`);
     },
-
-    agendarCita: (citaData) => apiRequest('/citas/agendar', {
-        method: 'POST',
-        body: JSON.stringify(citaData)
+    agendarCita:    (d)         => apiRequest('/citas/agendar', { method:'POST', body:JSON.stringify(d) }),
+    cancelarCita:   (folio, motivo) => apiRequest(`/citas/cancelar/${folio}`, {
+        method: 'POST', body: JSON.stringify({ motivo_cancelacion: motivo })
     }),
-
-    cancelarCita: (folioCita, motivo) => apiRequest(`/citas/cancelar/${folioCita}`, {
-        method: 'POST',
-        body: JSON.stringify({ motivo_cancelacion: motivo })
+    confirmarPago:  (folio, metodo) => apiRequest('/citas/pagar', {
+        method: 'POST', body: JSON.stringify({ folio_cita: folio, metodo_pago: metodo })
     }),
-
-    confirmarPago: (folioCita, metodoPago) => apiRequest('/citas/pagar', {
-        method: 'POST',
-        body: JSON.stringify({ folio_cita: folioCita, metodo_pago: metodoPago })
-    }),
-
-    marcarAtendida: (folioCita) => apiRequest(`/citas/${folioCita}/atender`, { method: 'PUT' }),
-
-    marcarNoAcudio: (folioCita) => apiRequest(`/citas/${folioCita}/no-acudio`, { method: 'PUT' }),
-
-    obtenerHorariosDisponibles: (idDoctor, fechaInicio, fechaFin) =>
-        apiRequest(`/doctores/${idDoctor}/horarios-disponibles?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`),
-
-    verificarVencidas: () => apiRequest('/citas/verificar-vencidas', { method: 'POST' })
+    marcarAtendida:  (folio)    => apiRequest(`/citas/${folio}/atender`,   { method:'PUT' }),
+    marcarNoAcudio:  (folio)    => apiRequest(`/citas/${folio}/no-acudio`, { method:'PUT' }),
+    obtenerHorariosDisponibles: (idDoc, fi, ff) =>
+        apiRequest(`/doctores/${idDoc}/horarios-disponibles?fecha_inicio=${fi}&fecha_fin=${ff}`),
+    verificarVencidas: () => apiRequest('/citas/verificar-vencidas', { method:'POST' })
 };
 
 // ============================================================
 // PACIENTE
 // ============================================================
 const paciente = {
-    obtenerPerfil: () => apiRequest('/pacientes/perfil'),
-    actualizarPerfil: (datos) => apiRequest('/pacientes/perfil', { method: 'PUT', body: JSON.stringify(datos) }),
-    obtenerHistorialMedico: () => apiRequest('/pacientes/historial-medico'),
-    listarTodos: (filtros = {}) => apiRequest(`/pacientes?${new URLSearchParams(filtros)}`),
-    obtenerPorId: (id) => apiRequest(`/pacientes/${id}`),
-    obtenerHistorial: (id) => apiRequest(`/pacientes/${id}/historial`),
-    actualizarHistorial: (id, datos) => apiRequest(`/pacientes/${id}/historial`, {
-        method: 'PUT',
-        body: JSON.stringify(datos)
+    obtenerPerfil:        ()        => apiRequest('/pacientes/perfil'),
+    actualizarPerfil:     (d)       => apiRequest('/pacientes/perfil', { method:'PUT', body:JSON.stringify(d) }),
+    obtenerHistorialMedico: ()      => apiRequest('/pacientes/historial-medico'),
+    listarTodos: (filtros = {}) => {
+        const p = new URLSearchParams(filtros).toString();
+        return apiRequest(`/pacientes${p ? '?' + p : ''}`);
+    },
+    obtenerPorId:         (id)      => apiRequest(`/pacientes/${id}`),
+    obtenerHistorial:     (id)      => apiRequest(`/pacientes/${id}/historial`),
+    actualizarHistorial:  (id, d)   => apiRequest(`/pacientes/${id}/historial`, {
+        method:'PUT', body:JSON.stringify(d)
     })
 };
 
@@ -154,62 +159,60 @@ const paciente = {
 // DOCTOR
 // ============================================================
 const doctor = {
-    obtenerPerfil: () => apiRequest('/doctores/perfil'),
-    listarTodos: (filtros = {}) => apiRequest(`/doctores?${new URLSearchParams(filtros)}`),
-    obtenerPorId: (id) => apiRequest(`/doctores/${id}`),
-    obtenerPacientes: () => apiRequest('/doctores/pacientes'),
-    crearReceta: (recetaData) => apiRequest('/doctores/recetas', {
-        method: 'POST',
-        body: JSON.stringify(recetaData)
+    obtenerPerfil:        ()    => apiRequest('/doctores/perfil'),
+    listarTodos: (filtros = {}) => {
+        const p = new URLSearchParams(filtros).toString();
+        return apiRequest(`/doctores${p ? '?' + p : ''}`);
+    },
+    obtenerPorId:         (id)  => apiRequest(`/doctores/${id}`),
+    obtenerPacientes:     ()    => apiRequest('/doctores/pacientes'),
+    crearReceta:          (d)   => apiRequest('/doctores/recetas', { method:'POST', body:JSON.stringify(d) }),
+    listarRecetas:        ()    => apiRequest('/doctores/recetas'),
+    solicitarCancelacion: (folio, motivo) => apiRequest('/doctores/solicitar-cancelacion', {
+        method:'POST', body:JSON.stringify({ folio_cita: folio, motivo })
     }),
-    listarRecetas: () => apiRequest('/doctores/recetas'),
-    solicitarCancelacion: (folioCita, motivo) => apiRequest('/doctores/solicitar-cancelacion', {
-        method: 'POST',
-        body: JSON.stringify({ folio_cita: folioCita, motivo })
-    }),
-    crear: (datos) => apiRequest('/doctores', { method: 'POST', body: JSON.stringify(datos) })
+    crear: (d) => apiRequest('/doctores', { method:'POST', body:JSON.stringify(d) })
 };
 
 // ============================================================
 // RECEPCIONISTA
 // ============================================================
 const recepcionista = {
-    obtenerDashboard: () => apiRequest('/recepcionistas/dashboard'),
-    obtenerBitacoraEstatus: (filtros = {}) =>
-        apiRequest(`/recepcionistas/bitacora/estatus?${new URLSearchParams(filtros)}`),
-    obtenerBitacoraHistorial: (filtros = {}) =>
-        apiRequest(`/recepcionistas/bitacora/historial?${new URLSearchParams(filtros)}`),
-    listarSolicitudesCancelacion: () => apiRequest('/recepcionistas/solicitudes-cancelacion'),
-    aprobarCancelacion: (idSolicitud) =>
-        apiRequest(`/recepcionistas/solicitudes-cancelacion/${idSolicitud}/aprobar`, { method: 'POST' }),
-    rechazarCancelacion: (idSolicitud) =>
-        apiRequest(`/recepcionistas/solicitudes-cancelacion/${idSolicitud}/rechazar`, { method: 'POST' }),
-    crear: (datos) => apiRequest('/recepcionistas', { method: 'POST', body: JSON.stringify(datos) })
+    obtenerDashboard:     ()          => apiRequest('/recepcionistas/dashboard'),
+    obtenerBitacoraEstatus: (f = {})  => {
+        const p = new URLSearchParams(f).toString();
+        return apiRequest(`/recepcionistas/bitacora/estatus${p ? '?' + p : ''}`);
+    },
+    obtenerBitacoraHistorial: (f={})  => {
+        const p = new URLSearchParams(f).toString();
+        return apiRequest(`/recepcionistas/bitacora/historial${p ? '?' + p : ''}`);
+    },
+    listarSolicitudesCancelacion: ()  => apiRequest('/recepcionistas/solicitudes-cancelacion'),
+    aprobarCancelacion:  (id)         => apiRequest(`/recepcionistas/solicitudes-cancelacion/${id}/aprobar`, { method:'POST' }),
+    rechazarCancelacion: (id)         => apiRequest(`/recepcionistas/solicitudes-cancelacion/${id}/rechazar`, { method:'POST' }),
+    crear: (d) => apiRequest('/recepcionistas', { method:'POST', body:JSON.stringify(d) })
 };
 
 // ============================================================
 // FARMACIA
 // ============================================================
 const farmacia = {
-    obtenerMedicamentos: (filtros = {}) =>
-        apiRequest(`/farmacia/medicamentos?${new URLSearchParams(filtros)}`),
-    obtenerMedicamento: (id) => apiRequest(`/farmacia/medicamentos/${id}`),
-    crearMedicamento: (datos) => apiRequest('/farmacia/medicamentos', {
-        method: 'POST', body: JSON.stringify(datos)
-    }),
-    actualizarMedicamento: (id, datos) => apiRequest(`/farmacia/medicamentos/${id}`, {
-        method: 'PUT', body: JSON.stringify(datos)
-    }),
-    obtenerServicios: () => apiRequest('/farmacia/servicios'),
-    crearServicio: (datos) => apiRequest('/farmacia/servicios', {
-        method: 'POST', body: JSON.stringify(datos)
-    }),
-    realizarVenta: (ventaData) => apiRequest('/farmacia/ventas', {
-        method: 'POST', body: JSON.stringify(ventaData)
-    }),
-    obtenerVentas: (filtros = {}) =>
-        apiRequest(`/farmacia/ventas?${new URLSearchParams(filtros)}`),
-    obtenerDetalleVenta: (idVenta) => apiRequest(`/farmacia/ventas/${idVenta}`)
+    obtenerMedicamentos: (f={}) => {
+        const p = new URLSearchParams(f).toString();
+        return apiRequest(`/farmacia/medicamentos${p ? '?' + p : ''}`);
+    },
+    obtenerMedicamento:   (id)  => apiRequest(`/farmacia/medicamentos/${id}`),
+    crearMedicamento:     (d)   => apiRequest('/farmacia/medicamentos',  { method:'POST', body:JSON.stringify(d) }),
+    actualizarMedicamento:(id,d)=> apiRequest(`/farmacia/medicamentos/${id}`, { method:'PUT', body:JSON.stringify(d) }),
+    obtenerServicios:     ()    => apiRequest('/farmacia/servicios'),
+    crearServicio:        (d)   => apiRequest('/farmacia/servicios',    { method:'POST', body:JSON.stringify(d) }),
+    actualizarServicio:   (id,d)=> apiRequest(`/farmacia/servicios/${id}`, { method:'PUT', body:JSON.stringify(d) }),
+    realizarVenta:        (d)   => apiRequest('/farmacia/ventas',       { method:'POST', body:JSON.stringify(d) }),
+    obtenerVentas: (f={}) => {
+        const p = new URLSearchParams(f).toString();
+        return apiRequest(`/farmacia/ventas${p ? '?' + p : ''}`);
+    },
+    obtenerDetalleVenta:  (id)  => apiRequest(`/farmacia/ventas/${id}`)
 };
 
 // ============================================================
@@ -217,56 +220,35 @@ const farmacia = {
 // ============================================================
 const utils = {
     formatearFecha: (fecha) => {
-        if (!fecha) return '';
-        return new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', {
-            year: 'numeric', month: 'long', day: 'numeric'
-        });
+        if (!fecha) return '—';
+        try {
+            // Evitar desfase de zona horaria añadiendo T12:00:00
+            const d = new Date(String(fecha).includes('T') ? fecha : fecha + 'T12:00:00');
+            return d.toLocaleDateString('es-MX', { year:'numeric', month:'long', day:'numeric' });
+        } catch { return fecha; }
     },
 
-    formatearHora: (hora) => hora ? hora.substring(0, 5) : '',
-
-    formatearMoneda: (monto) => new Intl.NumberFormat('es-MX', {
-        style: 'currency', currency: 'MXN'
-    }).format(monto),
-
-    obtenerColorEstatus: (clave) => {
-        const colores = {
-            'agendada_pendiente_pago':   '#FFA500',
-            'pagada_pendiente_atender':  '#2D5F5D',
-            'cancelada_falta_pago':      '#DC2626',
-            'cancelada_paciente':        '#DC2626',
-            'cancelada_doctor':          '#B91C1C',
-            'atendida':                  '#059669',
-            'no_acudio':                 '#6B6B6B'
-        };
-        return colores[clave] || '#6B6B6B';
+    formatearHora: (hora) => {
+        if (!hora) return '—';
+        return String(hora).substring(0, 5);
     },
 
-    obtenerTextoEstatus: (clave) => {
-        const textos = {
-            'agendada_pendiente_pago':   'Pendiente de Pago',
-            'pagada_pendiente_atender':  'Confirmada',
-            'cancelada_falta_pago':      'Cancelada – Falta de Pago',
-            'cancelada_paciente':        'Cancelada por Paciente',
-            'cancelada_doctor':          'Cancelada por Doctor',
-            'atendida':                  'Atendida',
-            'no_acudio':                 'No Acudió'
-        };
-        return textos[clave] || clave;
+    formatearMoneda: (monto) => {
+        if (monto === null || monto === undefined) return '—';
+        return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN' }).format(monto);
     },
 
-    /** Redirecciona según el rol guardado en localStorage */
     redirigirSegunRol: () => {
         const user = auth.getCurrentUser();
         if (!user) { window.location.href = 'login.html'; return; }
         const rutas = {
-            paciente:       'dashboard-paciente.html',
-            doctor:         'dashboard-doctor.html',
-            recepcionista:  'dashboard-recepcionista.html',
-            admin:          'dashboard-recepcionista.html'
+            paciente:      'dashboard-paciente.html',
+            doctor:        'dashboard-doctor.html',
+            recepcionista: 'dashboard-recepcionista.html',
+            admin:         'dashboard-recepcionista.html'
         };
         window.location.href = rutas[user.rol] || 'login.html';
     }
 };
 
-console.log('✓ API Client cargado – Flask backend en', CONFIG.API_URL);
+console.log('✓ API Client cargado – Backend en', CONFIG.API_URL);

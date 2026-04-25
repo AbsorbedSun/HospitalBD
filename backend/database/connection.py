@@ -1,77 +1,99 @@
 """
 Módulo de conexión a SQL Server usando pyodbc.
-Proporciona una función get_db() que abre y cierra
-conexiones de forma segura.
+CORREGIDO: manejo explícito de conexiones, sin context manager de pyodbc.
 """
 import pyodbc
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from config import Config
 
 
 def get_db():
-    """
-    Crea y retorna una conexión a SQL Server.
-    Usar con 'with' para garantizar el cierre:
-
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(...)
-    """
-    conn = pyodbc.connect(Config.get_connection_string())
-    conn.autocommit = False  # Manejar transacciones manualmente
+    """Crea y retorna una conexión a SQL Server."""
+    conn = pyodbc.connect(Config.get_connection_string(), timeout=10)
+    conn.autocommit = False
     return conn
 
 
-def execute_query(sql, params=None, fetch=True):
+def execute_query(sql, params=None):
     """
-    Ejecuta una consulta SELECT y retorna los resultados como
-    lista de diccionarios.
-
-    :param sql:    Sentencia SQL con placeholders (?)
-    :param params: Tupla de parámetros (o None)
-    :param fetch:  True → retorna filas, False → retorna rowcount
+    Ejecuta un SELECT y retorna lista de dicts.
+    Abre y cierra la conexión correctamente.
     """
-    with get_db() as conn:
+    conn = None
+    try:
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(sql, params or ())
-        if fetch:
-            columns = [col[0] for col in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
-        conn.commit()
-        return cursor.rowcount
+        # cursor.description puede ser None si la consulta no retorna filas
+        if cursor.description is None:
+            return []
+        columns = [col[0] for col in cursor.description]
+        rows = cursor.fetchall()
+        return [dict(zip(columns, row)) for row in rows]
+    except Exception as e:
+        raise RuntimeError(f"Error en execute_query: {e}") from e
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def execute_non_query(sql, params=None):
     """
-    Ejecuta INSERT / UPDATE / DELETE dentro de una transacción.
+    Ejecuta INSERT / UPDATE / DELETE.
     Retorna el número de filas afectadas.
     """
-    conn = get_db()
+    conn = None
     try:
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(sql, params or ())
         conn.commit()
         return cursor.rowcount
-    except Exception:
-        conn.rollback()
-        raise
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        raise RuntimeError(f"Error en execute_non_query: {e}") from e
     finally:
-        conn.close()
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def execute_insert_returning_id(sql, params=None):
     """
-    Ejecuta un INSERT y retorna el ID generado (SCOPE_IDENTITY).
-    La sentencia SQL debe terminar con SELECT SCOPE_IDENTITY().
+    Ejecuta un INSERT + SELECT SCOPE_IDENTITY() y retorna el ID generado.
+    La sentencia SQL DEBE terminar con: ; SELECT SCOPE_IDENTITY();
     """
-    conn = get_db()
+    conn = None
     try:
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(sql, params or ())
         row = cursor.fetchone()
         conn.commit()
-        return int(row[0]) if row and row[0] is not None else None
-    except Exception:
-        conn.rollback()
-        raise
+        if row is None or row[0] is None:
+            return None
+        return int(row[0])
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        raise RuntimeError(f"Error en execute_insert_returning_id: {e}") from e
     finally:
-        conn.close()
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
