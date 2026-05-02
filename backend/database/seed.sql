@@ -1,7 +1,15 @@
 -- ============================================================
 -- DATOS DE PRUEBA - HospitalDB
 -- Ejecutar DESPUÉS de schema.sql
--- Contraseñas de ejemplo: todas usan "Hospital123!" (hash bcrypt incluido)
+-- Contraseñas de ejemplo: todas usan "Hospital123!"
+--
+-- CORRECCIÓN (2025-04): El hash anterior era inválido y causaba
+-- que doctores/recepcionistas no pudieran iniciar sesión.
+-- Hash actualizado y verificado con bcrypt.checkpw().
+--
+-- Si ya tienes usuarios en BD con el hash antiguo, usa:
+--   POST /api/auth/reset-password
+--   Body: { "email": "...", "nueva_password": "Hospital123!" }
 -- ============================================================
 
 USE HospitalDB;
@@ -17,7 +25,7 @@ VALUES (3, 'Ana', 'Rodríguez', 'López',
         'ROLA900101MDFDRN01',
         'recepcion@hospital.com',
         '1990-01-15',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq',  -- Hospital123!
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46',  -- Hospital123!
         '5555-0001', 'Av. Principal', '100', 'Centro');
 
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
@@ -34,7 +42,7 @@ SELECT Id_Usuario FROM Usuario WHERE Email = 'recepcion@hospital.com';
 -- Cardiología (Id_Especialidad = 1)
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Carlos','García','Martínez','GAMC750312HDFRRR01','dr.garcia@hospital.com','1975-03-12',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1001');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1001');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 1, 'GAMC750312CD1', 35000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -42,7 +50,7 @@ SELECT Id_Usuario, 1, 1, 'CED-CARD-001' FROM Usuario WHERE Email='dr.garcia@hosp
 
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'María','López','Sánchez','LOSM800520MDFPRR01','dr.lopez@hospital.com','1980-05-20',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1002');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1002');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 2, 'LOSM800520EF2', 34000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -50,7 +58,7 @@ SELECT Id_Usuario, 1, 2, 'CED-CARD-002' FROM Usuario WHERE Email='dr.lopez@hospi
 
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Roberto','Hernández','Cruz','HECR850710HDFRRR01','dr.hernandez@hospital.com','1985-07-10',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1003');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1003');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 1, 'HECR850710GH3', 33000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -58,7 +66,7 @@ SELECT Id_Usuario, 1, 1, 'CED-CARD-003' FROM Usuario WHERE Email='dr.hernandez@h
 
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Patricia','Ramírez','Flores','RAFP790915MDFMRR01','dr.ramirez@hospital.com','1979-09-15',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1004');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1004');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 2, 'RAFP790915IJ4', 36000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -67,7 +75,7 @@ SELECT Id_Usuario, 1, 2, 'CED-CARD-004' FROM Usuario WHERE Email='dr.ramirez@hos
 -- Medicina General (Id_Especialidad = 4)
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Jorge','Torres','Pérez','TOPJ820305HDFRRR01','dr.torres@hospital.com','1982-03-05',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1005');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1005');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 1, 'TOPJ820305KL5', 28000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -75,7 +83,7 @@ SELECT Id_Usuario, 4, 1, 'CED-MG-001' FROM Usuario WHERE Email='dr.torres@hospit
 
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Laura','Martínez','Díaz','MADL900218MDFRRR01','dr.martinez@hospital.com','1990-02-18',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1006');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1006');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 2, 'MADL900218MN6', 27000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -83,7 +91,7 @@ SELECT Id_Usuario, 4, 2, 'CED-MG-002' FROM Usuario WHERE Email='dr.martinez@hosp
 
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Alejandro','Sánchez','Ruiz','SARA880712HDFRRR01','dr.sanchez@hospital.com','1988-07-12',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1007');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1007');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 1, 'SARA880712OP7', 28000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -91,7 +99,7 @@ SELECT Id_Usuario, 4, 1, 'CED-MG-003' FROM Usuario WHERE Email='dr.sanchez@hospi
 
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Carmen','Flores','Vega','FOVC870425MDFRRR01','dr.flores@hospital.com','1987-04-25',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq','5555-1008');
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46','5555-1008');
 INSERT INTO Empleado (Id_Usuario, Id_Horario, RFC, Sueldo, DiasVacacion, Estatus_empleado)
 VALUES (SCOPE_IDENTITY(), 2, 'FOVC870425QR8', 29000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
@@ -102,7 +110,7 @@ SELECT Id_Usuario, 4, 2, 'CED-MG-004' FROM Usuario WHERE Email='dr.flores@hospit
 -- ============================================================
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono, Calle, Numero, Colonia)
 VALUES (1,'Juan','Pérez','González','PEGJ950830HDFRRR01','paciente@test.com','1995-08-30',
-        '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMc8VKFPiLsa5zezEN5uIRREHq',
+        '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46',
         '5555-2001','Calle Reforma','250','Juárez');
 
 INSERT INTO Paciente (Id_Usuario)

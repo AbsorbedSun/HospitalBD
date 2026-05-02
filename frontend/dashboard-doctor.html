@@ -23,7 +23,15 @@
             </div>
 
             <nav class="sidebar-nav">
-                <button class="nav-item active" data-view="datos-doctor">
+                <!-- Inicio / Bienvenida -->
+                <button class="nav-item active" data-view="inicio">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 9.5L10 3L17 9.5V17H13V13H7V17H3V9.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Inicio</span>
+                </button>
+
+                <button class="nav-item" data-view="datos-doctor">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
                         <path d="M4 16C4 12.6863 6.68629 10 10 10C13.3137 10 16 12.6863 16 16" stroke="currentColor" stroke-width="1.5"/>
@@ -337,7 +345,7 @@
         </div>
     </template>
 
-    <script src="js/dashboard-doctor.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/dashboard-doctor.js"></script>
 </body>
 </html>

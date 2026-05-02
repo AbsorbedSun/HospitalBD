@@ -157,21 +157,19 @@ CREATE TABLE Cita (
     Hora_Cita        TIME    NOT NULL,
     Solicitud_Cita   DATETIME NOT NULL DEFAULT GETDATE(),
 
-    -- Regla: mínimo 48h, máximo 3 meses de anticipación
     CONSTRAINT CK_Cita_FechaMinima CHECK (
         CAST(Fecha_Cita AS DATETIME) >= DATEADD(hour, 48, Solicitud_Cita)
     ),
     CONSTRAINT CK_Cita_FechaMaxima CHECK (
         CAST(Fecha_Cita AS DATETIME) <= DATEADD(month, 3, Solicitud_Cita)
-    ),
-    -- No se pueden traslape: mismo doctor, misma fecha/hora
-    -- (manejado con índice único)
+    )
 );
+GO
 
--- Índice único: un doctor no puede tener dos citas activas en mismo horario
 CREATE UNIQUE INDEX UX_Cita_Doctor_FechaHora
     ON Cita(Id_Doctor, Fecha_Cita, Hora_Cita)
-    WHERE Id_EstatusCita NOT IN (3, 4, 5);  -- excluir canceladas
+    WHERE Id_EstatusCita IN (1, 2);
+GO
 
 -- ============================================================
 -- PAGOS

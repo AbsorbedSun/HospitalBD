@@ -1,7 +1,7 @@
 """
 Funciones de utilidad compartidas entre rutas.
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time as time_type
 from decimal import Decimal
 import json
 
@@ -10,9 +10,27 @@ def serialize(obj):
     """
     Serializa objetos Python no-JSON-nativos a tipos JSON compatibles.
     Útil para convertir resultados de pyodbc a JSON.
+
+    IMPORTANTE: pyodbc retorna columnas TIME de SQL Server como
+    datetime.timedelta (no como datetime.time). Se maneja ambos casos
+    para evitar el error "Tipo no serializable" en endpoints que devuelven
+    campos como Hora_Cita, Hora_inic y Hora_final.
     """
-    if isinstance(obj, (datetime, date)):
+    if isinstance(obj, datetime):
         return obj.isoformat()
+    if isinstance(obj, date):
+        return obj.isoformat()
+    if isinstance(obj, timedelta):
+        # pyodbc retorna columnas TIME de SQL Server como timedelta.
+        # Convertimos a string "HH:MM:SS" para uso directo en JS.
+        total_seg = int(obj.total_seconds())
+        horas   = total_seg // 3600
+        minutos = (total_seg % 3600) // 60
+        segundos = total_seg % 60
+        return f"{horas:02d}:{minutos:02d}:{segundos:02d}"
+    if isinstance(obj, time_type):
+        # Fallback: algunos drivers retornan datetime.time nativo.
+        return obj.strftime('%H:%M:%S')
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError(f"Tipo no serializable: {type(obj)}")

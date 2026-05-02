@@ -1,5 +1,9 @@
 """
-Rutas de autenticación: login, registro de paciente, verificar token.
+Rutas de autenticación: login, registro de paciente, verificar token,
+y utilidades de administración de contraseñas.
+
+CORRECCIÓN: El hash de bcrypt en seed.sql estaba mal generado.
+            Todos los usuarios de prueba usan: Hospital123!
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, get_jwt
@@ -12,7 +16,16 @@ from utils.decorators import requiere_auth
 
 auth_bp = Blueprint('auth', __name__)
 
+# Mapa Id_TipoUsuario → nombre de rol
 ROL_MAP = {1: 'paciente', 2: 'doctor', 3: 'recepcionista', 4: 'admin'}
+
+# Mapa rol → dashboard HTML
+DASHBOARD_MAP = {
+    'paciente':      'dashboard-paciente.html',
+    'doctor':        'dashboard-doctor.html',
+    'recepcionista': 'dashboard-recepcionista.html',
+    'admin':         'dashboard-recepcionista.html',
+}
 
 
 # ── POST /api/auth/login ─────────────────────────────────────────
@@ -25,35 +38,54 @@ def login():
     if not email or not password:
         return jsonify({'error': 'Email y contraseña son requeridos.'}), 400
 
-    rows = execute_query(
-        """
-        SELECT u.Id_Usuario, u.Nombre, u.Ap_Paterno, u.Ap_Materno,
-               u.Email, u.Contrasena, u.Id_TipoUsuario
-        FROM Usuario u
-        WHERE u.Email = ?
-        """,
-        (email,)
-    )
+    # 1. Buscar usuario por email
+    try:
+        rows = execute_query(
+            """
+            SELECT u.Id_Usuario, u.Nombre, u.Ap_Paterno, u.Ap_Materno,
+                   u.Email, u.Contrasena, u.Id_TipoUsuario
+            FROM Usuario u
+            WHERE u.Email = ?
+            """,
+            (email,)
+        )
+    except Exception as e:
+        print(f"[Auth/Login] Error consultando BD: {e}")
+        return jsonify({'error': 'Error al conectar con la base de datos.'}), 500
 
     if not rows:
         return jsonify({'error': 'Credenciales incorrectas.'}), 401
 
-    usuario  = rows[0]
-    hash_bd  = usuario['Contrasena']
-    if isinstance(hash_bd, str):
-        hash_bd = hash_bd.encode('utf-8')
+    usuario = rows[0]
 
-    if not bcrypt.checkpw(password.encode('utf-8'), hash_bd):
-        return jsonify({'error': 'Credenciales incorrectas.'}), 401
+    # 2. Verificar contraseña con bcrypt
+    try:
+        hash_bd = usuario['Contrasena']
+        if isinstance(hash_bd, str):
+            hash_bd = hash_bd.encode('utf-8')
 
-    rol           = ROL_MAP.get(usuario['Id_TipoUsuario'], 'paciente')
-    id_especifico = _get_id_especifico(usuario['Id_Usuario'], rol)
+        if not bcrypt.checkpw(password.encode('utf-8'), hash_bd):
+            return jsonify({'error': 'Credenciales incorrectas.'}), 401
 
+    except Exception as e:
+        print(f"[Auth/Login] Error verificando contraseña para {email}: {e}")
+        return jsonify({'error': 'Error al verificar credenciales.'}), 500
+
+    # 3. Determinar rol e ID específico
+    rol = ROL_MAP.get(usuario['Id_TipoUsuario'], 'paciente')
+
+    try:
+        id_especifico = _get_id_especifico(usuario['Id_Usuario'], rol)
+    except Exception as e:
+        print(f"[Auth/Login] Error obteniendo ID específico para {email} (rol={rol}): {e}")
+        return jsonify({'error': 'Error al cargar el perfil del usuario.'}), 500
+
+    # 4. Generar token JWT
     token = create_access_token(
         identity=str(usuario['Id_Usuario']),
         additional_claims={
-            'rol':          rol,
-            'id_usuario':   usuario['Id_Usuario'],
+            'rol':           rol,
+            'id_usuario':    usuario['Id_Usuario'],
             'id_especifico': id_especifico
         }
     )
@@ -67,7 +99,8 @@ def login():
             'ap_paterno':    usuario['Ap_Paterno'],
             'ap_materno':    usuario['Ap_Materno'] or '',
             'email':         usuario['Email'],
-            'rol':           rol
+            'rol':           rol,
+            'dashboard':     DASHBOARD_MAP.get(rol, 'dashboard-paciente.html')
         }
     }), 200
 
@@ -77,7 +110,6 @@ def login():
 def register():
     data = request.get_json(silent=True) or {}
 
-    # 1. Validación de campos obligatorios
     required = ['nombre', 'ap_paterno', 'email', 'password', 'curp', 'fecha_nac']
     missing  = [f for f in required if not (data.get(f) or '').strip()]
     if missing:
@@ -93,14 +125,17 @@ def register():
     if len(curp) != 18:
         return jsonify({'error': 'El CURP debe tener exactamente 18 caracteres.'}), 400
 
-    # 2. Verificar duplicados (usando la función auxiliar de connection.py)
-    if execute_query('SELECT 1 FROM Usuario WHERE Email = ?', (email,)):
-        return jsonify({'error': 'El correo electrónico ya está registrado.'}), 409
+    # Verificar duplicados
+    try:
+        if execute_query('SELECT 1 FROM Usuario WHERE Email = ?', (email,)):
+            return jsonify({'error': 'El correo electrónico ya está registrado.'}), 409
+        if execute_query('SELECT 1 FROM Usuario WHERE CURP = ?', (curp,)):
+            return jsonify({'error': 'El CURP ya está registrado.'}), 409
+    except Exception as e:
+        print(f"[Auth/Register] Error verificando duplicados: {e}")
+        return jsonify({'error': 'Error al verificar datos existentes.'}), 500
 
-    if execute_query('SELECT 1 FROM Usuario WHERE CURP = ?', (curp,)):
-        return jsonify({'error': 'El CURP ya está registrado.'}), 409
-
-    # 3. Hashear contraseña
+    # Hashear contraseña
     password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     conn = None
@@ -108,7 +143,6 @@ def register():
         conn = get_db()
         cursor = conn.cursor()
 
-        # 4. Insertar en Usuario usando OUTPUT para obtener el ID de inmediato
         cursor.execute(
             """
             INSERT INTO Usuario
@@ -132,23 +166,15 @@ def register():
                 (data.get('colonia')  or '').strip() or None,
             )
         )
-        
-        # Obtenemos el ID de Usuario
         id_usuario = int(cursor.fetchone()[0])
 
-        # 5. Insertar en Paciente usando OUTPUT para obtener su ID específico
         cursor.execute(
             "INSERT INTO Paciente (Id_Usuario) OUTPUT INSERTED.Id_Paciente VALUES (?)",
             (id_usuario,)
         )
-        
-        # Obtenemos el ID de Paciente
         id_paciente = int(cursor.fetchone()[0])
-
-        # 6. Confirmar la transacción
         conn.commit()
 
-        # 7. Generar Token JWT
         token = create_access_token(
             identity=str(id_usuario),
             additional_claims={
@@ -167,15 +193,15 @@ def register():
                 'ap_paterno':    data['ap_paterno'].strip(),
                 'ap_materno':    (data.get('ap_materno') or '').strip(),
                 'email':         email,
-                'rol':           'paciente'
+                'rol':           'paciente',
+                'dashboard':     'dashboard-paciente.html'
             }
         }), 201
 
     except Exception as e:
         if conn:
             conn.rollback()
-        # Imprimimos el error en consola para debuggear mejor
-        print(f"Error detallado en registro: {str(e)}")
+        print(f"[Auth/Register] Error detallado: {e}")
         return jsonify({'error': f'Error al registrar: {str(e)}'}), 500
     finally:
         if conn:
@@ -190,21 +216,72 @@ def register():
 @requiere_auth
 def verify():
     claims = get_jwt()
+    rol    = claims.get('rol', '')
     return jsonify({
         'valid':      True,
-        'rol':        claims.get('rol'),
-        'id_usuario': claims.get('id_usuario')
+        'rol':        rol,
+        'id_usuario': claims.get('id_usuario'),
+        'dashboard':  DASHBOARD_MAP.get(rol, 'login.html')
     }), 200
+
+
+# ── POST /api/auth/reset-password  (solo desarrollo / admin) ─────
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    """
+    Actualiza la contraseña de un usuario por su email.
+    Usar SOLO en desarrollo o cuando el admin necesite restablecer
+    la contraseña de un doctor/recepcionista ya existente en BD.
+
+    Body JSON: { "email": "...", "nueva_password": "..." }
+    """
+    data           = request.get_json(silent=True) or {}
+    email          = (data.get('email')          or '').strip().lower()
+    nueva_password = (data.get('nueva_password') or '').strip()
+
+    if not email or not nueva_password:
+        return jsonify({'error': 'Email y nueva_password son requeridos.'}), 400
+
+    if len(nueva_password) < 8:
+        return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres.'}), 400
+
+    try:
+        rows = execute_query('SELECT Id_Usuario FROM Usuario WHERE Email = ?', (email,))
+        if not rows:
+            return jsonify({'error': 'Usuario no encontrado.'}), 404
+
+        nuevo_hash = bcrypt.hashpw(nueva_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        from database.connection import execute_non_query
+        execute_non_query(
+            'UPDATE Usuario SET Contrasena = ? WHERE Email = ?',
+            (nuevo_hash, email)
+        )
+
+        return jsonify({'mensaje': f'Contraseña actualizada correctamente para {email}.'}), 200
+
+    except Exception as e:
+        print(f"[Auth/ResetPassword] Error: {e}")
+        return jsonify({'error': f'Error al actualizar contraseña: {str(e)}'}), 500
 
 
 # ── Helper ───────────────────────────────────────────────────────
 def _get_id_especifico(id_usuario: int, rol: str):
+    """
+    Retorna el ID de la tabla específica (Paciente, Doctor, Recepcionista)
+    dado el Id_Usuario y el rol. Retorna None si no existe el registro.
+    """
     queries = {
         'paciente':      'SELECT Id_Paciente      FROM Paciente      WHERE Id_Usuario = ?',
         'doctor':        'SELECT Id_Doctor        FROM Doctor        WHERE Id_Usuario = ?',
         'recepcionista': 'SELECT Id_Recepcionista FROM Recepcionista WHERE Id_Usuario = ?',
+        'admin':         'SELECT Id_Recepcionista FROM Recepcionista WHERE Id_Usuario = ?',
     }
     if rol not in queries:
         return None
     rows = execute_query(queries[rol], (id_usuario,))
-    return list(rows[0].values())[0] if rows else None
+    if not rows:
+        print(f"[Auth] Advertencia: no se encontró registro específico "
+              f"para Id_Usuario={id_usuario}, rol={rol}")
+        return None
+    return list(rows[0].values())[0]

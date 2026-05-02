@@ -18,17 +18,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!document.getElementById('toast-container')) {
         const tc = document.createElement('div'); tc.id = 'toast-container'; document.body.appendChild(tc);
     }
-    const navItems = document.querySelectorAll('.nav-item:not(.logout-btn)');
-    navItems.forEach(item => item.addEventListener('click', function () {
-        navItems.forEach(n => n.classList.remove('active'));
-        this.classList.add('active');
-        loadView(this.dataset.view);
-    }));
-    document.getElementById('logoutBtn').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) auth.logout(); });
-    loadView('datos-personales');
+
+    // Navegación lateral
+    document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(item => {
+        item.addEventListener('click', function () {
+            document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(n => n.classList.remove('active'));
+            this.classList.add('active');
+            loadView(this.dataset.view);
+        });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Cerrar sesión?')) auth.logout();
+    });
+
+    // Cargar pantalla de inicio primero
+    loadView('inicio');
 });
 
 const VIEWS = {
+    'inicio':           { title: 'Inicio',             subtitle: `Bienvenido a MediConnect` },
     'datos-personales': { title: 'Datos Personales',   subtitle: 'Tu información registrada' },
     'citas-agendadas':  { title: 'Mis Citas',          subtitle: 'Historial y gestión de citas' },
     'agendar-cita':     { title: 'Agendar Nueva Cita', subtitle: 'Programa tu próxima consulta' },
@@ -43,6 +52,7 @@ async function loadView(viewName) {
     container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
     try {
         switch (viewName) {
+            case 'inicio':           await renderInicio(container);          break;
             case 'datos-personales': await renderDatosPersonales(container); break;
             case 'citas-agendadas':  await renderCitas(container);           break;
             case 'agendar-cita':     await renderAgendarCita(container);     break;
@@ -51,6 +61,140 @@ async function loadView(viewName) {
     } catch (err) {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
     }
+}
+
+/* ── INICIO / BIENVENIDA ──────────────────────────── */
+async function renderInicio(container) {
+    // Cargar citas de forma segura — si el backend falla, se muestran ceros
+    let prog = 0, total = 0, htmlProxima = '';
+
+    try {
+        const misCitas = await citas.obtenerMisCitas();
+        STATE.citas = Array.isArray(misCitas) ? misCitas : [];
+        total = STATE.citas.length;
+        prog  = STATE.citas.filter(
+            c => ['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)
+        ).length;
+
+        // Buscar la próxima cita confirmada más cercana
+        const futuras = STATE.citas
+            .filter(c => c.Estatus === 'pagada_pendiente_atender')
+            .sort((a, b) => new Date(a.Fecha_Cita) - new Date(b.Fecha_Cita));
+
+        const p = futuras[0] || null;
+
+        if (p) {
+            // Construir HTML de la cita futura SIN template literal anidado
+            const fecha  = utils.formatearFecha(p.Fecha_Cita  || '');
+            const hora   = utils.formatearHora(p.Hora_Cita    || '');
+            const esp    = p.Especialidad  || '—';
+            const docNom = p.NombreDoctor  || '';
+            const docAp  = p.ApDocPat      || '';
+            const badge  = badgeEstatus(p.Estatus || '');
+
+            htmlProxima =
+                '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">' +
+                  '<div style="font-size:2.5rem">🗓️</div>' +
+                  '<div>' +
+                    '<div style="font-size:1.1rem;font-weight:700;color:var(--primary)">' +
+                      fecha + ' a las ' + hora +
+                    '</div>' +
+                    '<div style="color:var(--text-secondary);margin-top:.25rem">' +
+                      esp + ' · Dr. ' + docNom + ' ' + docAp +
+                    '</div>' +
+                    '<div style="margin-top:.75rem">' + badge + '</div>' +
+                  '</div>' +
+                '</div>';
+        }
+    } catch (e) {
+        console.warn('[Inicio] Error cargando citas:', e.message);
+    }
+
+    // Fallback si no hay próxima cita
+    if (!htmlProxima) {
+        htmlProxima =
+            '<div style="text-align:center;padding:1.5rem 0">' +
+              '<div style="font-size:2.5rem;margin-bottom:.75rem">📭</div>' +
+              '<p style="color:var(--text-secondary);margin-bottom:1rem">' +
+                'No tienes citas confirmadas próximamente.' +
+              '</p>' +
+              '<button class="btn btn-primary" onclick="irPacienteVista(\'agendar-cita\')">' +
+                '+ Agendar mi primera cita' +
+              '</button>' +
+            '</div>';
+    }
+
+    const user   = STATE.user;
+    const h      = new Date().getHours();
+    const saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+
+    // Construir el HTML final sin template literals anidados
+    container.innerHTML =
+        '<div class="view-content">' +
+
+        // ── Banner de bienvenida ──────────────────────────────────────
+        '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">' +
+          '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
+            '<div style="font-size:3rem">🏥</div>' +
+            '<div>' +
+              '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:white;margin-bottom:.25rem">' +
+                saludo + ', ' + user.nombre + ' ' + user.ap_paterno +
+              '</h2>' +
+              '<p style="color:rgba(255,255,255,.8);font-size:.95rem">' +
+                'Bienvenido a tu panel de salud personal en MediConnect' +
+              '</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Tarjetas de resumen ───────────────────────────────────────
+        '<div class="stats-grid" style="margin-bottom:1.5rem">' +
+          '<div class="info-card stat-card">' +
+            '<div class="stat-icon">📅</div>' +
+            '<div class="stat-value">' + prog + '</div>' +
+            '<div class="stat-label">Citas Activas</div>' +
+          '</div>' +
+          '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'citas-agendadas\')">' +
+            '<div class="stat-icon">📋</div>' +
+            '<div class="stat-value">' + total + '</div>' +
+            '<div class="stat-label">Total de Citas</div>' +
+          '</div>' +
+          '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'agendar-cita\')">' +
+            '<div class="stat-icon">➕</div>' +
+            '<div class="stat-value" style="font-size:1.5rem">Nueva</div>' +
+            '<div class="stat-label">Agendar Cita</div>' +
+          '</div>' +
+          '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'historial-medico\')">' +
+            '<div class="stat-icon">❤️</div>' +
+            '<div class="stat-value" style="font-size:1.5rem">Ver</div>' +
+            '<div class="stat-label">Mi Historial</div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Próxima cita ──────────────────────────────────────────────
+        '<div class="info-card" style="margin-bottom:1.5rem">' +
+          '<div class="info-header"><h3>Tu Próxima Cita</h3></div>' +
+          '<div class="info-body" style="margin-top:1rem">' + htmlProxima + '</div>' +
+        '</div>' +
+
+        // ── Acciones rápidas ──────────────────────────────────────────
+        '<div class="info-card">' +
+          '<div class="info-header"><h3>Acciones Rápidas</h3></div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">' +
+            '<button class="btn btn-primary"   onclick="irPacienteVista(\'agendar-cita\')">📅 Agendar Cita</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'citas-agendadas\')">📋 Ver Mis Citas</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'datos-personales\')">👤 Mis Datos</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'historial-medico\')">❤️ Historial Médico</button>' +
+          '</div>' +
+        '</div>' +
+
+        '</div>';
+}
+
+function irPacienteVista(vista) {
+    document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(n => n.classList.remove('active'));
+    document.querySelector(`[data-view="${vista}"]`)?.classList.add('active');
+    loadView(vista);
 }
 
 /* ── DATOS PERSONALES ─────────────────────────────── */

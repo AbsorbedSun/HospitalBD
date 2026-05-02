@@ -21,10 +21,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     document.getElementById('logoutBtn').addEventListener('click', ()=>{ if(confirm('¿Cerrar sesión?')) auth.logout(); });
-    loadView('datos-doctor');
+    loadView('inicio');
 });
 
 const VIEWS = {
+    'inicio':       { title:'Inicio',                  subtitle:'Bienvenido a tu panel médico' },
     'datos-doctor': { title:'Mis Datos Profesionales', subtitle:'Información del doctor' },
     'citas':        { title:'Mis Citas',               subtitle:'Gestiona las citas de tus pacientes' },
     'pacientes':    { title:'Mis Pacientes',            subtitle:'Lista de pacientes atendidos' },
@@ -39,6 +40,7 @@ async function loadView(viewName) {
     container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
     try {
         switch(viewName) {
+            case 'inicio':       await renderInicio(container);       break;
             case 'datos-doctor': await renderDatosDoctor(container);  break;
             case 'citas':        await renderCitas(container);         break;
             case 'pacientes':    await renderPacientes(container);     break;
@@ -47,6 +49,126 @@ async function loadView(viewName) {
     } catch(err) {
         container.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
     }
+}
+
+/* ── INICIO / BIENVENIDA ──────────────────────────── */
+async function renderInicio(container) {
+    // Cargar perfil y citas de forma segura
+    let perfil = null, citasHoy = 0, citasPend = 0, htmlProxima = '';
+
+    try {
+        perfil = await doctor.obtenerPerfil();
+        STATE.perfil = perfil;
+    } catch(e) { console.warn('[Doc/Inicio] Perfil:', e.message); }
+
+    try {
+        const todasCitas = await citas.obtenerMisCitas();
+        STATE.misCitas = Array.isArray(todasCitas) ? todasCitas : [];
+        const hoy = new Date().toISOString().split('T')[0];
+        citasHoy  = STATE.misCitas.filter(c => (c.Fecha_Cita||'').startsWith(hoy)).length;
+        citasPend = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender').length;
+
+        const proximas = STATE.misCitas
+            .filter(c => c.Estatus === 'pagada_pendiente_atender')
+            .sort((a,b) => new Date(a.Fecha_Cita) - new Date(b.Fecha_Cita));
+        const p = proximas[0] || null;
+
+        if (p) {
+            const fecha  = utils.formatearFecha(p.Fecha_Cita || '');
+            const hora   = utils.formatearHora(p.Hora_Cita   || '');
+            const pac    = (p.NombrePaciente || '') + ' ' + (p.ApPaciPat || '');
+            const esp    = p.Especialidad || '—';
+            htmlProxima =
+                '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">' +
+                  '<div style="font-size:2.5rem">🗓️</div>' +
+                  '<div>' +
+                    '<div style="font-size:1.1rem;font-weight:700;color:var(--primary)">' + fecha + ' a las ' + hora + '</div>' +
+                    '<div style="color:var(--text-secondary);margin-top:.25rem">Paciente: ' + pac.trim() + ' · ' + esp + '</div>' +
+                  '</div>' +
+                '</div>';
+        }
+    } catch(e) { console.warn('[Doc/Inicio] Citas:', e.message); }
+
+    if (!htmlProxima) {
+        htmlProxima =
+            '<div style="text-align:center;padding:1.5rem 0">' +
+              '<div style="font-size:2.5rem;margin-bottom:.75rem">📭</div>' +
+              '<p style="color:var(--text-secondary)">No tienes citas programadas próximamente.</p>' +
+            '</div>';
+    }
+
+    const user   = STATE.user;
+    const h      = new Date().getHours();
+    const saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+    const espNom = perfil ? (perfil.Especialidad || '') : '';
+    const turno  = perfil ? (perfil.Turno || '')        : '';
+
+    container.innerHTML =
+        '<div class="view-content">' +
+
+        // ── Banner ───────────────────────────────────────────────────
+        '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">' +
+          '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
+            '<div style="font-size:3rem">🩺</div>' +
+            '<div>' +
+              '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:white;margin-bottom:.25rem">' +
+                saludo + ', Dr. ' + user.nombre + ' ' + user.ap_paterno +
+              '</h2>' +
+              '<p style="color:rgba(255,255,255,.8);font-size:.95rem">' +
+                (espNom ? espNom + (turno ? ' · Turno ' + turno : '') : 'Panel médico — MediConnect') +
+              '</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Stats ────────────────────────────────────────────────────
+        '<div class="stats-grid" style="margin-bottom:1.5rem">' +
+          '<div class="info-card stat-card">' +
+            '<div class="stat-icon">📅</div>' +
+            '<div class="stat-value">' + citasHoy + '</div>' +
+            '<div class="stat-label">Citas Hoy</div>' +
+          '</div>' +
+          '<div class="info-card stat-card">' +
+            '<div class="stat-icon">⏳</div>' +
+            '<div class="stat-value">' + citasPend + '</div>' +
+            '<div class="stat-label">Citas Pendientes</div>' +
+          '</div>' +
+          '<div class="info-card stat-card" style="cursor:pointer" onclick="irDoctorVista(\'citas\')">' +
+            '<div class="stat-icon">📋</div>' +
+            '<div class="stat-value">' + (STATE.misCitas.length) + '</div>' +
+            '<div class="stat-label">Total de Citas</div>' +
+          '</div>' +
+          '<div class="info-card stat-card" style="cursor:pointer" onclick="irDoctorVista(\'pacientes\')">' +
+            '<div class="stat-icon">👥</div>' +
+            '<div class="stat-value" style="font-size:1.5rem">Ver</div>' +
+            '<div class="stat-label">Mis Pacientes</div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Próxima cita ─────────────────────────────────────────────
+        '<div class="info-card" style="margin-bottom:1.5rem">' +
+          '<div class="info-header"><h3>Próxima Cita Programada</h3></div>' +
+          '<div class="info-body" style="margin-top:1rem">' + htmlProxima + '</div>' +
+        '</div>' +
+
+        // ── Acciones rápidas ─────────────────────────────────────────
+        '<div class="info-card">' +
+          '<div class="info-header"><h3>Acciones Rápidas</h3></div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">' +
+            '<button class="btn btn-primary"   onclick="irDoctorVista(\'citas\')">📅 Ver Mis Citas</button>' +
+            '<button class="btn btn-secondary" onclick="irDoctorVista(\'pacientes\')">👥 Mis Pacientes</button>' +
+            '<button class="btn btn-secondary" onclick="irDoctorVista(\'recetas\')">📄 Recetas Médicas</button>' +
+            '<button class="btn btn-secondary" onclick="irDoctorVista(\'datos-doctor\')">👤 Mis Datos</button>' +
+          '</div>' +
+        '</div>' +
+
+        '</div>';
+}
+
+function irDoctorVista(vista) {
+    document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-view="' + vista + '"]')?.classList.add('active');
+    loadView(vista);
 }
 
 /* ── DATOS DOCTOR ─────────────────────────────────── */

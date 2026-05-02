@@ -14,13 +14,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!document.getElementById('toast-container')) {
         const tc=document.createElement('div'); tc.id='toast-container'; document.body.appendChild(tc);
     }
+
+    // Navegación lateral
     document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(item => {
         item.addEventListener('click', function() {
-            document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(n=>n.classList.remove('active'));
-            this.classList.add('active'); loadView(this.dataset.view);
+            document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(n => n.classList.remove('active'));
+            this.classList.add('active');
+            loadView(this.dataset.view);
         });
     });
-    document.getElementById('logoutBtn').addEventListener('click', ()=>{ if(confirm('¿Cerrar sesión?')) auth.logout(); });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('¿Cerrar sesión?')) auth.logout();
+    });
+
+    // Cargar panel principal al entrar
     loadView('dashboard');
 });
 
@@ -58,24 +66,46 @@ async function loadView(viewName) {
 /* ── DASHBOARD GENERAL ────────────────────────────── */
 async function renderDashboard(container) {
     const stats = await recepcionista.obtenerDashboard();
+    const hora   = new Date().getHours();
+    const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+    const user   = STATE.user;
     container.innerHTML = `<div class="view-content">
+
+      <!-- Saludo principal -->
+      <div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+          <div style="font-size:3rem">🏥</div>
+          <div>
+            <h2 style="font-size:1.5rem;font-family:'Playfair Display',serif;color:white;margin-bottom:.25rem">
+              ${saludo}, ${user.nombre} ${user.ap_paterno}
+            </h2>
+            <p style="color:rgba(255,255,255,.8);font-size:.95rem">Panel de recepción — MediConnect</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas del día -->
       <div class="stats-grid">
         <div class="info-card stat-card"><div class="stat-icon">📅</div><div class="stat-value">${stats.CitasHoy||0}</div><div class="stat-label">Citas Hoy</div></div>
         <div class="info-card stat-card"><div class="stat-icon">⏳</div><div class="stat-value">${stats.PendientesPago||0}</div><div class="stat-label">Pendientes de Pago</div></div>
         <div class="info-card stat-card"><div class="stat-icon">👥</div><div class="stat-value">${stats.TotalPacientes||0}</div><div class="stat-label">Total Pacientes</div></div>
         <div class="info-card stat-card"><div class="stat-icon">🩺</div><div class="stat-value">${stats.DoctoresActivos||0}</div><div class="stat-label">Doctores Activos</div></div>
-        <div class="info-card stat-card ${stats.SolicitudesPendientes>0?'':''}"><div class="stat-icon">🔔</div>
+        <div class="info-card stat-card">
+          <div class="stat-icon">🔔</div>
           <div class="stat-value" style="${stats.SolicitudesPendientes>0?'color:var(--error)':''}">${stats.SolicitudesPendientes||0}</div>
           <div class="stat-label">Solicitudes Pendientes</div>
           ${stats.SolicitudesPendientes>0?`<button class="btn btn-sm btn-danger" style="margin-top:.75rem" onclick="irVista('solicitudes')">Ver Solicitudes</button>`:''}
         </div>
       </div>
-      <div class="info-card" style="margin-bottom:1rem">
+
+      <!-- Acciones rápidas -->
+      <div class="info-card" style="margin-top:1.5rem">
         <div class="info-header"><h3>Acciones Rápidas</h3></div>
         <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">
-          <button class="btn btn-primary" onclick="irVista('citas')">📅 Ver Citas</button>
+          <button class="btn btn-primary"   onclick="irVista('citas')">📅 Ver Citas</button>
           <button class="btn btn-secondary" onclick="nuevoDoctor()">+ Alta Doctor</button>
           <button class="btn btn-secondary" onclick="irVista('farmacia')">💊 Venta Mostrador</button>
+          <button class="btn btn-secondary" onclick="irVista('pacientes')">👥 Pacientes</button>
           <button class="btn btn-secondary" onclick="irVista('bitacoras')">📋 Bitácoras</button>
         </div>
       </div>
@@ -209,8 +239,10 @@ async function verPaciente(id) {
 
 /* ── DOCTORES ─────────────────────────────────────── */
 async function renderDoctores(container) {
-    const [docs, horarios, esps] = await Promise.all([
-        doctor.listarTodos(), fetch(CONFIG.API_URL+'/api/especialidades',{headers:{'Authorization':'Bearer '+localStorage.getItem('authToken')}}).then(r=>r.json()),
+    // Usamos doctor.listarTodos() y especialidades.obtenerTodas() — ambos
+    // pasan por apiRequest con la URL correcta (/api/doctores, /api/especialidades)
+    const [docs, esps] = await Promise.all([
+        doctor.listarTodos(),
         especialidades.obtenerTodas()
     ]);
     STATE.todosDoctores = docs;
@@ -233,9 +265,13 @@ async function renderDoctores(container) {
 }
 
 async function nuevoDoctor() {
-    const [esps, hors] = await Promise.all([especialidades.obtenerTodas(),
-        fetch(`${CONFIG.API_URL}/api/especialidades`,{headers:{'Authorization':'Bearer '+localStorage.getItem('authToken')}}).then(()=>[{Id_Horario:1,Turno:'Matutino'},{Id_Horario:2,Turno:'Vespertino'},{Id_Horario:3,Turno:'Nocturno'}])]);
-    const hors2 = [{Id_Horario:1,Turno:'Matutino'},{Id_Horario:2,Turno:'Vespertino'},{Id_Horario:3,Turno:'Nocturno'}];
+    // Cargar especialidades via apiRequest (URL correcta: /api/especialidades)
+    const esps = await especialidades.obtenerTodas();
+    const horarios = [
+        {Id_Horario:1, Turno:'Matutino'},
+        {Id_Horario:2, Turno:'Vespertino'},
+        {Id_Horario:3, Turno:'Nocturno'}
+    ];
     abrirModal('Alta de Doctor', `
       <div class="form-grid">
         <div class="form-group"><label>Nombre(s)*</label><input id="nd-nom" placeholder="Juan"></div>
@@ -252,7 +288,7 @@ async function nuevoDoctor() {
           <select id="nd-esp">${esps.map(e=>`<option value="${e.Id_Especialidad}">${e.Especialidad}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label>Turno*</label>
-          <select id="nd-hor">${hors2.map(h=>`<option value="${h.Id_Horario}">${h.Turno}</option>`).join('')}</select>
+          <select id="nd-hor">${horarios.map(h=>`<option value="${h.Id_Horario}">${h.Turno}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label>Sueldo Mensual*</label><input id="nd-suel" type="number" placeholder="30000"></div>
       </div>`,
