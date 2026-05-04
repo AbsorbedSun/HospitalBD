@@ -51,14 +51,7 @@ function showNotification(message, type = 'info', title = '') {
 
 // ── Toggle visibilidad de contraseña ────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.toggle-password').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const input = this.previousElementSibling;
-            if (!input) return;
-            input.type = input.type === 'password' ? 'text' : 'password';
-            this.textContent = input.type === 'password' ? '👁️' : '🙈';
         });
-    });
 
     // Limpiar error visual al escribir
     document.querySelectorAll('input').forEach(input => {
