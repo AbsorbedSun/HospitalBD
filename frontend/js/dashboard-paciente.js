@@ -9,6 +9,9 @@ const STATE = {
     agendar: { paso: 1, especialidad: null, doctor: null, fecha: null, hora: null }
 };
 
+// Guarda contra cargas concurrentes: solo la ultima vista solicitada escribe en el DOM.
+let _loadingView = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = auth.getCurrentUser();
     if (!user || user.rol !== 'paciente') { window.location.href = 'login.html'; return; }
@@ -45,26 +48,34 @@ const VIEWS = {
 };
 
 async function loadView(viewName) {
+    const myToken = Symbol(viewName);
+    _loadingView  = myToken;
+
     const container = document.getElementById('contentContainer');
     const info = VIEWS[viewName] || {};
     document.getElementById('pageTitle').textContent    = info.title    || viewName;
     document.getElementById('pageSubtitle').textContent = info.subtitle || '';
     container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
     try {
         switch (viewName) {
-            case 'inicio':           await renderInicio(container);          break;
-            case 'datos-personales': await renderDatosPersonales(container); break;
-            case 'citas-agendadas':  await renderCitas(container);           break;
-            case 'agendar-cita':     await renderAgendarCita(container);     break;
-            case 'historial-medico': await renderHistorialMedico(container); break;
+            case 'inicio':           await renderInicio(container, myToken);          break;
+            case 'datos-personales': await renderDatosPersonales(container, myToken); break;
+            case 'citas-agendadas':  await renderCitas(container, myToken);           break;
+            case 'agendar-cita':     await renderAgendarCita(container, myToken);     break;
+            case 'historial-medico': await renderHistorialMedico(container, myToken); break;
         }
     } catch (err) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
+        if (_loadingView === myToken) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
+        }
     }
 }
 
+function _stale(token) { return _loadingView !== token; }
+
 /* ── INICIO / BIENVENIDA ──────────────────────────── */
-async function renderInicio(container) {
+async function renderInicio(container, _token) {
     // Cargar citas de forma segura — si el backend falla, se muestran ceros
     let prog = 0, total = 0, htmlProxima = '';
 
@@ -198,7 +209,8 @@ function irPacienteVista(vista) {
 }
 
 /* ── DATOS PERSONALES ─────────────────────────────── */
-async function renderDatosPersonales(container) {
+async function renderDatosPersonales(container, _token) {
+    if (_stale(_token)) return;
     const [perfil, misCitas] = await Promise.all([paciente.obtenerPerfil(), citas.obtenerMisCitas()]);
     STATE.perfil = perfil; STATE.citas = misCitas;
     const prog = misCitas.filter(c => ['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)).length;
@@ -251,7 +263,8 @@ function abrirModalEditar() {
 }
 
 /* ── CITAS AGENDADAS ──────────────────────────────── */
-async function renderCitas(container) {
+async function renderCitas(container, _token) {
+    if (_stale(_token)) return;
     STATE.citas = await citas.obtenerMisCitas();
     dibujarTablaCitas(container, STATE.citas);
 }
@@ -325,7 +338,8 @@ async function pagarCitaUI(folio) {
 }
 
 /* ── AGENDAR CITA (4 pasos) ───────────────────────── */
-async function renderAgendarCita(container) {
+async function renderAgendarCita(container, _token) {
+    if (_stale(_token)) return;
     STATE.agendar = { paso: 1, especialidad: null, doctor: null, fecha: null, hora: null };
     if (!STATE.especialidades.length) STATE.especialidades = await especialidades.obtenerTodas();
     container.innerHTML = `<div class="view-content"><div class="form-container" id="agendar-container">
@@ -499,7 +513,8 @@ function irACitas() {
 }
 
 /* ── HISTORIAL MÉDICO ─────────────────────────────── */
-async function renderHistorialMedico(container) {
+async function renderHistorialMedico(container, _token) {
+    if (_stale(_token)) return;
     if (!STATE.citas.length) STATE.citas = await citas.obtenerMisCitas();
     const hm = await paciente.obtenerHistorialMedico();
     const imc = hm ? calcIMC(hm.Peso, hm.Estatura) : '—';

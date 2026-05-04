@@ -24,17 +24,30 @@ async function apiRequest(endpoint, options = {}) {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 
+    // Timeout real usando AbortController
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+
     const fetchOptions = {
         ...options,
+        signal: controller.signal,
         headers: { ...headers, ...(options.headers || {}) }
     };
 
     let response;
     try {
         response = await fetch(`${CONFIG.API_URL}${endpoint}`, fetchOptions);
+        clearTimeout(timeoutId);
     } catch (networkError) {
-        // Error de red: servidor caído, CORS bloqueado, sin conexión
+        clearTimeout(timeoutId);
+        // Error de red: servidor caído, CORS bloqueado, sin conexión, o timeout
         console.error('[API] Error de red:', networkError);
+        if (networkError.name === 'AbortError') {
+            throw new Error(
+                `La solicitud tardó más de ${CONFIG.TIMEOUT / 1000}s. ` +
+                'Verifica que el backend Flask esté corriendo en http://127.0.0.1:5000.'
+            );
+        }
         throw new Error(
             'No se pudo conectar con el servidor. ' +
             'Verifica que el backend Flask esté corriendo en http://127.0.0.1:5000 ' +

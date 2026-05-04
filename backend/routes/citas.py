@@ -195,25 +195,31 @@ def agendar_cita():
     try:
         cursor = conn.cursor()
 
-        # Insertar Cita
+        # Insertar Cita  — OUTPUT INSERTED es la forma correcta con pyodbc/SQL Server
+        # (INSERT + SELECT SCOPE_IDENTITY() en un solo execute() deja el cursor en el
+        #  resultado del INSERT, que no tiene filas, y fetchone() lanza el error
+        #  "No results. Previous SQL was not a query.")
         cursor.execute(
             """
             INSERT INTO Cita
                 (Id_Doctor, Id_Paciente, Id_Consultorio, Id_EstatusCita,
                  Fecha_Cita, Hora_Cita)
-            VALUES (?, ?, ?, ?, ?, ?);
-            SELECT SCOPE_IDENTITY();
+            OUTPUT INSERTED.Folio_Cita
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (id_doctor, id_paciente, id_consultorio, id_estatus, fecha_str, hora_str)
         )
         folio_cita = int(cursor.fetchone()[0])
 
-        # Insertar Pago pendiente
+        # Insertar Pago pendiente — OUTPUT INSERTED por la misma razón.
+        # MetodoPago usa 'Efectivo' como placeholder valido: el CHECK constraint
+        # solo permite 'Efectivo'|'Tarjeta'|'Transferencia', no 'Pendiente'.
+        # confirmar_pago() lo sobreescribe con el metodo real al momento del cobro.
         cursor.execute(
             """
             INSERT INTO Pago (Folio_Cita, MetodoPago, Monto, Estado)
-            VALUES (?, 'Pendiente', ?, 'Pendiente');
-            SELECT SCOPE_IDENTITY();
+            OUTPUT INSERTED.Id_Pago
+            VALUES (?, 'Efectivo', ?, 'Pendiente')
             """,
             (folio_cita, float(doc['Precio']))
         )

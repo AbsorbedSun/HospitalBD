@@ -5,6 +5,10 @@
 
 const STATE = { user: null, perfil: null, misCitas: [], misPacientes: [], misRecetas: [] };
 
+// Guarda contra cargas concurrentes: si el usuario hace clic varias
+// veces antes de que termine una carga, solo se aplica la última.
+let _loadingView = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = auth.getCurrentUser();
     if (!user || user.rol !== 'doctor') { window.location.href = 'login.html'; return; }
@@ -33,36 +37,58 @@ const VIEWS = {
 };
 
 async function loadView(viewName) {
+    // Registrar cual es la vista mas reciente solicitada.
+    // Si durante la carga llega otra solicitud, esta queda obsoleta y no escribe en el DOM.
+    const myToken = Symbol(viewName);
+    _loadingView  = myToken;
+
     const container = document.getElementById('contentContainer');
     const info = VIEWS[viewName]||{};
     document.getElementById('pageTitle').textContent    = info.title    || viewName;
     document.getElementById('pageSubtitle').textContent = info.subtitle || '';
     container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
     try {
         switch(viewName) {
-            case 'inicio':       await renderInicio(container);       break;
-            case 'datos-doctor': await renderDatosDoctor(container);  break;
-            case 'citas':        await renderCitas(container);         break;
-            case 'pacientes':    await renderPacientes(container);     break;
-            case 'recetas':      await renderRecetas(container);       break;
+            case 'inicio':       await renderInicio(container, myToken);       break;
+            case 'datos-doctor': await renderDatosDoctor(container, myToken);  break;
+            case 'citas':        await renderCitas(container, myToken);         break;
+            case 'pacientes':    await renderPacientes(container, myToken);     break;
+            case 'recetas':      await renderRecetas(container, myToken);       break;
         }
     } catch(err) {
-        container.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
+        if (_loadingView === myToken) {
+            container.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
+        }
     }
 }
 
+// Helper interno: retorna true si esta carga ya fue superada por una mas reciente.
+function _stale(token) { return _loadingView !== token; }
+
 /* ── INICIO / BIENVENIDA ──────────────────────────── */
-async function renderInicio(container) {
+async function renderInicio(container, _token) {
     // Cargar perfil y citas de forma segura
     let perfil = null, citasHoy = 0, citasPend = 0, htmlProxima = '';
 
-    try {
-        perfil = await doctor.obtenerPerfil();
+    // Llamadas en paralelo para mayor velocidad
+    const [perfilResult, citasResult] = await Promise.allSettled([
+        doctor.obtenerPerfil(),
+        citas.obtenerMisCitas()
+    ]);
+
+    if (perfilResult.status === 'fulfilled') {
+        perfil = perfilResult.value;
         STATE.perfil = perfil;
-    } catch(e) { console.warn('[Doc/Inicio] Perfil:', e.message); }
+    } else { console.warn('[Doc/Inicio] Perfil:', perfilResult.reason?.message); }
+
+    // Guard: si el usuario navegó a otra vista mientras cargaba, abortar
+    if (_stale(_token)) return;
 
     try {
-        const todasCitas = await citas.obtenerMisCitas();
+        const todasCitas = citasResult.status === 'fulfilled'
+            ? citasResult.value
+            : (()=>{ console.warn('[Doc/Inicio] Citas:', citasResult.reason?.message); return []; })();
         STATE.misCitas = Array.isArray(todasCitas) ? todasCitas : [];
         const hoy = new Date().toISOString().split('T')[0];
         citasHoy  = STATE.misCitas.filter(c => (c.Fecha_Cita||'').startsWith(hoy)).length;
@@ -88,6 +114,9 @@ async function renderInicio(container) {
                 '</div>';
         }
     } catch(e) { console.warn('[Doc/Inicio] Citas:', e.message); }
+
+    // Guard final antes de escribir en el DOM
+    if (_stale(_token)) return;
 
     if (!htmlProxima) {
         htmlProxima =
@@ -172,7 +201,8 @@ function irDoctorVista(vista) {
 }
 
 /* ── DATOS DOCTOR ─────────────────────────────────── */
-async function renderDatosDoctor(container) {
+async function renderDatosDoctor(container, _token) {
+    if (_stale(_token)) return;
     const p = await doctor.obtenerPerfil();
     STATE.perfil = p;
     const citasHoy = STATE.misCitas.filter(c => c.Fecha_Cita === new Date().toISOString().split('T')[0]).length;
@@ -220,7 +250,8 @@ async function renderDatosDoctor(container) {
 }
 
 /* ── CITAS ────────────────────────────────────────── */
-async function renderCitas(container) {
+async function renderCitas(container, _token) {
+    if (_stale(_token)) return;
     STATE.misCitas = await citas.obtenerMisCitas();
     dibujarTablaCitas(container, STATE.misCitas);
 }
@@ -309,7 +340,8 @@ async function solicitarCancelUI(folio) {
 }
 
 /* ── PACIENTES ────────────────────────────────────── */
-async function renderPacientes(container) {
+async function renderPacientes(container, _token) {
+    if (_stale(_token)) return;
     STATE.misPacientes = await doctor.obtenerPacientes();
     const filas = STATE.misPacientes.length ? STATE.misPacientes.map(p => `<tr>
         <td><strong>${p.Nombre} ${p.Ap_Paterno} ${p.Ap_Materno||''}</strong></td>
@@ -365,7 +397,8 @@ async function editarHistorialModal(idPaciente) {
 }
 
 /* ── RECETAS ──────────────────────────────────────── */
-async function renderRecetas(container) {
+async function renderRecetas(container, _token) {
+    if (_stale(_token)) return;
     STATE.misRecetas = await doctor.listarRecetas();
     if (!STATE.misCitas.length) STATE.misCitas = await citas.obtenerMisCitas();
     const citasAtendibles = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender');
