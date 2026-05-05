@@ -1,13 +1,16 @@
 /**
  * Cliente API para Sistema de Gestión Hospitalaria
- * Conecta con backend Python/Flask en http://127.0.0.1:5000
  *
- * IMPORTANTE: El frontend debe servirse desde http://127.0.0.1:8080
- *             comando: python -m http.server 8080 --bind 127.0.0.1
+ * El frontend es servido por Flask en el mismo origen que la API,
+ * por lo que se usan rutas relativas (/api) sin necesidad de
+ * especificar host ni puerto.
+ *
+ * Arrancar el sistema completo desde la raíz del proyecto:
+ *   python run.py
  */
 
 const CONFIG = {
-    API_URL: 'http://127.0.0.1:5000/api',
+    API_URL: '/api',   // Ruta relativa — funciona en cualquier puerto
     TIMEOUT: 15000
 };
 
@@ -45,13 +48,12 @@ async function apiRequest(endpoint, options = {}) {
         if (networkError.name === 'AbortError') {
             throw new Error(
                 `La solicitud tardó más de ${CONFIG.TIMEOUT / 1000}s. ` +
-                'Verifica que el backend Flask esté corriendo en http://127.0.0.1:5000.'
+                'Verifica que el servidor esté corriendo (python run.py).'
             );
         }
         throw new Error(
             'No se pudo conectar con el servidor. ' +
-            'Verifica que el backend Flask esté corriendo en http://127.0.0.1:5000 ' +
-            '(ejecuta: python app.py)'
+            'Verifica que esté corriendo (ejecuta: python run.py desde la raíz del proyecto).'
         );
     }
 
@@ -264,4 +266,4 @@ const utils = {
     }
 };
 
-console.log('✓ API Client cargado – Backend en', CONFIG.API_URL);
+console.log('✓ API Client cargado – rutas relativas en', CONFIG.API_URL);

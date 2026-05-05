@@ -1,12 +1,12 @@
 """
-Punto de entrada del backend Flask.
+Módulo principal del backend Flask.
 Sistema de Gestión Hospitalaria - IPN ESCOM
 
-Arrancar:
-    cd backend
-    pip install -r requirements.txt
-    cp .env.example .env
-    python app.py
+Para arrancar el sistema completo usar desde la raíz del proyecto:
+    python run.py          ← Servidor unificado (API + frontend)
+
+Este archivo puede seguir ejecutándose directamente solo para
+desarrollar el backend de forma aislada (sin servir el frontend).
 """
 import sys
 import os
@@ -29,19 +29,21 @@ from routes.recepcionistas import recep_bp
 from routes.farmacia       import farmacia_bp
 
 
-def create_app():
-    app = Flask(__name__)
+def create_app(**flask_kwargs):
+    app = Flask(__name__, **flask_kwargs)
 
     # ── Configuración JWT ────────────────────────────────────────
     app.config['JWT_SECRET_KEY']           = Config.JWT_SECRET_KEY
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=Config.JWT_EXPIRATION_HOURS)
 
-    # ── CORS: permitir el frontend en 127.0.0.1:8080 ────────────
-    # Se permiten AMBOS orígenes para cubrir localhost y 127.0.0.1
+    # ── CORS ────────────────────────────────────────────────────
+    # Con el servidor unificado (run.py) frontend y API comparten
+    # el mismo origen, por lo que CORS no es necesario en producción.
+    # Se mantiene solo para permitir Live Server de VS Code en desarrollo.
     CORS(app,
          resources={r"/api/*": {"origins": [
-             "http://127.0.0.1:8080",
-             "http://localhost:8080",
+             "http://127.0.0.1:5000",   # Servidor unificado (run.py)
+             "http://localhost:5000",
              "http://127.0.0.1:5500",   # Live Server de VS Code
              "http://localhost:5500",
          ]}},
@@ -104,7 +106,7 @@ if __name__ == '__main__':
     print(f"  Debug:    {Config.DEBUG}")
     print(f"  BD:       {Config.DB_SERVER}/{Config.DB_DATABASE}")
     print("=" * 60)
-    print("  Frontend esperado en: http://127.0.0.1:8080")
+    print("  Usar run.py desde la raíz para arranque unificado.")
     print("=" * 60)
     # Bind en 127.0.0.1 para consistencia con el frontend
     app.run(host='127.0.0.1', port=Config.PORT, debug=Config.DEBUG)

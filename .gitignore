@@ -96,3 +96,15 @@ frontend/.env
 # Mantener archivos importantes
 !.gitkeep
 !.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+.venv/
+env/
+-e 
+# Sentinel de dependencias instaladas (generado por run.bat/run.sh)
+.deps_ok

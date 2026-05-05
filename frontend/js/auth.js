@@ -49,11 +49,9 @@ function showNotification(message, type = 'info', title = '') {
     setTimeout(() => el.parentElement && el.remove(), delay);
 }
 
-// ── Toggle visibilidad de contraseña ────────────────────────────
+// ── Inicialización ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-        });
-
-    // Limpiar error visual al escribir
+    // Limpiar error visual al escribir en cualquier input
     document.querySelectorAll('input').forEach(input => {
         input.addEventListener('input', () => input.classList.remove('error'));
     });
