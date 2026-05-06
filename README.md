@@ -498,17 +498,3 @@ curl -X POST http://127.0.0.1:5000/api/citas/verificar-vencidas \
 | Autenticación | JWT (tokens con expiración) |
 | Cifrado de contraseñas | bcrypt |
 | Driver de BD | pyodbc + ODBC Driver 17/18 |
-
----
-
-## Equipo
-
-| Nombre | Boleta |
-|--------|--------|
-| García Ambrosio Aldo | 2025630171 |
-| Hernández Rodríguez José Eduardo | 2025630494 |
-| Hernández Zetina Jared | 2025630682 |
-| Tinoco Celestino Sunduri Bilgai | 2023301870 |
-
-**Profesora:** M. en A.P. Maria del Rosario Galeana Chavez  
-**Materia:** Bases de Datos · Grupo 3CM3 · Periodo 26-2
