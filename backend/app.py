@@ -20,13 +20,13 @@ from datetime import timedelta
 
 from config import Config
 
-from routes.auth           import auth_bp
-from routes.especialidades import esp_bp
-from routes.pacientes      import paciente_bp
-from routes.doctores       import doctor_bp
-from routes.citas          import citas_bp
-from routes.recepcionistas import recep_bp
-from routes.farmacia       import farmacia_bp
+from api.auth           import auth_bp
+from api.especialidades import esp_bp
+from api.pacientes      import paciente_bp
+from api.doctores       import doctor_bp
+from api.citas          import citas_bp
+from api.recepcionistas import recep_bp
+from api.farmacia       import farmacia_bp
 
 
 def create_app(**flask_kwargs):
@@ -67,7 +67,7 @@ def create_app(**flask_kwargs):
     def health():
         # También prueba la conexión a la BD
         try:
-            from database.connection import execute_query
+            from db.connection import execute_query
             execute_query("SELECT 1 AS ok")
             db_status = "conectada"
         except Exception as e:

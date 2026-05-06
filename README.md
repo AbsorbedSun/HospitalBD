@@ -26,13 +26,13 @@
 #### Módulo de autenticación
 | RF | Descripción | Backend | Frontend |
 |----|-------------|---------|----------|
-| RF-001 | Login con redirección por rol | ✅ `POST /api/auth/login` | ✅ `login.html` |
-| RF-002 | Auto-registro de pacientes | ✅ `POST /api/auth/register` | ✅ `register.html` |
+| RF-001 | Login con redirección por rol | ✅ `POST /api/auth/login` | ✅ `pages/auth/login.html` |
+| RF-002 | Auto-registro de pacientes | ✅ `POST /api/auth/register` | ✅ `pages/auth/register.html` |
 
 #### Perfil Paciente
 | RF | Descripción | Backend | Frontend |
 |----|-------------|---------|----------|
-| RF-003 | Agendar nueva cita (flujo 4 pasos) | ✅ `POST /api/citas/agendar` | ✅ `dashboard-paciente.html` |
+| RF-003 | Agendar nueva cita (flujo 4 pasos) | ✅ `POST /api/citas/agendar` | ✅ `pages/dashboard/paciente.html` |
 | RF-004 | Visualizar citas con filtros | ✅ `GET /api/citas` | ✅ |
 | RF-005 | Cancelar cita (política de devolución) | ✅ `POST /api/citas/cancelar/<folio>` | ✅ |
 | RF-006 | Visualizar datos personales | ✅ `GET /api/pacientes/perfil` | ✅ |
@@ -41,7 +41,7 @@
 #### Perfil Doctor
 | RF | Descripción | Backend | Frontend |
 |----|-------------|---------|----------|
-| RF-007 | Visualizar datos del doctor | ✅ `GET /api/doctores/perfil` | ✅ `dashboard-doctor.html` |
+| RF-007 | Visualizar datos del doctor | ✅ `GET /api/doctores/perfil` | ✅ `pages/dashboard/doctor.html` |
 | RF-008 | Visualizar citas asignadas | ✅ `GET /api/citas` | ✅ |
 | RF-009 | Crear recetas médicas | ✅ `POST /api/doctores/recetas` | ✅ |
 | RF-010 | Consultar datos del paciente | ✅ `GET /api/doctores/pacientes` | ✅ |
@@ -50,7 +50,7 @@
 #### Perfil Recepcionista
 | RF | Descripción | Backend | Frontend |
 |----|-------------|---------|----------|
-| RF-016 | Dar de alta doctores | ✅ `POST /api/doctores` | ✅ `dashboard-recepcionista.html` |
+| RF-016 | Dar de alta doctores | ✅ `POST /api/doctores` | ✅ `pages/dashboard/recepcionista.html` |
 | RF-017 | Consultar pacientes | ✅ `GET /api/pacientes` | ✅ |
 | RF-019 | Gestión completa de citas | ✅ | ✅ |
 | RF-020 | Gestión de servicios extras | ✅ `GET/POST/PUT /api/farmacia/servicios` | ✅ |
@@ -100,8 +100,8 @@
 | RF | Descripción | Notas |
 |----|-------------|-------|
 | RF-015 | CRUD completo de recepcionistas | Requiere `GET /api/recepcionistas` y `PUT /api/recepcionistas/<id>` |
-| RF-011 | Edición de historial médico desde dashboard doctor | El endpoint existe; conectar desde `dashboard-doctor.js` |
-| — | Vista de especialidades (recepcionista) | Crear sección en `dashboard-recepcionista.js` que consuma `/api/especialidades` |
+| RF-011 | Edición de historial médico desde dashboard doctor | El endpoint existe; conectar desde `frontend/assets/js/dashboard-doctor.js` |
+| — | Vista de especialidades (recepcionista) | Crear sección en `frontend/assets/js/dashboard-recepcionista.js` que consuma `/api/especialidades` |
 | — | Ticket de cobro en PDF | Integrar librería (ej. jsPDF) al procesar una venta en frontend |
 | — | Marcar cita como "Atendida" / "No acudió" desde doctor | Endpoints `PUT /api/citas/<folio>/atender` y `/no-acudio` existen; **falta botón en la UI del doctor** |
 | — | Índices de rendimiento en BD | Agregar `CREATE INDEX` sobre `Cita.Fecha_Cita`, `Cita.Id_Doctor`, `Pago.Estado` (RNF-013) |
@@ -111,47 +111,77 @@
 
 ## Arquitectura
 
+El proyecto sigue una estructura modular organizada por responsabilidad, tanto en el backend como en el frontend.
+
 ```
 MediConnect/
+├── run.py                          # Punto de entrada unificado (API + frontend)
+├── run.bat                         # Arranque con doble clic en Windows
+├── run.sh                          # Arranque en macOS / Linux
+├── README.md
+├── .gitignore
+│
 ├── backend/
-│   ├── app.py                  # Punto de entrada Flask
-│   ├── config.py               # Variables de entorno
+│   ├── app.py                      # Fábrica Flask — crea y configura la app
+│   ├── config.py                   # Variables de entorno (.env → Config)
 │   ├── requirements.txt
-│   ├── .env                    # ← NO subir a git
-│   ├── database/
-│   │   ├── connection.py       # Pool de conexiones pyodbc
-│   │   ├── schema.sql          # DDL: tablas, constraints, trigger
-│   │   └── seed.sql            # Datos de prueba
-│   ├── routes/
-│   │   ├── auth.py             # Login, registro, verificar token
-│   │   ├── citas.py            # Agendar, pagar, cancelar, atender
-│   │   ├── doctores.py         # Perfil, recetas, solicitar cancelación
-│   │   ├── especialidades.py   # Catálogo de especialidades
-│   │   ├── farmacia.py         # Medicamentos, servicios, ventas
-│   │   ├── pacientes.py        # Perfil, historial médico
-│   │   └── recepcionistas.py   # Dashboard, bitácoras, solicitudes
-│   └── utils/
-│       ├── decorators.py       # @requiere_auth, @requiere_rol
-│       └── helpers.py          # Política de cancelación, validaciones
+│   ├── .env                        # ← Credenciales locales (NO subir a Git)
+│   ├── .env.example                # Plantilla de configuración
+│   │
+│   ├── api/                        # Blueprints Flask — un archivo por dominio
+│   │   ├── auth.py                 # Login, registro, verificar token
+│   │   ├── citas.py                # Agendar, pagar, cancelar, atender
+│   │   ├── doctores.py             # Perfil, recetas, solicitar cancelación
+│   │   ├── especialidades.py       # Catálogo de especialidades y precios
+│   │   ├── farmacia.py             # Medicamentos, servicios, ventas
+│   │   ├── pacientes.py            # Perfil, historial médico
+│   │   └── recepcionistas.py       # Dashboard, bitácoras, solicitudes
+│   │
+│   ├── core/                       # Lógica de negocio reutilizable
+│   │   ├── decorators.py           # @requiere_auth, @requiere_rol
+│   │   └── helpers.py              # Política de cancelación, serialización
+│   │
+│   └── db/                         # Capa de acceso a datos
+│       ├── connection.py           # Pool de conexiones pyodbc
+│       └── scripts/                # Scripts SQL separados del código Python
+│           ├── schema.sql          # DDL: tablas, constraints, triggers
+│           └── seed.sql            # Datos de prueba
+│
 └── frontend/
-    ├── index.html              # Landing page pública
-    ├── login.html
-    ├── register.html
-    ├── dashboard-paciente.html
-    ├── dashboard-doctor.html
-    ├── dashboard-recepcionista.html
-    ├── css/
-    │   ├── auth.css
-    │   ├── dashboard.css
-    │   └── home.css
-    └── js/
-        ├── api.js              # Wrapper fetch con JWT automático
-        ├── auth.js             # Login y registro
-        ├── home.js
-        ├── dashboard-paciente.js
-        ├── dashboard-doctor.js
-        └── dashboard-recepcionista.js
+    ├── index.html                  # Landing page pública (raíz)
+    │
+    ├── assets/                     # Recursos estáticos compartidos
+    │   ├── css/
+    │   │   ├── auth.css            # Estilos de login y registro
+    │   │   ├── dashboard.css       # Estilos de los tres dashboards
+    │   │   └── home.css            # Estilos de la landing page
+    │   └── js/
+    │       ├── api.js              # Cliente HTTP con JWT automático
+    │       ├── auth.js             # Lógica de login y registro
+    │       ├── home.js             # Interactividad de la landing
+    │       ├── dashboard-paciente.js
+    │       ├── dashboard-doctor.js
+    │       └── dashboard-recepcionista.js
+    │
+    └── pages/                      # Páginas HTML organizadas por rol
+        ├── auth/
+        │   ├── login.html
+        │   └── register.html
+        └── dashboard/
+            ├── paciente.html
+            ├── doctor.html
+            └── recepcionista.html
 ```
+
+### Decisiones de diseño
+
+| Carpeta | Razón |
+|---------|-------|
+| `backend/api/` | Agrupa todos los blueprints Flask (antes `routes/`). El nombre `api/` deja claro que contiene los endpoints HTTP. |
+| `backend/core/` | Concentra la lógica de negocio reutilizable (antes `utils/`). El nombre `core/` indica que es independiente del framework. |
+| `backend/db/` | Aísla el acceso a datos (antes `database/`). Los scripts SQL viven en `db/scripts/` para no mezclarlos con el código Python. |
+| `frontend/assets/` | Centraliza CSS y JS en un único directorio de recursos estáticos, con rutas absolutas (`/assets/css/`, `/assets/js/`). |
+| `frontend/pages/` | Organiza los HTML por dominio de negocio (`auth/`, `dashboard/`). El `index.html` queda en la raíz por ser la entrada pública. |
 
 ---
 
@@ -169,10 +199,10 @@ Abrir **SQL Server Management Studio (SSMS)** y ejecutar en orden:
 
 ```sql
 -- 1. Crea HospitalDB, tablas, catálogos y triggers
-backend/database/schema.sql
+backend/db/scripts/schema.sql
 
 -- 2. Inserta datos de prueba (especialidades, doctores, usuarios)
-backend/database/seed.sql
+backend/db/scripts/seed.sql
 ```
 
 ### Paso 2 – Configurar credenciales
@@ -223,17 +253,16 @@ Respuesta esperada: `{"status": "ok", "base_datos": "conectada"}`
 
 ---
 
-### Estructura de archivos de arranque
+### Cómo funciona el arranque
 
-```
-MediConnect/
-├── run.py          ← Punto de entrada principal (Python)
-├── run.bat         ← Doble clic en Windows
-├── run.sh          ← ./run.sh en macOS / Linux
-└── backend/
-    ├── app.py      ← Fábrica Flask (no ejecutar directamente)
-    └── .env        ← Credenciales (NO subir a Git)
-```
+`run.py` importa `create_app()` de `backend/app.py`, configura Flask para servir el frontend estático desde `frontend/` y registra todos los blueprints de `backend/api/`. Un solo proceso atiende:
+
+- `/` → `frontend/index.html`
+- `/pages/**` → páginas HTML
+- `/assets/**` → CSS y JS
+- `/api/**` → endpoints REST
+
+Los scripts `run.bat` y `run.sh` verifican Python, comprueban que exista `.env` e instalan dependencias solo si `requirements.txt` cambió desde la última ejecución.
 
 ---
 
@@ -414,7 +443,7 @@ Authorization: Bearer <token_jwt>
 
 ### "No se pudo conectar con el servidor"
 
-- Verificar que `python app.py` esté corriendo
+- Verificar que `python run.py` esté corriendo (o `run.bat` / `run.sh`)
 - Abrir `http://127.0.0.1:5000/api/health` en el navegador
 - Revisar que `.env` tenga las credenciales correctas de SQL Server
 

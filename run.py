@@ -8,9 +8,11 @@ Uso:
 
 Todo en http://127.0.0.1:5000
     /            → index.html (landing page)
-    /login.html  → login
-    /css/*       → hojas de estilo  ← servidos por Flask nativo
-    /js/*        → scripts          ← servidos por Flask nativo
+    /pages/auth/login.html        → login
+    /pages/auth/register.html     → registro
+    /pages/dashboard/*.html       → dashboards
+    /assets/css/*                 → hojas de estilo (Flask nativo)
+    /assets/js/*                  → scripts          (Flask nativo)
     /api/*       → API REST (blueprints Flask)
 """
 import sys
