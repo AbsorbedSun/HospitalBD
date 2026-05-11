@@ -40,6 +40,7 @@ const VIEWS = {
     'farmacia':    { title:'Farmacia y Servicios',  subtitle:'Inventario y ventas de mostrador' },
     'bitacoras':   { title:'Bitácoras',             subtitle:'Registro de auditoría del sistema' },
     'solicitudes': { title:'Solicitudes',           subtitle:'Cancelaciones pendientes de aprobación' },
+    'mi-perfil':   { title:'Mi Perfil',             subtitle:'Tu información personal y laboral' },
 };
 
 async function loadView(viewName) {
@@ -57,6 +58,7 @@ async function loadView(viewName) {
             case 'farmacia':    await renderFarmacia(container);    break;
             case 'bitacoras':   await renderBitacoras(container);   break;
             case 'solicitudes': await renderSolicitudes(container); break;
+            case 'mi-perfil':   await renderMiPerfil(container);   break;
         }
     } catch(err) {
         container.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
@@ -143,11 +145,17 @@ function dibujarTablaCitas(container, lista) {
         <div class="table-filters">
           <input type="date" class="filter-input" id="rf-fecha">
           <select class="filter-select" id="rf-est">
-            <option value="">Todos</option>
-            <option value="agendada_pendiente_pago">Pend. Pago</option>
-            <option value="pagada_pendiente_atender">Confirmadas</option>
-            <option value="atendida">Atendidas</option>
-            <option value="cancelada_paciente">Canceladas</option>
+            <option value="">Todos los estados</option>
+            <option value="agendada_pendiente_pago">⏳ Pend. Pago</option>
+            <option value="pagada_pendiente_atender">✅ Confirmadas</option>
+            <option value="atendida">🩺 Atendidas</option>
+            <option value="no_acudio">— No Acudió</option>
+            <optgroup label="── Cancelaciones ──">
+              <option value="canceladas">❌ Todas las cancelaciones</option>
+              <option value="cancelada_paciente">↩ Cancelada - Paciente</option>
+              <option value="cancelada_doctor">🩺 Cancelada - Doctor</option>
+              <option value="cancelada_falta_pago">💳 Cancelada - Sin pago</option>
+            </optgroup>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="filtrarCitasRecep()">Filtrar</button>
         </div>
@@ -315,30 +323,59 @@ async function renderFarmacia(container) {
     const [meds, servs, ventas] = await Promise.all([
         farmacia.obtenerMedicamentos(), farmacia.obtenerServicios(), farmacia.obtenerVentas()
     ]);
+
+    // ── Filas medicamentos ────────────────────────────────────────────
+    const filasMeds = meds.map(m => `<tr>
+        <td><strong>${m.Nombre}</strong>
+            <div style="font-size:.8rem;color:var(--text-secondary)">${m.Descripcion||''}</div></td>
+        <td>${utils.formatearMoneda(m.Precio)}</td>
+        <td><span class="badge ${m.Stock<10?'badge-error':m.Stock<30?'badge-warning':'badge-success'}">${m.Stock}</span></td>
+        <td>${m.Unidad}</td>
+        <td style="display:flex;gap:.35rem;flex-wrap:wrap">
+            <button class="btn btn-sm btn-secondary"
+                onclick="editarMedicamentoModal(${m.Id_Farmacia},'${m.Nombre.replace(/'/g,"\\'")}',${m.Precio},'${(m.Unidad||'').replace(/'/g,"\\'")}',${m.Stock},'${(m.Descripcion||'').replace(/'/g,"\\'")}')">
+                ✏️ Editar
+            </button>
+            <button class="btn btn-sm btn-danger"
+                onclick="eliminarMedicamentoModal(${m.Id_Farmacia},'${m.Nombre.replace(/'/g,"\\'")}')">
+                🗑️ Eliminar
+            </button>
+        </td></tr>`).join('') ||
+        '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary)">Sin medicamentos</td></tr>';
+
+    // ── Filas servicios ───────────────────────────────────────────────
+    const filasServs = servs.map(s => `<tr>
+        <td><strong>${s.Nombre}</strong>
+            <div style="font-size:.8rem;color:var(--text-secondary)">${s.Descripcion||''}</div></td>
+        <td>${utils.formatearMoneda(s.Precio)}</td>
+        <td style="display:flex;gap:.35rem;flex-wrap:wrap">
+            <button class="btn btn-sm btn-secondary"
+                onclick="editarServicioModal(${s.Id_Servicio},'${s.Nombre.replace(/'/g,"\\'")}',${s.Precio},'${(s.Descripcion||'').replace(/'/g,"\\'")}')">
+                ✏️ Editar
+            </button>
+            <button class="btn btn-sm btn-danger"
+                onclick="eliminarServicioModal(${s.Id_Servicio},'${s.Nombre.replace(/'/g,"\\'")}')">
+                🗑️ Eliminar
+            </button>
+        </td></tr>`).join('') ||
+        '<tr><td colspan="3" style="text-align:center">Sin servicios</td></tr>';
+
     container.innerHTML = `<div class="view-content">
       <div style="margin-bottom:1.5rem;display:flex;gap:1rem;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="nuevaVentaModal()">💰 Nueva Venta</button>
+        <button class="btn btn-primary"   onclick="nuevaVentaModal()">💰 Nueva Venta</button>
         <button class="btn btn-secondary" onclick="nuevoMedicamento()">+ Medicamento</button>
         <button class="btn btn-secondary" onclick="nuevoServicio()">+ Servicio</button>
       </div>
       <div class="info-grid">
         <div class="table-container">
           <div class="table-header"><h3>💊 Medicamentos</h3></div>
-          <table><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Unidad</th><th>Acción</th></tr></thead>
-          <tbody>${meds.map(m=>`<tr>
-              <td><strong>${m.Nombre}</strong><div style="font-size:.8rem;color:var(--text-secondary)">${m.Descripcion||''}</div></td>
-              <td>${utils.formatearMoneda(m.Precio)}</td>
-              <td><span class="badge ${m.Stock<10?'badge-error':m.Stock<30?'badge-warning':'badge-success'}">${m.Stock}</span></td>
-              <td>${m.Unidad}</td>
-              <td><button class="btn btn-sm btn-secondary" onclick="editarStockModal(${m.Id_Farmacia},'${m.Nombre}',${m.Stock})">Stock</button></td>
-            </tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-secondary)">Sin medicamentos</td></tr>'}
-          </tbody></table>
+          <table><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Unidad</th><th>Acciones</th></tr></thead>
+          <tbody>${filasMeds}</tbody></table>
         </div>
         <div class="table-container">
           <div class="table-header"><h3>🏥 Servicios Extra</h3></div>
-          <table><thead><tr><th>Servicio</th><th>Precio</th></tr></thead>
-          <tbody>${servs.map(s=>`<tr><td>${s.Nombre}</td><td>${utils.formatearMoneda(s.Precio)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center">Sin servicios</td></tr>'}
-          </tbody></table>
+          <table><thead><tr><th>Servicio</th><th>Precio</th><th>Acciones</th></tr></thead>
+          <tbody>${filasServs}</tbody></table>
         </div>
       </div>
       <div class="table-container">
@@ -354,6 +391,89 @@ async function renderFarmacia(container) {
       </div>
     </div>`;
 }
+
+// ── MEDICAMENTOS: editar (nombre, precio, unidad, stock, descripción) ─
+async function editarMedicamentoModal(id, nombre, precio, unidad, stock, descripcion) {
+    abrirModal(`Editar Medicamento — ${nombre}`, `
+      <div class="form-grid">
+        <div class="form-group"><label>Nombre*</label>
+            <input id="em-nom" value="${nombre}"></div>
+        <div class="form-group"><label>Precio*</label>
+            <input id="em-pre" type="number" step=".01" value="${precio}"></div>
+        <div class="form-group"><label>Unidad*</label>
+            <input id="em-uni" value="${unidad}"></div>
+        <div class="form-group"><label>Stock</label>
+            <input id="em-stk" type="number" min="0" value="${stock}"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Descripción</label>
+            <input id="em-des" value="${descripcion}"></div>
+      </div>`,
+        async () => {
+            const g = id => document.getElementById(id)?.value?.trim();
+            if (!g('em-nom') || !g('em-pre') || !g('em-uni')) throw new Error('Completa los campos requeridos.');
+            await farmacia.actualizarMedicamento(id, {
+                nombre:      g('em-nom'),
+                precio:      parseFloat(g('em-pre')),
+                unidad:      g('em-uni'),
+                stock:       parseInt(document.getElementById('em-stk').value),
+                descripcion: g('em-des')
+            });
+            toast('Medicamento actualizado.', 'success');
+            cerrarModal(); loadView('farmacia');
+        }, 'Guardar Cambios');
+}
+
+// ── MEDICAMENTOS: eliminar con confirmación ───────────────────────────
+async function eliminarMedicamentoModal(id, nombre) {
+    abrirModal('Eliminar Medicamento', `
+      <p>¿Estás seguro de que deseas eliminar <strong>${nombre}</strong>?</p>
+      <p style="margin-top:.5rem;font-size:.9rem;color:var(--text-secondary)">
+        Esta acción es irreversible. Si el medicamento tiene ventas registradas no podrá eliminarse.
+      </p>`,
+        async () => {
+            await farmacia.eliminarMedicamento(id);
+            toast(`"${nombre}" eliminado correctamente.`, 'success');
+            cerrarModal(); loadView('farmacia');
+        }, 'Eliminar', 'btn-danger');
+}
+
+// ── SERVICIOS: editar ────────────────────────────────────────────────
+async function editarServicioModal(id, nombre, precio, descripcion) {
+    abrirModal(`Editar Servicio — ${nombre}`, `
+      <div class="form-grid">
+        <div class="form-group"><label>Nombre*</label>
+            <input id="es-nom" value="${nombre}"></div>
+        <div class="form-group"><label>Precio*</label>
+            <input id="es-pre" type="number" step=".01" value="${precio}"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Descripción</label>
+            <input id="es-des" value="${descripcion}"></div>
+      </div>`,
+        async () => {
+            const g = id => document.getElementById(id)?.value?.trim();
+            if (!g('es-nom') || !g('es-pre')) throw new Error('Nombre y precio son requeridos.');
+            await farmacia.actualizarServicio(id, {
+                nombre:      g('es-nom'),
+                precio:      parseFloat(g('es-pre')),
+                descripcion: g('es-des')
+            });
+            toast('Servicio actualizado.', 'success');
+            cerrarModal(); loadView('farmacia');
+        }, 'Guardar Cambios');
+}
+
+// ── SERVICIOS: eliminar con confirmación ─────────────────────────────
+async function eliminarServicioModal(id, nombre) {
+    abrirModal('Eliminar Servicio', `
+      <p>¿Estás seguro de que deseas eliminar <strong>${nombre}</strong>?</p>
+      <p style="margin-top:.5rem;font-size:.9rem;color:var(--text-secondary)">
+        Esta acción es irreversible. Si el servicio tiene ventas registradas no podrá eliminarse.
+      </p>`,
+        async () => {
+            await farmacia.eliminarServicio(id);
+            toast(`"${nombre}" eliminado correctamente.`, 'success');
+            cerrarModal(); loadView('farmacia');
+        }, 'Eliminar', 'btn-danger');
+}
+
 
 async function nuevaVentaModal() {
     const [meds, servs] = await Promise.all([farmacia.obtenerMedicamentos(), farmacia.obtenerServicios()]);
@@ -422,18 +542,6 @@ window.agregarItemVenta = () => {
     window.actualizarVentaModal();
 };
 
-async function editarStockModal(id, nombre, stockActual) {
-    abrirModal(`Actualizar Stock – ${nombre}`, `
-      <div class="form-group"><label>Nuevo stock</label>
-        <input id="es-stock" type="number" min="0" value="${stockActual}">
-      </div>`,
-        async () => {
-            const s = parseInt(document.getElementById('es-stock').value);
-            await farmacia.actualizarMedicamento(id,{stock:s});
-            toast('Stock actualizado.','success'); cerrarModal(); loadView('farmacia');
-        });
-}
-
 async function nuevoMedicamento() {
     abrirModal('Nuevo Medicamento', `
       <div class="form-grid">
@@ -464,6 +572,131 @@ async function nuevoServicio() {
             await farmacia.crearServicio({nombre:g('ns-nom'),precio:parseFloat(g('ns-pre')),descripcion:g('ns-des')});
             toast('Servicio agregado.','success'); cerrarModal(); loadView('farmacia');
         });
+}
+
+/* ── MI PERFIL ────────────────────────────────────── */
+async function renderMiPerfil(container) {
+    const p = await recepcionista.obtenerPerfil();
+
+    const nombreCompleto = `${p.Nombre} ${p.Ap_Paterno} ${p.Ap_Materno || ''}`.trim();
+    const fechaNac       = utils.formatearFecha(p.Fecha_Nac);
+    const turno          = `${p.Turno} (${utils.formatearHora(p.Hora_inic)} – ${utils.formatearHora(p.Hora_final)})`;
+    const sueldo         = utils.formatearMoneda(p.Sueldo);
+
+    container.innerHTML = `<div class="view-content">
+      <div class="info-grid">
+
+        <!-- Datos de identidad — solo lectura -->
+        <div class="info-card">
+          <div class="info-header">
+            <h3>Información Personal</h3>
+            <span style="font-size:.75rem;color:var(--text-secondary);padding:.2rem .55rem;
+                  background:var(--bg-secondary,#f1f5f9);border-radius:6px">🔒 Solo lectura</span>
+          </div>
+          <div class="info-body">
+            ${ir('Nombre Completo', nombreCompleto)}
+            ${ir('CURP',           p.CURP)}
+            ${ir('Fecha Nac.',     fechaNac)}
+            ${ir('Edad',           `${p.Edad} años`)}
+          </div>
+        </div>
+
+        <!-- Datos de contacto — editables -->
+        <div class="info-card">
+          <div class="info-header">
+            <h3>Datos de Contacto</h3>
+            <button class="btn-icon btn-sm" onclick="editarPerfilRecep()">✏️ Editar</button>
+          </div>
+          <div class="info-body">
+            ${ir('Email',    p.Email    || '—')}
+            ${ir('Teléfono', p.Telefono || '—')}
+            ${ir('Calle',    p.Calle    || '—')}
+            ${ir('Número',   p.Numero   || '—')}
+            ${ir('Colonia',  p.Colonia  || '—')}
+          </div>
+        </div>
+
+        <!-- Datos laborales — solo lectura -->
+        <div class="info-card">
+          <div class="info-header">
+            <h3>Datos Laborales</h3>
+            <span style="font-size:.75rem;color:var(--text-secondary);padding:.2rem .55rem;
+                  background:var(--bg-secondary,#f1f5f9);border-radius:6px">🔒 Solo lectura</span>
+          </div>
+          <div class="info-body">
+            ${ir('RFC',              p.RFC)}
+            ${ir('Sueldo Mensual',   sueldo)}
+            ${ir('Días de Vacación', `${p.DiasVacacion} días`)}
+            ${ir('Estatus',          p.Estatus_empleado)}
+          </div>
+        </div>
+
+        <!-- Horario asignado — solo lectura -->
+        <div class="info-card">
+          <div class="info-header">
+            <h3>Horario Asignado</h3>
+            <span style="font-size:.75rem;color:var(--text-secondary);padding:.2rem .55rem;
+                  background:var(--bg-secondary,#f1f5f9);border-radius:6px">🔒 Solo lectura</span>
+          </div>
+          <div class="info-body">
+            ${ir('Turno', turno)}
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+
+    // Guardar perfil en STATE para reutilizar en el modal
+    window._perfilRecep = p;
+}
+
+async function editarPerfilRecep() {
+    const p = window._perfilRecep;
+    if (!p) return;
+
+    abrirModal('Editar Datos de Contacto', `
+      <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem">
+        Los datos de identidad y laborales (nombre, CURP, RFC, sueldo) solo pueden
+        modificarse a través de administración. Aquí puedes actualizar tu contacto.
+      </p>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Email</label>
+          <input id="rp-email" type="email" value="${p.Email || ''}" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input id="rp-tel" value="${p.Telefono || ''}" placeholder="10 dígitos">
+        </div>
+        <div class="form-group">
+          <label>Calle</label>
+          <input id="rp-calle" value="${p.Calle || ''}">
+        </div>
+        <div class="form-group">
+          <label>Número</label>
+          <input id="rp-num" value="${p.Numero || ''}">
+        </div>
+        <div class="form-group">
+          <label>Colonia</label>
+          <input id="rp-col" value="${p.Colonia || ''}">
+        </div>
+      </div>`,
+        async () => {
+            const email = document.getElementById('rp-email').value.trim();
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                throw new Error('El formato del email no es válido.');
+            }
+            await recepcionista.actualizarPerfil({
+                email:    email,
+                telefono: document.getElementById('rp-tel').value.trim(),
+                calle:    document.getElementById('rp-calle').value.trim(),
+                numero:   document.getElementById('rp-num').value.trim(),
+                colonia:  document.getElementById('rp-col').value.trim()
+            });
+            toast('Perfil actualizado correctamente.', 'success');
+            cerrarModal();
+            loadView('mi-perfil');
+        }, 'Guardar Cambios');
 }
 
 /* ── BITÁCORAS ────────────────────────────────────── */
@@ -509,25 +742,139 @@ async function filtrarBitacora() {
 
 /* ── SOLICITUDES DE CANCELACIÓN ───────────────────── */
 async function renderSolicitudes(container) {
-    STATE.solicitudes = await recepcionista.listarSolicitudesCancelacion();
-    const filas = STATE.solicitudes.length ? STATE.solicitudes.map(s => `<tr>
-        <td>#${String(s.Folio_Cita).padStart(5,'0')}</td>
-        <td>Dr. ${s.NombreDoctor} ${s.ApDoc}</td>
-        <td>${s.NombrePaciente} ${s.ApPac}</td>
-        <td>${utils.formatearFecha(s.Fecha_Cita)} ${utils.formatearHora(s.Hora_Cita)}</td>
-        <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${s.Motivo}">${s.Motivo}</td>
-        <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
-        <td>
-          <button class="btn btn-sm btn-success" onclick="aprobarSolicitud(${s.Id_Solicitud})">✓ Aprobar</button>
-          <button class="btn btn-sm btn-danger" onclick="rechazarSolicitud(${s.Id_Solicitud})">✗ Rechazar</button>
-        </td></tr>`).join('') :
-        `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">✅</div><h3>Sin solicitudes pendientes</h3><p>No hay solicitudes de cancelación por revisar.</p></div></td></tr>`;
-    container.innerHTML = `<div class="view-content"><div class="table-container">
-      <div class="table-header"><h3>Solicitudes de Cancelación Pendientes
-        ${STATE.solicitudes.length ? `<span class="badge badge-error" style="margin-left:.5rem">${STATE.solicitudes.length}</span>` : ''}
-      </h3></div>
-      <table><thead><tr><th>Folio Cita</th><th>Doctor</th><th>Paciente</th><th>Fecha/Hora Cita</th><th>Motivo</th><th>Solicitada</th><th>Acciones</th></tr></thead>
-      <tbody>${filas}</tbody></table></div></div>`;
+    const [cancelaciones, comprasPend] = await Promise.all([
+        recepcionista.listarSolicitudesCancelacion(),
+        recepcionista.listarSolicitudesCompra('Pendiente')
+    ]);
+
+    const badgeCancelaciones = cancelaciones.length
+        ? `<span style="background:#ef4444;color:#fff;border-radius:999px;padding:.1rem .45rem;font-size:.75rem;margin-left:.35rem">${cancelaciones.length}</span>` : '';
+    const badgeCompras = comprasPend.length
+        ? `<span style="background:#ef4444;color:#fff;border-radius:999px;padding:.1rem .45rem;font-size:.75rem;margin-left:.35rem">${comprasPend.length}</span>` : '';
+
+    container.innerHTML = `<div class="view-content">
+      <div style="display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap">
+        <button class="tab-btn active" data-tab="sol-cancel"
+                onclick="switchSolTab('sol-cancel')">🩺 Cancelaciones${badgeCancelaciones}</button>
+        <button class="tab-btn" data-tab="sol-compra"
+                onclick="switchSolTab('sol-compra')">🛒 Compras pendientes${badgeCompras}</button>
+      </div>
+
+      <!-- Tab: Cancelaciones de citas -->
+      <div id="sol-cancel">
+        ${cancelaciones.length ? `
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Folio Cita</th><th>Doctor</th><th>Paciente</th><th>Motivo</th><th>Fecha Sol.</th><th>Acciones</th></tr></thead>
+            <tbody>
+              ${cancelaciones.map(s => `<tr>
+                <td>#${String(s.Folio_Cita).padStart(5,'0')}</td>
+                <td>${s.NombreDoctor||''} ${s.ApPaternoDoctor||''}</td>
+                <td>${s.NombrePaciente||''} ${s.ApPaternoPaciente||''}</td>
+                <td style="max-width:180px;white-space:normal">${s.Motivo||'—'}</td>
+                <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
+                <td style="display:flex;gap:.35rem">
+                  <button class="btn btn-sm btn-primary"
+                    onclick="aprobarCancelacion(${s.Id_Solicitud})">✅ Aprobar</button>
+                  <button class="btn btn-sm btn-danger"
+                    onclick="rechazarCancelacion(${s.Id_Solicitud})">❌ Rechazar</button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` :
+        '<div class="empty-state"><div class="empty-icon">✅</div><h3>Sin solicitudes de cancelación</h3><p>No hay cancelaciones pendientes.</p></div>'}
+      </div>
+
+      <!-- Tab: Solicitudes de compra de pacientes -->
+      <div id="sol-compra" style="display:none">
+        ${comprasPend.length ? `
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Folio</th><th>Paciente</th><th>Teléfono</th><th>Total</th><th>Fecha</th><th>Acciones</th></tr></thead>
+            <tbody>
+              ${comprasPend.map(s => `<tr>
+                <td>#${String(s.Id_Solicitud).padStart(4,'0')}</td>
+                <td>${s.NombrePaciente} ${s.ApPaternoPaciente}</td>
+                <td>${s.TelefonoPaciente||'—'}</td>
+                <td><strong>$${parseFloat(s.Total).toFixed(2)}</strong></td>
+                <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
+                <td style="display:flex;gap:.35rem">
+                  <button class="btn btn-sm btn-primary"
+                    onclick="verDetalleSolicitudCompra(${s.Id_Solicitud},'${s.NombrePaciente} ${s.ApPaternoPaciente}',${s.Total})">
+                    👁 Ver
+                  </button>
+                  <button class="btn btn-sm btn-success"
+                    onclick="procesarCompra(${s.Id_Solicitud})">✅ Procesar</button>
+                  <button class="btn btn-sm btn-danger"
+                    onclick="rechazarCompra(${s.Id_Solicitud})">❌ Rechazar</button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` :
+        '<div class="empty-state"><div class="empty-icon">🛒</div><h3>Sin solicitudes de compra</h3><p>No hay compras pendientes de pacientes.</p></div>'}
+      </div>
+    </div>`;
+}
+
+function switchSolTab(tab) {
+    ['sol-cancel','sol-compra'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === tab ? '' : 'none';
+    });
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === tab));
+}
+
+async function verDetalleSolicitudCompra(id, paciente, total) {
+    let detalle = [];
+    try { detalle = await farmacia.detalleSolicitud(id); } catch(e) {}
+
+    const filas = detalle.map(d => `<tr>
+        <td>${d.NombreFarmacia || d.NombreServicio}</td>
+        <td>${d.Cantidad}</td>
+        <td>$${parseFloat(d.Subtotal).toFixed(2)}</td>
+    </tr>`).join('') || '<tr><td colspan="3">Sin detalle</td></tr>';
+
+    abrirModal(`Solicitud #${String(id).padStart(4,'0')} — ${paciente}`, `
+      <table>
+        <thead><tr><th>Producto / Servicio</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+        <tbody>${filas}</tbody>
+        <tfoot><tr>
+          <td colspan="2" style="text-align:right;font-weight:700">Total</td>
+          <td style="font-weight:700">$${parseFloat(total).toFixed(2)}</td>
+        </tr></tfoot>
+      </table>`,
+        async () => { await procesarCompra(id); },
+        'Procesar ✅'
+    );
+}
+
+async function procesarCompra(id) {
+    try {
+        const res = await recepcionista.procesarSolicitudCompra(id);
+        toast(`Solicitud procesada. Venta #${String(res.id_venta).padStart(4,'0')} registrada.`, 'success');
+        cerrarModal();
+        loadView('solicitudes');
+    } catch(e) {
+        toast(e.message || 'Error al procesar.', 'error');
+    }
+}
+
+async function rechazarCompra(id) {
+    abrirModal('Rechazar solicitud de compra', `
+      <div class="form-group">
+        <label>Motivo del rechazo (opcional)</label>
+        <input id="rc-motivo" placeholder="Ej: producto sin stock temporal, solicitar en mostrador…">
+      </div>`,
+        async () => {
+            const motivo = document.getElementById('rc-motivo').value.trim();
+            await recepcionista.rechazarSolicitudCompra(id, motivo);
+            toast('Solicitud rechazada.', 'success');
+            cerrarModal();
+            loadView('solicitudes');
+        }, 'Rechazar', 'btn-danger');
 }
 
 async function aprobarSolicitud(id) {

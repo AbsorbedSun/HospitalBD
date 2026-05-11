@@ -15,6 +15,74 @@ recep_bp = Blueprint('recepcionistas', __name__)
 
 
 # ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# GET /api/recepcionistas/perfil   (recepcionista consulta su perfil)
+# ------------------------------------------------------------------
+@recep_bp.route('/perfil', methods=['GET'])
+@requiere_rol('recepcionista', 'admin')
+def obtener_perfil():
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+
+    rows = execute_query(
+        """
+        SELECT u.Id_Usuario, u.Nombre, u.Ap_Paterno, u.Ap_Materno,
+               u.CURP, u.Email, u.Fecha_Nac, u.Telefono,
+               u.Calle, u.Numero, u.Colonia, u.Direccion,
+               DATEDIFF(year, u.Fecha_Nac, GETDATE()) AS Edad,
+               e.RFC, e.Sueldo, e.DiasVacacion, e.Estatus_empleado,
+               h.Turno, h.Hora_inic, h.Hora_final,
+               r.Id_Recepcionista
+        FROM   Usuario      u
+        JOIN   Empleado     e  ON u.Id_Usuario  = e.Id_Usuario
+        JOIN   Recepcionista r ON e.Id_Usuario  = r.Id_Usuario
+        JOIN   Horario      h  ON e.Id_Horario  = h.Id_Horario
+        WHERE  u.Id_Usuario = ?
+        """,
+        (id_usuario,)
+    )
+    if not rows:
+        return jsonify({'error': 'Perfil no encontrado.'}), 404
+    return jsonify(rows_to_json(rows[0])), 200
+
+
+# ------------------------------------------------------------------
+# PUT /api/recepcionistas/perfil   (recepcionista actualiza contacto)
+# Bloqueados: Nombre, Ap_Paterno, Ap_Materno, CURP, Fecha_Nac, RFC,
+#             Sueldo, DiasVacacion, Estatus_empleado
+# ------------------------------------------------------------------
+@recep_bp.route('/perfil', methods=['PUT'])
+@requiere_rol('recepcionista', 'admin')
+def actualizar_perfil():
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+    data       = request.get_json(silent=True) or {}
+
+    campos, params = [], []
+    permitidos = ['Email', 'Telefono', 'Calle', 'Numero', 'Colonia', 'Direccion']
+    for campo in permitidos:
+        key = campo.lower()
+        if key in data:
+            valor = data[key] or None
+            if campo == 'Email' and valor:
+                import re
+                if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', valor):
+                    return jsonify({'error': 'El formato del email no es válido.'}), 400
+            campos.append(f'{campo} = ?')
+            params.append(valor)
+
+    if not campos:
+        return jsonify({'error': 'Sin campos permitidos para actualizar.'}), 400
+
+    params.append(id_usuario)
+    execute_non_query(
+        f"UPDATE Usuario SET {', '.join(campos)} WHERE Id_Usuario = ?",
+        tuple(params)
+    )
+    return jsonify({'mensaje': 'Perfil actualizado correctamente.'}), 200
+
+
+# ------------------------------------------------------------------
 # GET /api/recepcionistas/dashboard
 # ------------------------------------------------------------------
 @recep_bp.route('/dashboard', methods=['GET'])
@@ -271,3 +339,172 @@ def crear_recepcionista():
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
+
+
+# ================================================================
+# SOLICITUDES DE COMPRA  (recepcionista gestiona)
+# ================================================================
+
+# GET /api/recepcionistas/solicitudes-compra
+@recep_bp.route('/solicitudes-compra', methods=['GET'])
+@requiere_rol('recepcionista', 'admin')
+def listar_solicitudes_compra():
+    estatus = request.args.get('estatus', 'Pendiente')
+    rows = execute_query(
+        """
+        SELECT sc.Id_Solicitud, sc.Estatus, sc.Fecha_Solicitud,
+               sc.Fecha_Proceso, sc.Total, sc.Notas,
+               up.Nombre      AS NombrePaciente,
+               up.Ap_Paterno  AS ApPaternoPaciente,
+               up.Telefono    AS TelefonoPaciente
+        FROM   SolicitudCompra sc
+        JOIN   Paciente p  ON sc.Id_Paciente = p.Id_Paciente
+        JOIN   Usuario  up ON p.Id_Usuario   = up.Id_Usuario
+        WHERE  sc.Estatus = ?
+        ORDER  BY sc.Fecha_Solicitud ASC
+        """,
+        (estatus,)
+    )
+    return jsonify(rows_to_json(rows)), 200
+
+
+# POST /api/recepcionistas/solicitudes-compra/<id>/procesar
+# Convierte la SolicitudCompra en una Venta real
+@recep_bp.route('/solicitudes-compra/<int:id_solicitud>/procesar', methods=['POST'])
+@requiere_rol('recepcionista', 'admin')
+def procesar_solicitud_compra(id_solicitud):
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+
+    # Obtener id_recepcionista
+    recep = execute_query(
+        'SELECT Id_Recepcionista FROM Recepcionista WHERE Id_Usuario = ?', (id_usuario,)
+    )
+    if not recep:
+        return jsonify({'error': 'No se encontró perfil de recepcionista.'}), 403
+    id_recepcionista = recep[0]['Id_Recepcionista']
+
+    # Verificar que la solicitud exista y esté pendiente
+    sol = execute_query(
+        'SELECT * FROM SolicitudCompra WHERE Id_Solicitud = ? AND Estatus = ?',
+        (id_solicitud, 'Pendiente')
+    )
+    if not sol:
+        return jsonify({'error': 'Solicitud no encontrada o ya procesada.'}), 404
+
+    # Obtener detalle
+    detalle = execute_query(
+        """
+        SELECT dsc.Id_Servicio, dsc.Id_Farmacia, dsc.Cantidad, dsc.Subtotal,
+               f.Stock, f.Nombre AS NombreFarmacia
+        FROM   Detalle_SolicitudCompra dsc
+        LEFT JOIN Farmacia f ON dsc.Id_Farmacia = f.Id_Farmacia
+        WHERE  dsc.Id_Solicitud = ?
+        """,
+        (id_solicitud,)
+    )
+
+    # Re-validar stock antes de procesar
+    for d in rows_to_json(detalle):
+        if d['Id_Farmacia'] and d['Stock'] < d['Cantidad']:
+            return jsonify({
+                'error': f'Stock insuficiente para "{d["NombreFarmacia"]}". '
+                         f'Disponible: {d["Stock"]}.'
+            }), 409
+
+    conn = None
+    try:
+        from db.connection import get_db
+        conn   = get_db()
+        cursor = conn.cursor()
+
+        sol_d       = rows_to_json(detalle)
+        tiene_farm  = any(d['Id_Farmacia'] for d in sol_d)
+        tiene_serv  = any(d['Id_Servicio'] for d in sol_d)
+        tipo_venta  = 'Mixta' if (tiene_farm and tiene_serv) else ('Farmacia' if tiene_farm else 'Servicio')
+
+        # Crear Venta
+        cursor.execute(
+            """
+            INSERT INTO Venta (Id_Recepcionista, Total, Tipo_Venta)
+            OUTPUT INSERTED.Id_Venta
+            VALUES (?, ?, ?)
+            """,
+            (id_recepcionista, float(sol[0]['Total']), tipo_venta)
+        )
+        id_venta = int(cursor.fetchone()[0])
+
+        # Crear Detalle_Venta y descontar stock
+        for d in sol_d:
+            cursor.execute(
+                """
+                INSERT INTO Detalle_Venta
+                       (Id_Venta, Id_Servicio, Id_Farmacia, Cantidad, Subtotal)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (id_venta, d['Id_Servicio'], d['Id_Farmacia'], d['Cantidad'], d['Subtotal'])
+            )
+            if d['Id_Farmacia']:
+                cursor.execute(
+                    'UPDATE Farmacia SET Stock = Stock - ? WHERE Id_Farmacia = ?',
+                    (d['Cantidad'], d['Id_Farmacia'])
+                )
+
+        # Marcar solicitud como Procesada
+        cursor.execute(
+            """
+            UPDATE SolicitudCompra
+            SET Estatus          = 'Procesada',
+                Id_Recepcionista = ?,
+                Fecha_Proceso    = GETDATE()
+            WHERE Id_Solicitud   = ?
+            """,
+            (id_recepcionista, id_solicitud)
+        )
+
+        conn.commit()
+        return jsonify({'id_venta': id_venta, 'mensaje': 'Solicitud procesada y venta registrada.'}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+# POST /api/recepcionistas/solicitudes-compra/<id>/rechazar
+@recep_bp.route('/solicitudes-compra/<int:id_solicitud>/rechazar', methods=['POST'])
+@requiere_rol('recepcionista', 'admin')
+def rechazar_solicitud_compra(id_solicitud):
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+    data       = request.get_json(silent=True) or {}
+
+    recep = execute_query(
+        'SELECT Id_Recepcionista FROM Recepcionista WHERE Id_Usuario = ?', (id_usuario,)
+    )
+    if not recep:
+        return jsonify({'error': 'No se encontró perfil de recepcionista.'}), 403
+    id_recepcionista = recep[0]['Id_Recepcionista']
+
+    sol = execute_query(
+        'SELECT Id_Solicitud FROM SolicitudCompra WHERE Id_Solicitud = ? AND Estatus = ?',
+        (id_solicitud, 'Pendiente')
+    )
+    if not sol:
+        return jsonify({'error': 'Solicitud no encontrada o ya procesada.'}), 404
+
+    execute_non_query(
+        """
+        UPDATE SolicitudCompra
+        SET Estatus          = 'Rechazada',
+            Id_Recepcionista = ?,
+            Fecha_Proceso    = GETDATE(),
+            Notas            = ?
+        WHERE Id_Solicitud   = ?
+        """,
+        (id_recepcionista, data.get('motivo', ''), id_solicitud)
+    )
+    return jsonify({'mensaje': 'Solicitud rechazada.'}), 200

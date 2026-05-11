@@ -41,7 +41,8 @@ def obtener_perfil():
 
 
 # ------------------------------------------------------------------
-# PUT /api/pacientes/perfil   (paciente actualiza datos no sensibles)
+# PUT /api/pacientes/perfil   (paciente actualiza datos de contacto)
+# Campos de identidad bloqueados: Nombre, Ap_Paterno, Ap_Materno, CURP, Fecha_Nac
 # ------------------------------------------------------------------
 @paciente_bp.route('/perfil', methods=['PUT'])
 @requiere_auth
@@ -51,12 +52,19 @@ def actualizar_perfil():
     data = request.get_json(silent=True) or {}
 
     campos, params = [], []
-    permitidos = ['Telefono', 'Calle', 'Numero', 'Colonia', 'Direccion']
+    # Email incluido: es dato de contacto, no de identidad
+    permitidos = ['Email', 'Telefono', 'Calle', 'Numero', 'Colonia', 'Direccion']
     for campo in permitidos:
         key = campo.lower()
         if key in data:
+            valor = data[key] or None
+            # Validación básica de formato de email
+            if campo == 'Email' and valor:
+                import re
+                if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', valor):
+                    return jsonify({'error': 'El formato del email no es válido.'}), 400
             campos.append(f'{campo} = ?')
-            params.append(data[key] or None)
+            params.append(valor)
 
     if not campos:
         return jsonify({'error': 'Sin campos permitidos para actualizar.'}), 400
@@ -92,6 +100,41 @@ def obtener_historial_medico():
     if not rows:
         return jsonify(None), 200   # Puede no tener historial aún
     return jsonify(rows_to_json(rows[0])), 200
+
+
+# ------------------------------------------------------------------
+# GET /api/pacientes/mis-recetas   (paciente ve sus propias recetas)
+# ------------------------------------------------------------------
+@paciente_bp.route('/mis-recetas', methods=['GET'])
+@requiere_auth
+def mis_recetas():
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+
+    rows = execute_query(
+        """
+        SELECT r.Id_Receta, r.Folio_Cita, r.FechaEmision,
+               r.Medicamento, r.Tratamiento, r.Observaciones,
+               ud.Nombre       AS NombreDoctor,
+               ud.Ap_Paterno   AS ApPaternoDoctor,
+               d.Cedula_prof,
+               e.Especialidad,
+               c.Fecha_Cita,
+               c.Hora_Cita,
+               DATEDIFF(year, up.Fecha_Nac, GETDATE()) AS EdadPaciente
+        FROM Receta r
+        JOIN Cita        c   ON r.Folio_Cita      = c.Folio_Cita
+        JOIN Paciente    p   ON c.Id_Paciente      = p.Id_Paciente
+        JOIN Usuario     up  ON p.Id_Usuario       = up.Id_Usuario
+        JOIN Doctor      d   ON c.Id_Doctor        = d.Id_Doctor
+        JOIN Usuario     ud  ON d.Id_Usuario       = ud.Id_Usuario
+        JOIN Especialidad e  ON d.Id_Especialidad  = e.Id_Especialidad
+        WHERE p.Id_Usuario = ?
+        ORDER BY r.FechaEmision DESC
+        """,
+        (id_usuario,)
+    )
+    return jsonify(rows_to_json(rows)), 200
 
 
 # ------------------------------------------------------------------

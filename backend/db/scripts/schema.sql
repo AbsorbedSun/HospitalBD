@@ -391,3 +391,39 @@ INSERT INTO Consultorio (Id_Especialidad, Nombre, Piso, Telefono, EquipoM) VALUE
 
 GO
 PRINT 'Schema HospitalDB creado exitosamente.';
+
+-- ============================================================
+-- SOLICITUDES DE COMPRA  (paciente → recepcionista)
+-- Patrón idéntico a SolicitudCancelacion:
+--   1. Paciente crea la solicitud con su carrito
+--   2. Recepcionista la procesa (→ Venta) o la rechaza
+-- ============================================================
+
+CREATE TABLE SolicitudCompra (
+    Id_Solicitud      INT            IDENTITY(1,1) PRIMARY KEY,
+    Id_Paciente       INT            NOT NULL REFERENCES Paciente(Id_Paciente),
+    Id_Recepcionista  INT            NULL     REFERENCES Recepcionista(Id_Recepcionista),
+    Estatus           VARCHAR(20)    NOT NULL DEFAULT 'Pendiente'
+        CHECK (Estatus IN ('Pendiente','Procesada','Rechazada')),
+    Fecha_Solicitud   DATETIME       NOT NULL DEFAULT GETDATE(),
+    Fecha_Proceso     DATETIME       NULL,
+    Notas             VARCHAR(500)   NULL,
+    Total             DECIMAL(10,2)  NOT NULL
+);
+GO
+
+CREATE TABLE Detalle_SolicitudCompra (
+    Id_Detalle    INT             IDENTITY(1,1) PRIMARY KEY,
+    Id_Solicitud  INT             NOT NULL REFERENCES SolicitudCompra(Id_Solicitud),
+    Id_Servicio   INT             NULL REFERENCES Servicio(Id_Servicio),
+    Id_Farmacia   INT             NULL REFERENCES Farmacia(Id_Farmacia),
+    Cantidad      INT             NOT NULL CHECK (Cantidad > 0),
+    Subtotal      DECIMAL(10,2)   NOT NULL,
+    CONSTRAINT CK_DetalleSolicitud_TipoItem CHECK (
+        (Id_Servicio IS NOT NULL AND Id_Farmacia IS NULL) OR
+        (Id_Servicio IS NULL     AND Id_Farmacia IS NOT NULL)
+    )
+);
+GO
+
+PRINT 'Tablas SolicitudCompra y Detalle_SolicitudCompra creadas.';

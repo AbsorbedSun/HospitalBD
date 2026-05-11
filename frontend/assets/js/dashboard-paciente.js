@@ -40,11 +40,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 const VIEWS = {
-    'inicio':           { title: 'Inicio',             subtitle: `Bienvenido a MediConnect` },
-    'datos-personales': { title: 'Datos Personales',   subtitle: 'Tu información registrada' },
-    'citas-agendadas':  { title: 'Mis Citas',          subtitle: 'Historial y gestión de citas' },
-    'agendar-cita':     { title: 'Agendar Nueva Cita', subtitle: 'Programa tu próxima consulta' },
-    'historial-medico': { title: 'Historial Médico',   subtitle: 'Tu información de salud' },
+    'inicio':            { title: 'Inicio',             subtitle: `Bienvenido a MediConnect` },
+    'datos-personales':  { title: 'Datos Personales',   subtitle: 'Tu información registrada' },
+    'citas-agendadas':   { title: 'Mis Citas',          subtitle: 'Historial y gestión de citas' },
+    'agendar-cita':      { title: 'Agendar Nueva Cita', subtitle: 'Programa tu próxima consulta' },
+    'historial-medico':  { title: 'Historial Médico',   subtitle: 'Tu información de salud' },
+    'mis-recetas':       { title: 'Mis Recetas',        subtitle: 'Prescripciones médicas emitidas por tus doctores' },
+    'farmacia-paciente': { title: 'Farmacia',           subtitle: 'Solicita medicamentos y servicios sin salir del sistema' },
 };
 
 async function loadView(viewName) {
@@ -64,6 +66,8 @@ async function loadView(viewName) {
             case 'citas-agendadas':  await renderCitas(container, myToken);           break;
             case 'agendar-cita':     await renderAgendarCita(container, myToken);     break;
             case 'historial-medico': await renderHistorialMedico(container, myToken); break;
+            case 'mis-recetas':      await renderMisRecetas(container, myToken);      break;
+            case 'farmacia-paciente':await renderFarmaciaPaciente(container, myToken);break;
         }
     } catch (err) {
         if (_loadingView === myToken) {
@@ -196,6 +200,8 @@ async function renderInicio(container, _token) {
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'citas-agendadas\')">📋 Ver Mis Citas</button>' +
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'datos-personales\')">👤 Mis Datos</button>' +
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'historial-medico\')">❤️ Historial Médico</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'mis-recetas\')">💊 Mis Recetas</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'farmacia-paciente\')">🛒 Farmacia</button>' +
           '</div>' +
         '</div>' +
 
@@ -226,7 +232,7 @@ async function renderDatosPersonales(container, _token) {
       <div class="info-grid">
         <div class="info-card">
           <div class="info-header"><h3>Información Personal</h3>
-            <button class="btn-icon btn-sm" onclick="abrirModalEditar()">✏️ Editar</button>
+            <span style="font-size:.75rem;color:var(--text-secondary);padding:.2rem .55rem;background:var(--bg-secondary,#f1f5f9);border-radius:6px">🔒 Solo lectura</span>
           </div>
           <div class="info-body">
             ${ir('Nombre Completo', `${perfil.Nombre} ${perfil.Ap_Paterno} ${perfil.Ap_Materno||''}`)}
@@ -236,12 +242,15 @@ async function renderDatosPersonales(container, _token) {
           </div>
         </div>
         <div class="info-card">
-          <div class="info-header"><h3>Contacto</h3></div>
+          <div class="info-header"><h3>Datos de Contacto</h3>
+            <button class="btn-icon btn-sm" onclick="abrirModalEditar()">✏️ Editar</button>
+          </div>
           <div class="info-body">
-            ${ir('Email',    perfil.Email)}
-            ${ir('Teléfono', perfil.Telefono || '—')}
-            ${ir('Calle',    perfil.Calle    || '—')}
-            ${ir('Colonia',  perfil.Colonia  || '—')}
+            ${ir('Email',    perfil.Email     || '—')}
+            ${ir('Teléfono', perfil.Telefono  || '—')}
+            ${ir('Calle',    perfil.Calle     || '—')}
+            ${ir('Número',   perfil.Numero    || '—')}
+            ${ir('Colonia',  perfil.Colonia   || '—')}
           </div>
         </div>
       </div></div>`;
@@ -250,16 +259,48 @@ async function renderDatosPersonales(container, _token) {
 function abrirModalEditar() {
     const p = STATE.perfil;
     abrirModal('Editar Datos de Contacto', `
+      <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem">
+        Los datos de identidad (nombre, CURP, fecha de nacimiento) solo pueden modificarse
+        acudiendo a recepción. Aquí puedes actualizar tu información de contacto.
+      </p>
       <div class="form-grid">
-        <div class="form-group"><label>Teléfono</label><input id="e-tel" value="${p.Telefono||''}"></div>
-        <div class="form-group"><label>Calle</label><input id="e-calle" value="${p.Calle||''}"></div>
-        <div class="form-group"><label>Número</label><input id="e-num" value="${p.Numero||''}"></div>
-        <div class="form-group"><label>Colonia</label><input id="e-col" value="${p.Colonia||''}"></div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Email</label>
+          <input id="e-email" type="email" value="${p.Email||''}" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input id="e-tel" value="${p.Telefono||''}" placeholder="10 dígitos">
+        </div>
+        <div class="form-group">
+          <label>Calle</label>
+          <input id="e-calle" value="${p.Calle||''}">
+        </div>
+        <div class="form-group">
+          <label>Número</label>
+          <input id="e-num" value="${p.Numero||''}">
+        </div>
+        <div class="form-group">
+          <label>Colonia</label>
+          <input id="e-col" value="${p.Colonia||''}">
+        </div>
       </div>`,
         async () => {
-            await paciente.actualizarPerfil({ telefono: document.getElementById('e-tel').value, calle: document.getElementById('e-calle').value, numero: document.getElementById('e-num').value, colonia: document.getElementById('e-col').value });
-            toast('Datos actualizados.', 'success'); cerrarModal(); loadView('datos-personales');
-        });
+            const email = document.getElementById('e-email').value.trim();
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                throw new Error('El formato del email no es válido.');
+            }
+            await paciente.actualizarPerfil({
+                email:    email,
+                telefono: document.getElementById('e-tel').value.trim(),
+                calle:    document.getElementById('e-calle').value.trim(),
+                numero:   document.getElementById('e-num').value.trim(),
+                colonia:  document.getElementById('e-col').value.trim()
+            });
+            toast('Datos de contacto actualizados.', 'success');
+            cerrarModal();
+            loadView('datos-personales');
+        }, 'Guardar Cambios');
 }
 
 /* ── CITAS AGENDADAS ──────────────────────────────── */
@@ -510,6 +551,401 @@ function irACitas() {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('[data-view="citas-agendadas"]')?.classList.add('active');
     loadView('citas-agendadas');
+}
+
+/* ── FARMACIA (PACIENTE) ─────────────────────────── */
+
+// Estado del carrito — vive en memoria mientras la vista esté activa
+let _carrito = [];
+
+async function renderFarmaciaPaciente(container, _token) {
+    if (_stale(_token)) return;
+    _carrito = [];
+
+    const [catalogo, solicitudes] = await Promise.all([
+        farmacia.catalogo(),
+        farmacia.misSolicitudes()
+    ]);
+    const meds  = catalogo.medicamentos || [];
+    const servs = catalogo.servicios    || [];
+
+    container.innerHTML = `<div class="view-content">
+
+      <!-- Aviso informativo -->
+      <div style="background:#e8f5f4;border-left:4px solid var(--primary,#2D5F5D);
+                  border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;
+                  display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:1.4rem">🏥</span>
+        <div style="font-size:.88rem;color:#334155;line-height:1.5">
+          <strong style="color:#2D5F5D">¿Cómo funciona?</strong><br>
+          Agrega productos o servicios a tu carrito y envía la solicitud.
+          La recepcionista la revisará y procesará tu compra. Puedes
+          ver el estado de tus solicitudes en la sección inferior.
+        </div>
+      </div>
+
+      <!-- Tabs catálogo -->
+      <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
+        <button class="tab-btn active" data-tab="cat-meds"
+                onclick="switchCatTab('cat-meds')">💊 Medicamentos (${meds.length})</button>
+        <button class="tab-btn" data-tab="cat-servs"
+                onclick="switchCatTab('cat-servs')">🏥 Servicios (${servs.length})</button>
+        <button class="tab-btn" data-tab="cat-hist"
+                onclick="switchCatTab('cat-hist')">📋 Mis Solicitudes (${solicitudes.length})</button>
+      </div>
+
+      <!-- Panel Medicamentos -->
+      <div id="cat-meds">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
+          ${meds.length ? meds.map(m => `
+            <div class="info-card" style="gap:.5rem">
+              <div style="font-size:1.6rem">💊</div>
+              <div>
+                <div style="font-weight:700;font-size:.95rem">${m.Nombre}</div>
+                ${m.Descripcion ? `<div style="font-size:.8rem;color:var(--text-secondary)">${m.Descripcion}</div>` : ''}
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;
+                          border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem">
+                <strong style="color:var(--primary,#2D5F5D)">$${parseFloat(m.Precio).toFixed(2)}</strong>
+                <span style="font-size:.75rem;color:var(--text-secondary)">${m.Unidad}</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" style="width:100%"
+                      onclick="agregarAlCarrito('farmacia',${m.Id_Farmacia},'${m.Nombre.replace(/'/g,"\\'")}',${m.Precio},'${m.Unidad}')">
+                + Agregar
+              </button>
+            </div>`).join('') :
+            '<p style="color:var(--text-secondary)">Sin medicamentos disponibles.</p>'}
+        </div>
+      </div>
+
+      <!-- Panel Servicios -->
+      <div id="cat-servs" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
+          ${servs.length ? servs.map(s => `
+            <div class="info-card" style="gap:.5rem">
+              <div style="font-size:1.6rem">🏥</div>
+              <div>
+                <div style="font-weight:700;font-size:.95rem">${s.Nombre}</div>
+                ${s.Descripcion ? `<div style="font-size:.8rem;color:var(--text-secondary)">${s.Descripcion}</div>` : ''}
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem">
+                <strong style="color:var(--primary,#2D5F5D)">$${parseFloat(s.Precio).toFixed(2)}</strong>
+              </div>
+              <button class="btn btn-secondary btn-sm" style="width:100%"
+                      onclick="agregarAlCarrito('servicio',${s.Id_Servicio},'${s.Nombre.replace(/'/g,"\\'")}',${s.Precio},'')">
+                + Agregar
+              </button>
+            </div>`).join('') :
+            '<p style="color:var(--text-secondary)">Sin servicios disponibles.</p>'}
+        </div>
+      </div>
+
+      <!-- Panel Mis Solicitudes -->
+      <div id="cat-hist" style="display:none">
+        ${solicitudes.length ? `
+        <div class="table-container">
+          <table>
+            <thead><tr>
+              <th>Folio</th><th>Fecha</th><th>Total</th><th>Estatus</th><th>Procesada por</th>
+            </tr></thead>
+            <tbody>
+              ${solicitudes.map(s => `<tr>
+                <td>#${String(s.Id_Solicitud).padStart(4,'0')}</td>
+                <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
+                <td><strong>$${parseFloat(s.Total).toFixed(2)}</strong></td>
+                <td><span class="badge ${s.Estatus==='Pendiente'?'badge-warning':s.Estatus==='Procesada'?'badge-success':'badge-error'}">
+                  ${s.Estatus}</span></td>
+                <td>${s.NombreRecep ? `${s.NombreRecep} ${s.ApRecep}` : '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` :
+        '<div class="empty-state"><div class="empty-icon">🛒</div><h3>Sin solicitudes</h3><p>Aún no has enviado ninguna solicitud.</p></div>'}
+      </div>
+
+      <!-- Carrito flotante -->
+      <div id="carrito-panel" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;
+           width:320px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);
+           border:1.5px solid var(--border);z-index:1000;padding:1.25rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+          <strong>🛒 Carrito</strong>
+          <button onclick="cerrarCarrito()" style="background:none;border:none;font-size:1.1rem;cursor:pointer">✕</button>
+        </div>
+        <div id="carrito-items" style="max-height:220px;overflow-y:auto;margin-bottom:.75rem"></div>
+        <div style="border-top:1px solid var(--border);padding-top:.75rem">
+          <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:.75rem">
+            <span>Total</span><span id="carrito-total">$0.00</span>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="enviarSolicitud()">
+            📤 Enviar solicitud
+          </button>
+        </div>
+      </div>
+
+      <!-- Botón flotante carrito -->
+      <button id="carrito-fab" onclick="toggleCarrito()"
+              style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;
+                     width:56px;height:56px;border-radius:50%;background:var(--primary,#2D5F5D);
+                     color:#fff;border:none;font-size:1.4rem;cursor:pointer;
+                     box-shadow:0 4px 16px rgba(45,95,93,.4);z-index:999">
+        🛒<span id="carrito-count"
+               style="position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;
+                      border-radius:50%;width:18px;height:18px;font-size:.7rem;
+                      display:flex;align-items:center;justify-content:center;font-weight:700">0</span>
+      </button>
+
+    </div>`;
+}
+
+function switchCatTab(tab) {
+    ['cat-meds','cat-servs','cat-hist'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === tab ? '' : 'none';
+    });
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === tab));
+}
+
+function agregarAlCarrito(tipo, id, nombre, precio, unidad) {
+    const existente = _carrito.find(i => i.tipo === tipo && i.id === id);
+    if (existente) {
+        existente.cantidad++;
+        existente.subtotal = parseFloat((existente.precio * existente.cantidad).toFixed(2));
+    } else {
+        _carrito.push({ tipo, id, nombre, precio: parseFloat(precio), unidad, cantidad: 1,
+                        subtotal: parseFloat(precio) });
+    }
+    actualizarCarritoUI();
+    mostrarCarrito();
+    toast(`"${nombre}" agregado al carrito.`, 'success');
+}
+
+function actualizarCarritoUI() {
+    const items   = document.getElementById('carrito-items');
+    const totalEl = document.getElementById('carrito-total');
+    const countEl = document.getElementById('carrito-count');
+    const fab     = document.getElementById('carrito-fab');
+    if (!items) return;
+
+    const total = _carrito.reduce((s, i) => s + i.subtotal, 0);
+    if (totalEl)  totalEl.textContent  = `$${total.toFixed(2)}`;
+    if (countEl)  countEl.textContent  = _carrito.reduce((s, i) => s + i.cantidad, 0);
+    if (fab)      fab.style.display    = _carrito.length ? 'flex' : 'none';
+
+    items.innerHTML = _carrito.length ? _carrito.map((item, idx) => `
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;
+                  border-bottom:1px solid var(--border)">
+        <div style="flex:1;font-size:.85rem">
+          <div style="font-weight:600">${item.nombre}</div>
+          <div style="color:var(--text-secondary);font-size:.78rem">
+            $${item.precio.toFixed(2)} ${item.unidad ? '/ ' + item.unidad : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.25rem">
+          <button onclick="cambiarCantidad(${idx},-1)"
+                  style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);
+                         background:none;cursor:pointer;font-size:.9rem">−</button>
+          <span style="min-width:18px;text-align:center;font-size:.85rem">${item.cantidad}</span>
+          <button onclick="cambiarCantidad(${idx},1)"
+                  style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);
+                         background:none;cursor:pointer;font-size:.9rem">+</button>
+          <button onclick="quitarDelCarrito(${idx})"
+                  style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:.9rem;margin-left:.25rem">✕</button>
+        </div>
+      </div>`).join('') :
+      '<p style="text-align:center;color:var(--text-secondary);font-size:.85rem;padding:.5rem 0">Carrito vacío</p>';
+}
+
+function cambiarCantidad(idx, delta) {
+    _carrito[idx].cantidad += delta;
+    if (_carrito[idx].cantidad <= 0) { _carrito.splice(idx, 1); }
+    else { _carrito[idx].subtotal = parseFloat((_carrito[idx].precio * _carrito[idx].cantidad).toFixed(2)); }
+    actualizarCarritoUI();
+}
+function quitarDelCarrito(idx) { _carrito.splice(idx, 1); actualizarCarritoUI(); }
+
+function mostrarCarrito() {
+    const panel = document.getElementById('carrito-panel');
+    const fab   = document.getElementById('carrito-fab');
+    if (panel) { panel.style.display = 'block'; if (fab) fab.style.display = 'none'; }
+}
+function cerrarCarrito() {
+    const panel = document.getElementById('carrito-panel');
+    const fab   = document.getElementById('carrito-fab');
+    if (panel) panel.style.display = 'none';
+    if (fab && _carrito.length) fab.style.display = 'flex';
+}
+function toggleCarrito() {
+    const panel = document.getElementById('carrito-panel');
+    if (!panel) return;
+    panel.style.display === 'none' ? mostrarCarrito() : cerrarCarrito();
+}
+
+async function enviarSolicitud() {
+    if (!_carrito.length) { toast('El carrito está vacío.', 'error'); return; }
+    try {
+        const res = await farmacia.crearSolicitud({
+            items: _carrito.map(i => ({ tipo: i.tipo, id: i.id, cantidad: i.cantidad }))
+        });
+        toast(`Solicitud #${String(res.id_solicitud).padStart(4,'0')} enviada. La recepcionista la procesará pronto.`, 'success');
+        _carrito = [];
+        actualizarCarritoUI();
+        cerrarCarrito();
+        loadView('farmacia-paciente');
+    } catch (e) {
+        toast(e.message || 'Error al enviar la solicitud.', 'error');
+    }
+}
+
+/* ── MIS RECETAS ──────────────────────────────────── */
+async function renderMisRecetas(container, _token) {
+    if (_stale(_token)) return;
+    const recetas = await paciente.obtenerMisRecetas();
+
+    if (!recetas || recetas.length === 0) {
+        container.innerHTML =
+            '<div class="view-content">' +
+              '<div class="empty-state">' +
+                '<div class="empty-icon">💊</div>' +
+                '<h3>Sin recetas</h3>' +
+                '<p>Aún no tienes recetas médicas emitidas.</p>' +
+              '</div>' +
+            '</div>';
+        return;
+    }
+
+    // Una tarjeta por receta con opción de expandir el detalle
+    const tarjetas = recetas.map((r, idx) => {
+        const folio       = String(r.Folio_Cita).padStart(5, '0');
+        const idReceta    = String(r.Id_Receta).padStart(5, '0');
+        const fechaEmit   = utils.formatearFecha(r.FechaEmision);
+        const fechaCita   = utils.formatearFecha(r.Fecha_Cita);
+        const hora        = utils.formatearHora(r.Hora_Cita);
+        const doctor      = `Dr. ${r.NombreDoctor} ${r.ApPaternoDoctor}`;
+        const cedula      = r.Cedula_prof  || '—';
+        const especialidad = r.Especialidad || '—';
+        const medicamento = (r.Medicamento   || '').replace(/\n/g, '<br>');
+        const tratamiento = (r.Tratamiento   || '').replace(/\n/g, '<br>');
+        const obs         = (r.Observaciones || '').replace(/\n/g, '<br>');
+
+        return (
+            '<div class="info-card" style="margin-bottom:1rem">' +
+
+              // ── Cabecera siempre visible ──────────────────────────
+              '<div class="info-header" style="cursor:pointer;user-select:none" ' +
+                   'onclick="toggleReceta(' + idx + ')">' +
+                '<div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">' +
+                  '<span style="font-size:1.5rem">💊</span>' +
+                  '<div>' +
+                    '<div style="font-weight:700">Receta #' + idReceta + '</div>' +
+                    '<div style="font-size:.85rem;color:var(--text-secondary)">' +
+                      'Emitida el ' + fechaEmit + ' · ' + especialidad +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<span id="receta-chevron-' + idx + '" ' +
+                      'style="font-size:1.1rem;transition:transform .2s">▼</span>' +
+              '</div>' +
+
+              // ── Cuerpo desplegable ────────────────────────────────
+              '<div id="receta-body-' + idx + '" ' +
+                   'style="display:none;padding:1rem 0 0">' +
+
+                // Datos del médico y cita
+                '<div class="info-grid" style="margin-bottom:1rem">' +
+                  '<div>' +
+                    ir('Doctor', doctor) +
+                    ir('Cédula Profesional', cedula) +
+                    ir('Especialidad', especialidad) +
+                  '</div>' +
+                  '<div>' +
+                    ir('Cita #', '#' + folio) +
+                    ir('Fecha de Consulta', fechaCita + ' ' + hora) +
+                    ir('Emisión de Receta', fechaEmit) +
+                  '</div>' +
+                '</div>' +
+
+                // Contenido médico
+                '<div style="border-top:1px solid var(--border);padding-top:1rem;display:grid;gap:.75rem">' +
+
+                  '<div>' +
+                    '<div style="font-size:.75rem;font-weight:700;text-transform:uppercase;' +
+                         'letter-spacing:.06em;color:var(--text-secondary);margin-bottom:.35rem">' +
+                      'Medicamento(s)' +
+                    '</div>' +
+                    '<div style="background:var(--bg-secondary,#f8f9fa);border-radius:8px;' +
+                         'padding:.75rem 1rem;font-size:.9rem;line-height:1.6">' +
+                      medicamento +
+                    '</div>' +
+                  '</div>' +
+
+                  '<div>' +
+                    '<div style="font-size:.75rem;font-weight:700;text-transform:uppercase;' +
+                         'letter-spacing:.06em;color:var(--text-secondary);margin-bottom:.35rem">' +
+                      'Tratamiento' +
+                    '</div>' +
+                    '<div style="background:var(--bg-secondary,#f8f9fa);border-radius:8px;' +
+                         'padding:.75rem 1rem;font-size:.9rem;line-height:1.6">' +
+                      tratamiento +
+                    '</div>' +
+                  '</div>' +
+
+                  (obs ?
+                    '<div>' +
+                      '<div style="font-size:.75rem;font-weight:700;text-transform:uppercase;' +
+                           'letter-spacing:.06em;color:var(--text-secondary);margin-bottom:.35rem">' +
+                        'Observaciones' +
+                      '</div>' +
+                      '<div style="background:var(--bg-secondary,#f8f9fa);border-radius:8px;' +
+                           'padding:.75rem 1rem;font-size:.9rem;line-height:1.6">' +
+                        obs +
+                      '</div>' +
+                    '</div>'
+                  : '') +
+
+                '</div>' +
+              '</div>' + // receta-body
+
+            '</div>'    // info-card
+        );
+    }).join('');
+
+    container.innerHTML =
+        '<div class="view-content">' +
+          '<div style="margin-bottom:1rem;display:flex;align-items:center;' +
+               'justify-content:space-between;flex-wrap:wrap;gap:.5rem">' +
+            '<p style="color:var(--text-secondary);font-size:.9rem">' +
+              recetas.length + ' receta' + (recetas.length !== 1 ? 's' : '') + ' emitida' +
+              (recetas.length !== 1 ? 's' : '') +
+            '</p>' +
+            '<button class="btn btn-secondary btn-sm" onclick="expandirTodasRecetas(' + recetas.length + ')">' +
+              'Expandir todas' +
+            '</button>' +
+          '</div>' +
+          tarjetas +
+        '</div>';
+}
+
+// Alterna la visibilidad de una receta individual
+function toggleReceta(idx) {
+    const body    = document.getElementById('receta-body-' + idx);
+    const chevron = document.getElementById('receta-chevron-' + idx);
+    if (!body) return;
+    const abierto = body.style.display !== 'none';
+    body.style.display    = abierto ? 'none' : 'block';
+    chevron.style.transform = abierto ? '' : 'rotate(180deg)';
+}
+
+// Expande o colapsa todas las recetas a la vez
+function expandirTodasRecetas(total) {
+    const body0 = document.getElementById('receta-body-0');
+    const expandir = body0 && body0.style.display === 'none';
+    for (let i = 0; i < total; i++) {
+        const body    = document.getElementById('receta-body-' + i);
+        const chevron = document.getElementById('receta-chevron-' + i);
+        if (body)    body.style.display      = expandir ? 'block' : 'none';
+        if (chevron) chevron.style.transform = expandir ? 'rotate(180deg)' : '';
+    }
 }
 
 /* ── HISTORIAL MÉDICO ─────────────────────────────── */

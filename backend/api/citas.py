@@ -47,8 +47,14 @@ def listar_citas():
         filtros.append('c.Fecha_Cita <= ?')
         params.append(fecha_fin)
     if estatus_f:
-        filtros.append('ec.Clave = ?')
-        params.append(estatus_f)
+        # Valor especial: agrupa los tres tipos de cancelación
+        if estatus_f == 'canceladas':
+            filtros.append(
+                "ec.Clave IN ('cancelada_paciente', 'cancelada_doctor', 'cancelada_falta_pago')"
+            )
+        else:
+            filtros.append('ec.Clave = ?')
+            params.append(estatus_f)
 
     where = ('WHERE ' + ' AND '.join(filtros)) if filtros else ''
 

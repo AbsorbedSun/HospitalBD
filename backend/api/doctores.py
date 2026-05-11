@@ -152,8 +152,8 @@ def crear_receta():
     id_receta = execute_insert_returning_id(
         """
         INSERT INTO Receta (Folio_Cita, Medicamento, Tratamiento, Observaciones)
-        VALUES (?, ?, ?, ?);
-        SELECT SCOPE_IDENTITY();
+        OUTPUT INSERTED.Id_Receta
+        VALUES (?, ?, ?, ?)
         """,
         (
             data['folio_cita'],

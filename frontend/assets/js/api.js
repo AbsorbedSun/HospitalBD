@@ -20,7 +20,7 @@ const CONFIG = {
  * - Lanza errores con mensajes descriptivos (incluyendo errores de red).
  */
 async function apiRequest(endpoint, options = {}) {
-    const token = localStorage.getItem('authToken');
+    const token = sessionStorage.getItem('authToken');
 
     const headers = {
         'Content-Type': 'application/json',
@@ -85,9 +85,9 @@ const auth = {
             method: 'POST',
             body: JSON.stringify({ email, password })
         });
-        localStorage.setItem('authToken',    data.token);
-        localStorage.setItem('currentUser',  JSON.stringify(data.user));
-        localStorage.setItem('isLoggedIn',   'true');
+        sessionStorage.setItem('authToken',    data.token);
+        sessionStorage.setItem('currentUser',  JSON.stringify(data.user));
+        sessionStorage.setItem('isLoggedIn',   'true');
         return data;
     },
 
@@ -96,25 +96,25 @@ const auth = {
             method: 'POST',
             body: JSON.stringify(userData)
         });
-        localStorage.setItem('authToken',   data.token);
-        localStorage.setItem('currentUser', JSON.stringify(data.user));
-        localStorage.setItem('isLoggedIn',  'true');
+        sessionStorage.setItem('authToken',   data.token);
+        sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+        sessionStorage.setItem('isLoggedIn',  'true');
         return data;
     },
 
     verify: async () => apiRequest('/auth/verify'),
 
     logout: () => {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('isLoggedIn');
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('currentUser');
+        sessionStorage.removeItem('isLoggedIn');
         window.location.href = '/pages/auth/login.html';
     },
 
-    isAuthenticated: () => !!localStorage.getItem('authToken'),
+    isAuthenticated: () => !!sessionStorage.getItem('authToken'),
 
     getCurrentUser: () => {
-        const u = localStorage.getItem('currentUser');
+        const u = sessionStorage.getItem('currentUser');
         return u ? JSON.parse(u) : null;
     }
 };
@@ -159,6 +159,7 @@ const paciente = {
     obtenerPerfil:        ()        => apiRequest('/pacientes/perfil'),
     actualizarPerfil:     (d)       => apiRequest('/pacientes/perfil', { method:'PUT', body:JSON.stringify(d) }),
     obtenerHistorialMedico: ()      => apiRequest('/pacientes/historial-medico'),
+    obtenerMisRecetas:    ()        => apiRequest('/pacientes/mis-recetas'),
     listarTodos: (filtros = {}) => {
         const p = new URLSearchParams(filtros).toString();
         return apiRequest(`/pacientes${p ? '?' + p : ''}`);
@@ -193,7 +194,13 @@ const doctor = {
 // RECEPCIONISTA
 // ============================================================
 const recepcionista = {
+    obtenerPerfil:        ()          => apiRequest('/recepcionistas/perfil'),
+    actualizarPerfil:     (d)         => apiRequest('/recepcionistas/perfil', { method:'PUT', body:JSON.stringify(d) }),
     obtenerDashboard:     ()          => apiRequest('/recepcionistas/dashboard'),
+    // Solicitudes de compra
+    listarSolicitudesCompra: (est='Pendiente') => apiRequest(`/recepcionistas/solicitudes-compra?estatus=${est}`),
+    procesarSolicitudCompra: (id)     => apiRequest(`/recepcionistas/solicitudes-compra/${id}/procesar`, { method:'POST' }),
+    rechazarSolicitudCompra: (id, motivo) => apiRequest(`/recepcionistas/solicitudes-compra/${id}/rechazar`, { method:'POST', body:JSON.stringify({ motivo }) }),
     obtenerBitacoraEstatus: (f = {})  => {
         const p = new URLSearchParams(f).toString();
         return apiRequest(`/recepcionistas/bitacora/estatus${p ? '?' + p : ''}`);
@@ -219,9 +226,16 @@ const farmacia = {
     obtenerMedicamento:   (id)  => apiRequest(`/farmacia/medicamentos/${id}`),
     crearMedicamento:     (d)   => apiRequest('/farmacia/medicamentos',  { method:'POST', body:JSON.stringify(d) }),
     actualizarMedicamento:(id,d)=> apiRequest(`/farmacia/medicamentos/${id}`, { method:'PUT', body:JSON.stringify(d) }),
+    eliminarMedicamento:  (id)  => apiRequest(`/farmacia/medicamentos/${id}`, { method:'DELETE' }),
     obtenerServicios:     ()    => apiRequest('/farmacia/servicios'),
     crearServicio:        (d)   => apiRequest('/farmacia/servicios',    { method:'POST', body:JSON.stringify(d) }),
     actualizarServicio:   (id,d)=> apiRequest(`/farmacia/servicios/${id}`, { method:'PUT', body:JSON.stringify(d) }),
+    eliminarServicio:     (id)  => apiRequest(`/farmacia/servicios/${id}`, { method:'DELETE' }),
+    catalogo:             ()    => apiRequest('/farmacia/catalogo'),
+    // Solicitudes de compra (paciente)
+    crearSolicitud:       (d)   => apiRequest('/farmacia/solicitudes',  { method:'POST', body:JSON.stringify(d) }),
+    misSolicitudes:       ()    => apiRequest('/farmacia/solicitudes'),
+    detalleSolicitud:     (id)  => apiRequest(`/farmacia/solicitudes/${id}/detalle`),
     realizarVenta:        (d)   => apiRequest('/farmacia/ventas',       { method:'POST', body:JSON.stringify(d) }),
     obtenerVentas: (f={}) => {
         const p = new URLSearchParams(f).toString();

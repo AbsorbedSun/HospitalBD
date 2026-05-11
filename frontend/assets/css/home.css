@@ -370,3 +370,187 @@ body {
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 1rem;
 }
+
+/* ══════════════════════════════════════════════════════
+   FARMACIA PÚBLICA
+══════════════════════════════════════════════════════ */
+.farmacia-publica {
+    padding: 6rem 0;
+    background: #f8fffe;
+}
+
+.section-desc {
+    max-width: 580px;
+    margin: .75rem auto 0;
+    color: #64748b;
+    font-size: 1rem;
+    line-height: 1.6;
+    text-align: center;
+}
+
+/* Aviso "¿Cómo adquirir?" */
+.farmacia-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    background: #e8f5f4;
+    border-left: 4px solid #2D5F5D;
+    border-radius: 12px;
+    padding: 1.1rem 1.5rem;
+    margin: 2rem auto 2.5rem;
+    max-width: 720px;
+}
+.farmacia-aviso .aviso-icon { font-size: 1.75rem; flex-shrink: 0; }
+.farmacia-aviso strong      { display: block; color: #2D5F5D; margin-bottom: .25rem; font-size: 1rem; }
+.farmacia-aviso p           { margin: 0; color: #475569; font-size: .9rem; line-height: 1.5; }
+
+/* Tabs */
+.farmacia-tabs {
+    display: flex;
+    gap: .5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+.tab-btn {
+    padding: .55rem 1.5rem;
+    border-radius: 999px;
+    border: 2px solid #2D5F5D;
+    background: transparent;
+    color: #2D5F5D;
+    font-weight: 600;
+    font-size: .95rem;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+}
+.tab-btn.active,
+.tab-btn:hover {
+    background: #2D5F5D;
+    color: #fff;
+}
+
+/* Buscador */
+.farmacia-search {
+    max-width: 440px;
+    margin: 0 auto 2rem;
+}
+.farmacia-search input {
+    width: 100%;
+    padding: .65rem 1.1rem;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 999px;
+    font-size: .95rem;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    box-sizing: border-box;
+}
+.farmacia-search input:focus {
+    border-color: #2D5F5D;
+    box-shadow: 0 0 0 3px rgba(45,95,93,.12);
+}
+
+/* Grid de tarjetas */
+.catalogo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1.25rem;
+}
+
+/* Tarjeta de producto */
+.catalogo-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1.5px solid #e2e8f0;
+    padding: 1.25rem 1.1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.catalogo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(45,95,93,.13);
+    border-color: #2D5F5D;
+}
+.catalogo-card-icon { font-size: 2rem; }
+.catalogo-card-body { flex: 1; }
+.catalogo-card-body h4 {
+    margin: 0 0 .3rem;
+    font-size: 1rem;
+    color: #1e293b;
+}
+.catalogo-card-body p {
+    margin: 0;
+    font-size: .82rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+.catalogo-card-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .4rem;
+    border-top: 1px solid #f1f5f9;
+    padding-top: .6rem;
+}
+.catalogo-precio {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #2D5F5D;
+    flex: 1;
+}
+.catalogo-unidad {
+    font-size: .75rem;
+    color: #94a3b8;
+}
+
+/* Badges disponibilidad */
+.catalogo-badge {
+    font-size: .72rem;
+    font-weight: 600;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+}
+.badge-ok   { background: #dcfce7; color: #166534; }
+.badge-warn { background: #fef9c3; color: #854d0e; }
+
+/* Estados vacío / loading / error */
+.catalogo-loading {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    justify-content: center;
+    padding: 3rem 0;
+    color: #64748b;
+}
+.spinner-pub {
+    width: 22px; height: 22px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2D5F5D;
+    border-radius: 50%;
+    animation: spin-pub .7s linear infinite;
+}
+@keyframes spin-pub { to { transform: rotate(360deg); } }
+
+.catalogo-vacio,
+.catalogo-vacio-inner {
+    text-align: center;
+    color: #94a3b8;
+    padding: 2.5rem 0;
+    font-size: .95rem;
+    width: 100%;
+}
+.catalogo-vacio { display: none; }
+.catalogo-error {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #ef4444;
+    padding: 2rem 0;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .farmacia-tabs  { flex-direction: column; align-items: center; }
+    .catalogo-grid  { grid-template-columns: 1fr; }
+    .farmacia-aviso { flex-direction: column; }
+}

@@ -21,6 +21,7 @@
                 <a href="#inicio" class="nav-link active">Inicio</a>
                 <a href="#servicios" class="nav-link">Servicios</a>
                 <a href="#especialidades" class="nav-link">Especialidades</a>
+                <a href="#farmacia" class="nav-link">Farmacia</a>
                 <a href="#contacto" class="nav-link">Contacto</a>
             </div>
             <div class="nav-actions">
@@ -228,6 +229,64 @@
                     <h4>Pediatría</h4>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- Farmacia Pública -->
+    <section id="farmacia" class="farmacia-publica">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">FARMACIA Y SERVICIOS</span>
+                <h2 class="section-title">Disponible para todos</h2>
+                <p class="section-desc">
+                    No necesitas ser paciente registrado para adquirir medicamentos o servicios.
+                    Consulta nuestro catálogo y acércate a nuestro mostrador.
+                </p>
+            </div>
+
+            <!-- Aviso de compra -->
+            <div class="farmacia-aviso">
+                <span class="aviso-icon">🏥</span>
+                <div>
+                    <strong>¿Cómo adquirir?</strong>
+                    <p>Acude a nuestro mostrador de farmacia con o sin receta médica.
+                       Nuestro personal te atenderá sin necesidad de registro previo.</p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="farmacia-tabs">
+                <button class="tab-btn active" data-tab="medicamentos" onclick="switchTab('medicamentos')">
+                    💊 Medicamentos
+                </button>
+                <button class="tab-btn" data-tab="servicios" onclick="switchTab('servicios')">
+                    🏥 Servicios Extra
+                </button>
+            </div>
+
+            <!-- Buscador -->
+            <div class="farmacia-search">
+                <input type="text" id="catalogo-buscar" placeholder="Buscar medicamento o servicio…"
+                       oninput="filtrarCatalogo()">
+            </div>
+
+            <!-- Contenido -->
+            <div id="tab-medicamentos" class="catalogo-grid">
+                <div class="catalogo-loading">
+                    <div class="spinner-pub"></div>
+                    <span>Cargando catálogo…</span>
+                </div>
+            </div>
+            <div id="tab-servicios" class="catalogo-grid" style="display:none">
+                <div class="catalogo-loading">
+                    <div class="spinner-pub"></div>
+                    <span>Cargando servicios…</span>
+                </div>
+            </div>
+
+            <p id="catalogo-vacio" class="catalogo-vacio" style="display:none">
+                No se encontraron resultados para tu búsqueda.
+            </p>
         </div>
     </section>
 

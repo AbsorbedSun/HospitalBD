@@ -19,6 +19,32 @@ farmacia_bp = Blueprint('farmacia', __name__)
 # MEDICAMENTOS
 # ================================================================
 
+# GET /api/farmacia/catalogo   (público — sin autenticación)
+# Devuelve medicamentos con stock > 0 y todos los servicios
+# para mostrarse en la landing page sin requerir login.
+@farmacia_bp.route('/catalogo', methods=['GET'])
+def catalogo_publico():
+    medicamentos = execute_query(
+        """
+        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad, Stock
+        FROM   Farmacia
+        WHERE  Stock > 0
+        ORDER  BY Nombre
+        """
+    )
+    servicios = execute_query(
+        """
+        SELECT Id_Servicio, Nombre, Descripcion, Precio
+        FROM   Servicio
+        ORDER  BY Nombre
+        """
+    )
+    return jsonify({
+        'medicamentos': rows_to_json(medicamentos),
+        'servicios':    rows_to_json(servicios)
+    }), 200
+
+
 # GET /api/farmacia/medicamentos
 @farmacia_bp.route('/medicamentos', methods=['GET'])
 @requiere_auth
@@ -66,8 +92,8 @@ def crear_medicamento():
     id_nuevo = execute_insert_returning_id(
         """
         INSERT INTO Farmacia (Nombre, Descripcion, Precio, Unidad, Stock)
-        VALUES (?, ?, ?, ?, ?);
-        SELECT SCOPE_IDENTITY();
+        OUTPUT INSERTED.Id_Farmacia
+        VALUES (?, ?, ?, ?, ?)
         """,
         (
             data['nombre'].strip(),
@@ -107,6 +133,35 @@ def actualizar_medicamento(id_farmacia):
     return jsonify({'mensaje': 'Medicamento actualizado.'}), 200
 
 
+# DELETE /api/farmacia/medicamentos/<id>   (eliminar medicamento)
+@farmacia_bp.route('/medicamentos/<int:id_farmacia>', methods=['DELETE'])
+@requiere_rol('recepcionista', 'admin')
+def eliminar_medicamento(id_farmacia):
+    # Verificar que el medicamento existe
+    existe = execute_query(
+        'SELECT Id_Farmacia, Nombre FROM Farmacia WHERE Id_Farmacia = ?',
+        (id_farmacia,)
+    )
+    if not existe:
+        return jsonify({'error': 'Medicamento no encontrado.'}), 404
+
+    # Verificar que no tiene ventas asociadas (integridad referencial)
+    en_uso = execute_query(
+        'SELECT TOP 1 Id_Venta FROM Detalle_Venta WHERE Id_Farmacia = ?',
+        (id_farmacia,)
+    )
+    if en_uso:
+        return jsonify({
+            'error': f'No se puede eliminar "{existe[0]["Nombre"]}" porque tiene ventas registradas. '
+                     'Considera dejarlo con stock 0 en lugar de eliminarlo.'
+        }), 409
+
+    execute_non_query(
+        'DELETE FROM Farmacia WHERE Id_Farmacia = ?', (id_farmacia,)
+    )
+    return jsonify({'mensaje': 'Medicamento eliminado correctamente.'}), 200
+
+
 # ================================================================
 # SERVICIOS
 # ================================================================
@@ -132,8 +187,8 @@ def crear_servicio():
     id_nuevo = execute_insert_returning_id(
         """
         INSERT INTO Servicio (Nombre, Precio, Descripcion)
-        VALUES (?, ?, ?);
-        SELECT SCOPE_IDENTITY();
+        OUTPUT INSERTED.Id_Servicio
+        VALUES (?, ?, ?)
         """,
         (data['nombre'].strip(), float(data['precio']), data.get('descripcion', ''))
     )
@@ -158,6 +213,32 @@ def actualizar_servicio(id_servicio):
         tuple(params)
     )
     return jsonify({'mensaje': 'Servicio actualizado.'}), 200
+
+
+# DELETE /api/farmacia/servicios/<id>   (eliminar servicio)
+@farmacia_bp.route('/servicios/<int:id_servicio>', methods=['DELETE'])
+@requiere_rol('recepcionista', 'admin')
+def eliminar_servicio(id_servicio):
+    existe = execute_query(
+        'SELECT Id_Servicio, Nombre FROM Servicio WHERE Id_Servicio = ?',
+        (id_servicio,)
+    )
+    if not existe:
+        return jsonify({'error': 'Servicio no encontrado.'}), 404
+
+    en_uso = execute_query(
+        'SELECT TOP 1 Id_Venta FROM Detalle_Venta WHERE Id_Servicio = ?',
+        (id_servicio,)
+    )
+    if en_uso:
+        return jsonify({
+            'error': f'No se puede eliminar "{existe[0]["Nombre"]}" porque tiene ventas registradas.'
+        }), 409
+
+    execute_non_query(
+        'DELETE FROM Servicio WHERE Id_Servicio = ?', (id_servicio,)
+    )
+    return jsonify({'mensaje': 'Servicio eliminado correctamente.'}), 200
 
 
 # ================================================================
@@ -337,3 +418,169 @@ def realizar_venta():
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
+
+
+# ================================================================
+# SOLICITUDES DE COMPRA  (paciente ↔ recepcionista)
+# ================================================================
+
+# POST /api/farmacia/solicitudes   (paciente crea solicitud)
+@farmacia_bp.route('/solicitudes', methods=['POST'])
+@requiere_auth
+def crear_solicitud_compra():
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+    data       = request.get_json(silent=True) or {}
+    items      = data.get('items', [])
+
+    if not items:
+        return jsonify({'error': 'El carrito está vacío.'}), 400
+
+    # Obtener Id_Paciente desde el usuario autenticado
+    rows = execute_query(
+        'SELECT Id_Paciente FROM Paciente WHERE Id_Usuario = ?', (id_usuario,)
+    )
+    if not rows:
+        return jsonify({'error': 'Usuario no registrado como paciente.'}), 403
+    id_paciente = rows[0]['Id_Paciente']
+
+    # Validar items y calcular total verificando precios reales en BD
+    total = 0.0
+    items_validados = []
+    for item in items:
+        tipo     = item.get('tipo')       # 'farmacia' o 'servicio'
+        id_item  = item.get('id')
+        cantidad = int(item.get('cantidad', 1))
+
+        if tipo == 'farmacia':
+            prod = execute_query(
+                'SELECT Nombre, Precio, Stock FROM Farmacia WHERE Id_Farmacia = ?',
+                (id_item,)
+            )
+            if not prod:
+                return jsonify({'error': f'Medicamento id={id_item} no encontrado.'}), 400
+            if prod[0]['Stock'] < cantidad:
+                return jsonify({
+                    'error': f'Stock insuficiente para "{prod[0]["Nombre"]}". '
+                             f'Disponible: {prod[0]["Stock"]}.'
+                }), 409
+            subtotal = float(prod[0]['Precio']) * cantidad
+        elif tipo == 'servicio':
+            serv = execute_query(
+                'SELECT Nombre, Precio FROM Servicio WHERE Id_Servicio = ?', (id_item,)
+            )
+            if not serv:
+                return jsonify({'error': f'Servicio id={id_item} no encontrado.'}), 400
+            subtotal = float(serv[0]['Precio']) * cantidad
+        else:
+            return jsonify({'error': f'Tipo de ítem inválido: {tipo}.'}), 400
+
+        total += subtotal
+        items_validados.append({
+            'tipo': tipo, 'id': id_item, 'cantidad': cantidad, 'subtotal': round(subtotal, 2)
+        })
+
+    # Insertar SolicitudCompra y su detalle en una transacción
+    conn = None
+    try:
+        from db.connection import get_db
+        conn   = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO SolicitudCompra (Id_Paciente, Total, Notas)
+            OUTPUT INSERTED.Id_Solicitud
+            VALUES (?, ?, ?)
+            """,
+            (id_paciente, round(total, 2), data.get('notas', ''))
+        )
+        id_solicitud = int(cursor.fetchone()[0])
+
+        for item in items_validados:
+            id_serv = item['id'] if item['tipo'] == 'servicio' else None
+            id_farm = item['id'] if item['tipo'] == 'farmacia'  else None
+            cursor.execute(
+                """
+                INSERT INTO Detalle_SolicitudCompra
+                       (Id_Solicitud, Id_Servicio, Id_Farmacia, Cantidad, Subtotal)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (id_solicitud, id_serv, id_farm, item['cantidad'], item['subtotal'])
+            )
+
+        conn.commit()
+        return jsonify({
+            'id_solicitud': id_solicitud,
+            'total':        round(total, 2),
+            'mensaje':      'Solicitud enviada. La recepcionista la procesará en breve.'
+        }), 201
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+# GET /api/farmacia/solicitudes   (paciente consulta sus propias solicitudes)
+@farmacia_bp.route('/solicitudes', methods=['GET'])
+@requiere_auth
+def mis_solicitudes_compra():
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+
+    rows = execute_query(
+        """
+        SELECT sc.Id_Solicitud, sc.Estatus, sc.Fecha_Solicitud,
+               sc.Fecha_Proceso, sc.Total, sc.Notas,
+               u.Nombre   AS NombreRecep,
+               u.Ap_Paterno AS ApRecep
+        FROM   SolicitudCompra sc
+        LEFT JOIN Recepcionista r ON sc.Id_Recepcionista = r.Id_Recepcionista
+        LEFT JOIN Usuario       u ON r.Id_Usuario        = u.Id_Usuario
+        JOIN  Paciente          p ON sc.Id_Paciente      = p.Id_Paciente
+        WHERE  p.Id_Usuario = ?
+        ORDER  BY sc.Fecha_Solicitud DESC
+        """,
+        (id_usuario,)
+    )
+    return jsonify(rows_to_json(rows)), 200
+
+
+# GET /api/farmacia/solicitudes/<id>/detalle   (detalle de una solicitud)
+@farmacia_bp.route('/solicitudes/<int:id_solicitud>/detalle', methods=['GET'])
+@requiere_auth
+def detalle_solicitud(id_solicitud):
+    claims     = get_jwt()
+    id_usuario = claims.get('id_usuario')
+    rol        = claims.get('rol', '')
+
+    # Paciente solo ve sus propias; recepcionista ve todas
+    if rol == 'paciente':
+        owner = execute_query(
+            """
+            SELECT 1 FROM SolicitudCompra sc
+            JOIN Paciente p ON sc.Id_Paciente = p.Id_Paciente
+            WHERE sc.Id_Solicitud = ? AND p.Id_Usuario = ?
+            """,
+            (id_solicitud, id_usuario)
+        )
+        if not owner:
+            return jsonify({'error': 'Solicitud no encontrada.'}), 404
+
+    rows = execute_query(
+        """
+        SELECT dsc.Id_Detalle, dsc.Cantidad, dsc.Subtotal,
+               f.Nombre  AS NombreFarmacia, f.Unidad,
+               s.Nombre  AS NombreServicio
+        FROM   Detalle_SolicitudCompra dsc
+        LEFT JOIN Farmacia f ON dsc.Id_Farmacia = f.Id_Farmacia
+        LEFT JOIN Servicio s ON dsc.Id_Servicio = s.Id_Servicio
+        WHERE  dsc.Id_Solicitud = ?
+        """,
+        (id_solicitud,)
+    )
+    return jsonify(rows_to_json(rows)), 200

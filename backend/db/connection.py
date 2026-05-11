@@ -71,15 +71,31 @@ def execute_non_query(sql, params=None):
 
 def execute_insert_returning_id(sql, params=None):
     """
-    Ejecuta un INSERT + SELECT SCOPE_IDENTITY() y retorna el ID generado.
-    La sentencia SQL DEBE terminar con: ; SELECT SCOPE_IDENTITY();
+    Ejecuta un INSERT y retorna el ID generado.
+
+    Soporta dos patrones de SQL Server:
+      1. OUTPUT INSERTED.<col>  →  el propio INSERT devuelve una fila (recomendado).
+      2. INSERT ...; SELECT SCOPE_IDENTITY();  →  dos sentencias; pyodbc requiere
+         nextset() para avanzar al resultado del SELECT.
+
+    Usar preferentemente el patrón OUTPUT INSERTED para evitar ambigüedades.
     """
     conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute(sql, params or ())
+
+        # Intentar leer el resultado del conjunto actual.
+        # Con OUTPUT INSERTED esto funciona directamente.
         row = cursor.fetchone()
+
+        # Si no hay resultado, puede ser el patrón INSERT; SELECT SCOPE_IDENTITY()
+        # donde pyodbc deja el cursor en el result-set vacío del INSERT.
+        # Avanzamos al siguiente result-set (el SELECT) con nextset().
+        if row is None and cursor.nextset():
+            row = cursor.fetchone()
+
         conn.commit()
         if row is None or row[0] is None:
             return None
