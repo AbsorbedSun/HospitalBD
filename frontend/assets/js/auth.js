@@ -31,12 +31,12 @@
 function showNotification(message, type = 'info', title = '') {
     document.querySelectorAll('.notif').forEach(n => n.remove());
 
-    const icons   = { error:'❌', success:'✅', info:'ℹ️' };
+    const icons   = { error:`<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>`, success:`<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg>`, info:`<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9V14M10 7V7.5"/></svg>` };
     const titles  = { error:'Error', success:'¡Listo!', info:'Info' };
     const el      = document.createElement('div');
     el.className  = `notif notif-${type}`;
     el.innerHTML  = `
-        <span class="notif-icon">${icons[type] || 'ℹ️'}</span>
+        <span class="notif-icon">${icons[type] || `<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9V14M10 7V7.5"/></svg>`}</span>
         <div class="notif-body">
             <div class="notif-title">${title || titles[type] || ''}</div>
             <div class="notif-msg">${message}</div>

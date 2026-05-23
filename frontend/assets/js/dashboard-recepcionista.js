@@ -61,7 +61,7 @@ async function loadView(viewName) {
             case 'mi-perfil':   await renderMiPerfil(container);   break;
         }
     } catch(err) {
-        container.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
+        container.innerHTML=`<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L18 17H2L10 3Z"/><path d="M10 10V13M10 15.5V16"/></svg></div><h3>Error</h3><p>${err.message}</p></div>`;
     }
 }
 
@@ -76,7 +76,7 @@ async function renderDashboard(container) {
       <!-- Saludo principal -->
       <div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">
         <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
-          <div style="font-size:3rem">🏥</div>
+          <div style="color:var(--primary);margin-bottom:.5rem"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
           <div>
             <h2 style="font-size:1.5rem;font-family:'Playfair Display',serif;color:white;margin-bottom:.25rem">
               ${saludo}, ${user.nombre} ${user.ap_paterno}
@@ -88,12 +88,12 @@ async function renderDashboard(container) {
 
       <!-- Estadísticas del día -->
       <div class="stats-grid">
-        <div class="info-card stat-card"><div class="stat-icon">📅</div><div class="stat-value">${stats.CitasHoy||0}</div><div class="stat-label">Citas Hoy</div></div>
-        <div class="info-card stat-card"><div class="stat-icon">⏳</div><div class="stat-value">${stats.PendientesPago||0}</div><div class="stat-label">Pendientes de Pago</div></div>
-        <div class="info-card stat-card"><div class="stat-icon">👥</div><div class="stat-value">${stats.TotalPacientes||0}</div><div class="stat-label">Total Pacientes</div></div>
-        <div class="info-card stat-card"><div class="stat-icon">🩺</div><div class="stat-value">${stats.DoctoresActivos||0}</div><div class="stat-label">Doctores Activos</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div><div class="stat-value">${stats.CitasHoy||0}</div><div class="stat-label">Citas Hoy</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15M5 17H15"/><path d="M6 3C6 3 6 8 10 10C14 12 14 17 14 17"/><path d="M14 3C14 3 14 8 10 10C6 12 6 17 6 17"/></svg></div><div class="stat-value">${stats.PendientesPago||0}</div><div class="stat-label">Pendientes de Pago</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div><div class="stat-value">${stats.TotalPacientes||0}</div><div class="stat-label">Total Pacientes</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div><div class="stat-value">${stats.DoctoresActivos||0}</div><div class="stat-label">Doctores Activos</div></div>
         <div class="info-card stat-card">
-          <div class="stat-icon">🔔</div>
+          <div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 6 4.5 6 9V14H14V9C14 4.5 10 3 10 3Z"/><path d="M4 14H16"/><path d="M9 17H11"/></svg></div>
           <div class="stat-value" style="${stats.SolicitudesPendientes>0?'color:var(--error)':''}">${stats.SolicitudesPendientes||0}</div>
           <div class="stat-label">Solicitudes Pendientes</div>
           ${stats.SolicitudesPendientes>0?`<button class="btn btn-sm btn-danger" style="margin-top:.75rem" onclick="irVista('solicitudes')">Ver Solicitudes</button>`:''}
@@ -104,11 +104,11 @@ async function renderDashboard(container) {
       <div class="info-card" style="margin-top:1.5rem">
         <div class="info-header"><h3>Acciones Rápidas</h3></div>
         <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">
-          <button class="btn btn-primary"   onclick="irVista('citas')">📅 Ver Citas</button>
+          <button class="btn btn-primary"   onclick="irVista('citas')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg> Ver Citas</button>
           <button class="btn btn-secondary" onclick="nuevoDoctor()">+ Alta Doctor</button>
-          <button class="btn btn-secondary" onclick="irVista('farmacia')">💊 Venta Mostrador</button>
-          <button class="btn btn-secondary" onclick="irVista('pacientes')">👥 Pacientes</button>
-          <button class="btn btn-secondary" onclick="irVista('bitacoras')">📋 Bitácoras</button>
+          <button class="btn btn-secondary" onclick="irVista('farmacia')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Venta Mostrador</button>
+          <button class="btn btn-secondary" onclick="irVista('pacientes')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg> Pacientes</button>
+          <button class="btn btn-secondary" onclick="irVista('bitacoras')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Bitácoras</button>
         </div>
       </div>
     </div>`;
@@ -139,21 +139,21 @@ function dibujarTablaCitas(container, lista) {
         <td>${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?
           `<button class="btn btn-sm btn-danger" onclick="cancelarCitaRecep(${c.Folio_Cita})">Cancelar</button>`:''}
         </td></tr>`).join('') :
-        `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📭</div><h3>Sin citas</h3></div></td></tr>`;
+        `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3></div></td></tr>`;
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Todas las Citas</h3>
         <div class="table-filters">
           <input type="date" class="filter-input" id="rf-fecha">
           <select class="filter-select" id="rf-est">
             <option value="">Todos los estados</option>
-            <option value="agendada_pendiente_pago">⏳ Pend. Pago</option>
-            <option value="pagada_pendiente_atender">✅ Confirmadas</option>
-            <option value="atendida">🩺 Atendidas</option>
+            <option value="agendada_pendiente_pago">Pend. Pago</option>
+            <option value="pagada_pendiente_atender"> Confirmadas</option>
+            <option value="atendida">Atendidas</option>
             <option value="no_acudio">— No Acudió</option>
             <optgroup label="── Cancelaciones ──">
-              <option value="canceladas">❌ Todas las cancelaciones</option>
+              <option value="canceladas"> Todas las cancelaciones</option>
               <option value="cancelada_paciente">↩ Cancelada - Paciente</option>
-              <option value="cancelada_doctor">🩺 Cancelada - Doctor</option>
+              <option value="cancelada_doctor">Cancelada - Doctor</option>
               <option value="cancelada_falta_pago">💳 Cancelada - Sin pago</option>
             </optgroup>
           </select>
@@ -213,7 +213,7 @@ function dibujarTablaPacientes(container, lista) {
         <td>${p.Edad} años</td>
         <td><button class="btn btn-sm btn-secondary" onclick="verPaciente(${p.Id_Paciente})">Ver</button></td>
       </tr>`).join('') :
-      `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">👥</div><h3>Sin pacientes</h3></div></td></tr>`;
+      `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div><h3>Sin pacientes</h3></div></td></tr>`;
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Pacientes Registrados</h3>
         <div class="table-filters">
@@ -261,7 +261,7 @@ async function renderDoctores(container) {
         <td>${d.Turno}</td>
         <td>${(d.Hora_inic||'').substring(0,5)} – ${(d.Hora_final||'').substring(0,5)}</td>
       </tr>`).join('') :
-      `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🩺</div><h3>Sin doctores</h3></div></td></tr>`;
+      `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div><h3>Sin doctores</h3></div></td></tr>`;
     container.innerHTML = `<div class="view-content">
       <div style="margin-bottom:1.5rem">
         <button class="btn btn-primary" onclick="nuevoDoctor()">+ Alta Doctor</button>
@@ -368,12 +368,12 @@ async function renderFarmacia(container) {
       </div>
       <div class="info-grid">
         <div class="table-container">
-          <div class="table-header"><h3>💊 Medicamentos</h3></div>
+          <div class="table-header"><h3><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Medicamentos</h3></div>
           <table><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Unidad</th><th>Acciones</th></tr></thead>
           <tbody>${filasMeds}</tbody></table>
         </div>
         <div class="table-container">
-          <div class="table-header"><h3>🏥 Servicios Extra</h3></div>
+          <div class="table-header"><h3><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg> Servicios Extra</h3></div>
           <table><thead><tr><th>Servicio</th><th>Precio</th><th>Acciones</th></tr></thead>
           <tbody>${filasServs}</tbody></table>
         </div>
@@ -480,7 +480,7 @@ async function nuevaVentaModal() {
     let items = [];
     const renderItems = () => items.map((item,i) => `
       <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
-        <span style="flex:1">${item.tipo==='farmacia'?'💊':'🏥'} ${item.nombre}</span>
+        <span style="flex:1">${item.tipo==='farmacia'?'Med':'Serv'} ${item.nombre}</span>
         <input type="number" min="1" value="${item.cantidad}" style="width:60px;padding:.3rem;border:1px solid var(--border);border-radius:6px"
           onchange="actualizarCantItem(${i},this.value)">
         <span style="width:80px;text-align:right">${utils.formatearMoneda(item.precio*item.cantidad)}</span>
@@ -505,8 +505,8 @@ async function nuevaVentaModal() {
         </div>
         <div class="form-group"><label>Producto/Servicio</label>
           <select id="v-item">
-            ${meds.map(m=>`<option value="${m.Id_Farmacia}" data-tipo="farmacia" data-precio="${m.Precio}" data-nombre="${m.Nombre}">💊 ${m.Nombre} – ${utils.formatearMoneda(m.Precio)}</option>`).join('')}
-            ${servs.map(s=>`<option value="${s.Id_Servicio}" data-tipo="servicio" data-precio="${s.Precio}" data-nombre="${s.Nombre}">🏥 ${s.Nombre} – ${utils.formatearMoneda(s.Precio)}</option>`).join('')}
+            ${meds.map(m=>`<option value="${m.Id_Farmacia}" data-tipo="farmacia" data-precio="${m.Precio}" data-nombre="${m.Nombre}">${m.Nombre} – ${utils.formatearMoneda(m.Precio)}</option>`).join('')}
+            ${servs.map(s=>`<option value="${s.Id_Servicio}" data-tipo="servicio" data-precio="${s.Precio}" data-nombre="${s.Nombre}">${s.Nombre} – ${utils.formatearMoneda(s.Precio)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group"><label>Cantidad</label><input id="v-cant" type="number" min="1" value="1"></div>
@@ -755,9 +755,9 @@ async function renderSolicitudes(container) {
     container.innerHTML = `<div class="view-content">
       <div style="display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap">
         <button class="tab-btn active" data-tab="sol-cancel"
-                onclick="switchSolTab('sol-cancel')">🩺 Cancelaciones${badgeCancelaciones}</button>
+                onclick="switchSolTab('sol-cancel')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg> Cancelaciones${badgeCancelaciones}</button>
         <button class="tab-btn" data-tab="sol-compra"
-                onclick="switchSolTab('sol-compra')">🛒 Compras pendientes${badgeCompras}</button>
+                onclick="switchSolTab('sol-compra')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Compras pendientes${badgeCompras}</button>
       </div>
 
       <!-- Tab: Cancelaciones de citas -->
@@ -775,15 +775,15 @@ async function renderSolicitudes(container) {
                 <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
                 <td style="display:flex;gap:.35rem">
                   <button class="btn btn-sm btn-primary"
-                    onclick="aprobarCancelacion(${s.Id_Solicitud})">✅ Aprobar</button>
+                    onclick="aprobarCancelacion(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg> Aprobar</button>
                   <button class="btn btn-sm btn-danger"
-                    onclick="rechazarCancelacion(${s.Id_Solicitud})">❌ Rechazar</button>
+                    onclick="rechazarCancelacion(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg> Rechazar</button>
                 </td>
               </tr>`).join('')}
             </tbody>
           </table>
         </div>` :
-        '<div class="empty-state"><div class="empty-icon">✅</div><h3>Sin solicitudes de cancelación</h3><p>No hay cancelaciones pendientes.</p></div>'}
+        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 10L9 12L13 8"/></svg></div><h3>Sin solicitudes de cancelación</h3><p>No hay cancelaciones pendientes.</p></div>'}
       </div>
 
       <!-- Tab: Solicitudes de compra de pacientes -->
@@ -802,18 +802,18 @@ async function renderSolicitudes(container) {
                 <td style="display:flex;gap:.35rem">
                   <button class="btn btn-sm btn-primary"
                     onclick="verDetalleSolicitudCompra(${s.Id_Solicitud},'${s.NombrePaciente} ${s.ApPaternoPaciente}',${s.Total})">
-                    👁 Ver
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10C2 10 5 5 10 5C15 5 18 10 18 10C18 10 15 15 10 15C5 15 2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg> Ver
                   </button>
                   <button class="btn btn-sm btn-success"
-                    onclick="procesarCompra(${s.Id_Solicitud})">✅ Procesar</button>
+                    onclick="procesarCompra(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg> Procesar</button>
                   <button class="btn btn-sm btn-danger"
-                    onclick="rechazarCompra(${s.Id_Solicitud})">❌ Rechazar</button>
+                    onclick="rechazarCompra(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg> Rechazar</button>
                 </td>
               </tr>`).join('')}
             </tbody>
           </table>
         </div>` :
-        '<div class="empty-state"><div class="empty-icon">🛒</div><h3>Sin solicitudes de compra</h3><p>No hay compras pendientes de pacientes.</p></div>'}
+        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg></div><h3>Sin solicitudes de compra</h3><p>No hay compras pendientes de pacientes.</p></div>'}
       </div>
     </div>`;
 }
@@ -847,7 +847,7 @@ async function verDetalleSolicitudCompra(id, paciente, total) {
         </tr></tfoot>
       </table>`,
         async () => { await procesarCompra(id); },
-        'Procesar ✅'
+        'Procesar'
     );
 }
 
@@ -914,7 +914,7 @@ function abrirModal(titulo, body, onOk, btnTxt='Guardar', btnCls='btn-primary') 
 function cerrarModal() { document.getElementById('active-modal')?.remove(); }
 
 function toast(msg, type='info') {
-    const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+    const icons={success:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg>`,error:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>`,warning:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L18 17H2L10 3Z"/><path d="M10 10V13M10 15.5V16"/></svg>`,info:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9V14M10 7V7.5"/></svg>`};
     const el=document.createElement('div'); el.className=`toast ${type}`;
     el.innerHTML=`<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${msg}</span><button class="toast-x" onclick="this.parentElement.remove()">×</button>`;
     document.getElementById('toast-container').appendChild(el);
@@ -923,7 +923,7 @@ function toast(msg, type='info') {
 
 const ir = (l,v)=>`<div class="info-row"><span class="label">${l}</span><span class="value">${v??'—'}</span></div>`;
 function badgeEstatus(clave) {
-    const m={'agendada_pendiente_pago':['warning','🕐 Pend. Pago'],'pagada_pendiente_atender':['info','✅ Confirmada'],'cancelada_falta_pago':['error','❌ Canc. Pago'],'cancelada_paciente':['error','❌ Cancelada'],'cancelada_doctor':['error','❌ Canc. Doctor'],'atendida':['success','✓ Atendida'],'no_acudio':['neutral','— No Acudió']};
+    const m={'agendada_pendiente_pago':['warning','Pend. Pago'],'pagada_pendiente_atender':['info','Confirmada'],'cancelada_falta_pago':['error','Canc. Pago'],'cancelada_paciente':['error','Cancelada'],'cancelada_doctor':['error','Canc. Doctor'],'atendida':['success','Atendida'],'no_acudio':['neutral','No Acudio']};
     const [c,t]=m[clave]||['neutral',clave];
     return `<span class="badge badge-${c}">${t}</span>`;
 }

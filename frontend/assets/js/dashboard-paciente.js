@@ -71,7 +71,7 @@ async function loadView(viewName) {
         }
     } catch (err) {
         if (_loadingView === myToken) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${err.message}</p></div>`;
+            container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L18 17H2L10 3Z"/><path d="M10 10V13M10 15.5V16"/></svg></div><h3>Error</h3><p>${err.message}</p></div>`;
         }
     }
 }
@@ -129,7 +129,7 @@ async function renderInicio(container, _token) {
     if (!htmlProxima) {
         htmlProxima =
             '<div style="text-align:center;padding:1.5rem 0">' +
-              '<div style="font-size:2.5rem;margin-bottom:.75rem">📭</div>' +
+              '<div class="empty-icon"><svg width="25" height="25" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>' +
               '<p style="color:var(--text-secondary);margin-bottom:1rem">' +
                 'No tienes citas confirmadas próximamente.' +
               '</p>' +
@@ -150,7 +150,7 @@ async function renderInicio(container, _token) {
         // ── Banner de bienvenida ──────────────────────────────────────
         '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">' +
           '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
-            '<div style="font-size:3rem">🏥</div>' +
+            '<div style="color:var(--primary);margin-bottom:.5rem"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>' +
             '<div>' +
               '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:white;margin-bottom:.25rem">' +
                 saludo + ', ' + user.nombre + ' ' + user.ap_paterno +
@@ -165,22 +165,22 @@ async function renderInicio(container, _token) {
         // ── Tarjetas de resumen ───────────────────────────────────────
         '<div class="stats-grid" style="margin-bottom:1.5rem">' +
           '<div class="info-card stat-card">' +
-            '<div class="stat-icon">📅</div>' +
+            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
             '<div class="stat-value">' + prog + '</div>' +
             '<div class="stat-label">Citas Activas</div>' +
           '</div>' +
           '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'citas-agendadas\')">' +
-            '<div class="stat-icon">📋</div>' +
+            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
             '<div class="stat-value">' + total + '</div>' +
             '<div class="stat-label">Total de Citas</div>' +
           '</div>' +
           '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'agendar-cita\')">' +
-            '<div class="stat-icon">➕</div>' +
+            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V14M6 10H14"/></svg></div>' +
             '<div class="stat-value" style="font-size:1.5rem">Nueva</div>' +
             '<div class="stat-label">Agendar Cita</div>' +
           '</div>' +
           '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'historial-medico\')">' +
-            '<div class="stat-icon">❤️</div>' +
+            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z"/></svg></div>' +
             '<div class="stat-value" style="font-size:1.5rem">Ver</div>' +
             '<div class="stat-label">Mi Historial</div>' +
           '</div>' +
@@ -196,12 +196,12 @@ async function renderInicio(container, _token) {
         '<div class="info-card">' +
           '<div class="info-header"><h3>Acciones Rápidas</h3></div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">' +
-            '<button class="btn btn-primary"   onclick="irPacienteVista(\'agendar-cita\')">📅 Agendar Cita</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'citas-agendadas\')">📋 Ver Mis Citas</button>' +
+            '<button class="btn btn-primary"   onclick="irPacienteVista(\'agendar-cita\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg> Agendar Cita</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'citas-agendadas\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Ver Mis Citas</button>' +
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'datos-personales\')">👤 Mis Datos</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'historial-medico\')">❤️ Historial Médico</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'mis-recetas\')">💊 Mis Recetas</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'farmacia-paciente\')">🛒 Farmacia</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'historial-medico\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z"/></svg> Historial Médico</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'mis-recetas\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Mis Recetas</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'farmacia-paciente\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Farmacia</button>' +
           '</div>' +
         '</div>' +
 
@@ -224,10 +224,10 @@ async function renderDatosPersonales(container, _token) {
     const canc = misCitas.filter(c => (c.Estatus||'').startsWith('cancelada')).length;
     container.innerHTML = `<div class="view-content">
       <div class="stats-grid">
-        <div class="info-card stat-card"><div class="stat-icon">📅</div><div class="stat-value">${prog}</div><div class="stat-label">Citas Programadas</div></div>
-        <div class="info-card stat-card"><div class="stat-icon">✅</div><div class="stat-value">${comp}</div><div class="stat-label">Citas Completadas</div></div>
-        <div class="info-card stat-card"><div class="stat-icon">❌</div><div class="stat-value">${canc}</div><div class="stat-label">Citas Canceladas</div></div>
-        <div class="info-card stat-card"><div class="stat-icon">📋</div><div class="stat-value">${misCitas.length}</div><div class="stat-label">Total de Citas</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div><div class="stat-value">${prog}</div><div class="stat-label">Citas Programadas</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 10L9 12L13 8"/></svg></div><div class="stat-value">${comp}</div><div class="stat-label">Citas Completadas</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M8 8L12 12M12 8L8 12"/></svg></div><div class="stat-value">${canc}</div><div class="stat-label">Citas Canceladas</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div><div class="stat-value">${misCitas.length}</div><div class="stat-label">Total de Citas</div></div>
       </div>
       <div class="info-grid">
         <div class="info-card">
@@ -323,7 +323,7 @@ function dibujarTablaCitas(container, lista) {
           ${(['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)) ? `<button class="btn btn-sm btn-danger" onclick="cancelarCitaUI(${c.Folio_Cita})">Cancelar</button>` : ''}
           ${c.Estatus==='agendada_pendiente_pago' ? `<button class="btn btn-sm btn-success" onclick="pagarCitaUI(${c.Folio_Cita})">Pagar</button>` : ''}
         </td></tr>`).join('') :
-        `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📭</div><h3>Sin citas</h3><p>No tienes citas aún.</p></div></td></tr>`;
+        `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3><p>No tienes citas aún.</p></div></td></tr>`;
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Mis Citas</h3>
         <div class="table-filters">
@@ -516,7 +516,7 @@ function renderPasoConfirmar(c) {
         ${cr('Fecha', utils.formatearFecha(fecha))}
         ${cr('Hora', hora)}
         ${cr('Costo', utils.formatearMoneda(esp.Precio))}
-        <div class="comprobante-aviso">⏰ Tendrás <strong>8 horas</strong> para realizar el pago. Sin pago, la cita se cancelará automáticamente.</div>
+        <div class="comprobante-aviso"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10L13 12"/></svg> Tendrás <strong>8 horas</strong> para realizar el pago. Sin pago, la cita se cancelará automáticamente.</div>
       </div>
       <div class="form-actions" style="margin-top:1.5rem">
         <button class="btn btn-secondary" onclick="renderPaso(3)">← Anterior</button>
@@ -534,7 +534,7 @@ async function confirmarCita() {
               <p style="color:var(--text-secondary)">Folio #${String(res.folio_cita).padStart(5,'0')}</p></div>
             ${cr('Doctor', res.doctor)} ${cr('Especialidad', esp.Especialidad)}
             ${cr('Fecha', utils.formatearFecha(fecha))} ${cr('Hora', hora)} ${cr('Monto', utils.formatearMoneda(res.monto))}
-            <div class="comprobante-aviso">⏰ ${res.aviso_pago}</div>
+            <div class="comprobante-aviso"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10L13 12"/></svg> ${res.aviso_pago}</div>
             <div style="margin-top:1rem;font-size:.82rem;color:var(--text-secondary)">
               Política cancelación: 48h+ → 100% · 24h → 50% · &lt;24h → 0%
             </div>
@@ -575,7 +575,7 @@ async function renderFarmaciaPaciente(container, _token) {
       <div style="background:#e8f5f4;border-left:4px solid var(--primary,#2D5F5D);
                   border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;
                   display:flex;gap:.75rem;align-items:flex-start">
-        <span style="font-size:1.4rem">🏥</span>
+        <span style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></span>
         <div style="font-size:.88rem;color:#334155;line-height:1.5">
           <strong style="color:#2D5F5D">¿Cómo funciona?</strong><br>
           Agrega productos o servicios a tu carrito y envía la solicitud.
@@ -587,11 +587,11 @@ async function renderFarmaciaPaciente(container, _token) {
       <!-- Tabs catálogo -->
       <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
         <button class="tab-btn active" data-tab="cat-meds"
-                onclick="switchCatTab('cat-meds')">💊 Medicamentos (${meds.length})</button>
+                onclick="switchCatTab('cat-meds')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Medicamentos (${meds.length})</button>
         <button class="tab-btn" data-tab="cat-servs"
-                onclick="switchCatTab('cat-servs')">🏥 Servicios (${servs.length})</button>
+                onclick="switchCatTab('cat-servs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg> Servicios (${servs.length})</button>
         <button class="tab-btn" data-tab="cat-hist"
-                onclick="switchCatTab('cat-hist')">📋 Mis Solicitudes (${solicitudes.length})</button>
+                onclick="switchCatTab('cat-hist')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Mis Solicitudes (${solicitudes.length})</button>
       </div>
 
       <!-- Panel Medicamentos -->
@@ -599,7 +599,7 @@ async function renderFarmaciaPaciente(container, _token) {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
           ${meds.length ? meds.map(m => `
             <div class="info-card" style="gap:.5rem">
-              <div style="font-size:1.6rem">💊</div>
+              <div style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg></div>
               <div>
                 <div style="font-weight:700;font-size:.95rem">${m.Nombre}</div>
                 ${m.Descripcion ? `<div style="font-size:.8rem;color:var(--text-secondary)">${m.Descripcion}</div>` : ''}
@@ -623,7 +623,7 @@ async function renderFarmaciaPaciente(container, _token) {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
           ${servs.length ? servs.map(s => `
             <div class="info-card" style="gap:.5rem">
-              <div style="font-size:1.6rem">🏥</div>
+              <div style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
               <div>
                 <div style="font-weight:700;font-size:.95rem">${s.Nombre}</div>
                 ${s.Descripcion ? `<div style="font-size:.8rem;color:var(--text-secondary)">${s.Descripcion}</div>` : ''}
@@ -660,7 +660,7 @@ async function renderFarmaciaPaciente(container, _token) {
             </tbody>
           </table>
         </div>` :
-        '<div class="empty-state"><div class="empty-icon">🛒</div><h3>Sin solicitudes</h3><p>Aún no has enviado ninguna solicitud.</p></div>'}
+        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg></div><h3>Sin solicitudes</h3><p>Aún no has enviado ninguna solicitud.</p></div>'}
       </div>
 
       <!-- Carrito flotante -->
@@ -668,7 +668,7 @@ async function renderFarmaciaPaciente(container, _token) {
            width:320px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);
            border:1.5px solid var(--border);z-index:1000;padding:1.25rem">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-          <strong>🛒 Carrito</strong>
+          <strong><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Carrito</strong>
           <button onclick="cerrarCarrito()" style="background:none;border:none;font-size:1.1rem;cursor:pointer">✕</button>
         </div>
         <div id="carrito-items" style="max-height:220px;overflow-y:auto;margin-bottom:.75rem"></div>
@@ -688,7 +688,7 @@ async function renderFarmaciaPaciente(container, _token) {
                      width:56px;height:56px;border-radius:50%;background:var(--primary,#2D5F5D);
                      color:#fff;border:none;font-size:1.4rem;cursor:pointer;
                      box-shadow:0 4px 16px rgba(45,95,93,.4);z-index:999">
-        🛒<span id="carrito-count"
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg><span id="carrito-count"
                style="position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;
                       border-radius:50%;width:18px;height:18px;font-size:.7rem;
                       display:flex;align-items:center;justify-content:center;font-weight:700">0</span>
@@ -806,7 +806,7 @@ async function renderMisRecetas(container, _token) {
         container.innerHTML =
             '<div class="view-content">' +
               '<div class="empty-state">' +
-                '<div class="empty-icon">💊</div>' +
+                '<div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg></div>' +
                 '<h3>Sin recetas</h3>' +
                 '<p>Aún no tienes recetas médicas emitidas.</p>' +
               '</div>' +
@@ -835,7 +835,7 @@ async function renderMisRecetas(container, _token) {
               '<div class="info-header" style="cursor:pointer;user-select:none" ' +
                    'onclick="toggleReceta(' + idx + ')">' +
                 '<div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">' +
-                  '<span style="font-size:1.5rem">💊</span>' +
+                  '<span style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg></span>' +
                   '<div>' +
                     '<div style="font-weight:700">Receta #' + idReceta + '</div>' +
                     '<div style="font-size:.85rem;color:var(--text-secondary)">' +
@@ -977,7 +977,7 @@ async function renderHistorialMedico(container, _token) {
             <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
             <td>Dr. ${c.NombreDoctor} ${c.ApDocPat}</td>
             <td>${c.Especialidad}</td></tr>`).join('') :
-            `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📋</div><h3>Sin consultas atendidas</h3></div></td></tr>`}
+            `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div><h3>Sin consultas atendidas</h3></div></td></tr>`}
         </tbody></table>
       </div></div>`;
 }
@@ -1012,7 +1012,7 @@ function cerrarModal() { document.getElementById('active-modal')?.remove(); }
 
 /* ── TOASTS ───────────────────────────────────────── */
 function toast(msg, type='info') {
-    const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+    const icons={success:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg>`,error:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>`,warning:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L18 17H2L10 3Z"/><path d="M10 10V13M10 15.5V16"/></svg>`,info:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9V14M10 7V7.5"/></svg>`};
     const el=document.createElement('div'); el.className=`toast ${type}`;
     el.innerHTML=`<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${msg}</span><button class="toast-x" onclick="this.parentElement.remove()">×</button>`;
     document.getElementById('toast-container').appendChild(el);
@@ -1023,7 +1023,7 @@ function toast(msg, type='info') {
 const ir = (l,v)=>`<div class="info-row"><span class="label">${l}</span><span class="value">${v??'—'}</span></div>`;
 const cr = (l,v)=>`<div class="comprobante-row"><span>${l}</span><strong>${v}</strong></div>`;
 function badgeEstatus(clave) {
-    const m={'agendada_pendiente_pago':['warning','🕐 Pend. Pago'],'pagada_pendiente_atender':['info','✅ Confirmada'],'cancelada_falta_pago':['error','❌ Canc. Pago'],'cancelada_paciente':['error','❌ Cancelada'],'cancelada_doctor':['error','❌ Canc. Doctor'],'atendida':['success','✓ Atendida'],'no_acudio':['neutral','— No Acudió']};
+    const m={'agendada_pendiente_pago':['warning','Pend. Pago'],'pagada_pendiente_atender':['info','Confirmada'],'cancelada_falta_pago':['error','Canc. Pago'],'cancelada_paciente':['error','Cancelada'],'cancelada_doctor':['error','Canc. Doctor'],'atendida':['success','Atendida'],'no_acudio':['neutral','— No Acudió']};
     const [c,t]=m[clave]||['neutral',clave];
     return `<span class="badge badge-${c}">${t}</span>`;
 }

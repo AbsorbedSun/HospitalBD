@@ -62,7 +62,7 @@ function renderTabMeds(lista) {
     }
     contenedor.innerHTML = lista.map(m => `
         <div class="catalogo-card" data-nombre="${m.Nombre.toLowerCase()} ${(m.Descripcion||'').toLowerCase()}">
-            <div class="catalogo-card-icon">💊</div>
+            <div class="catalogo-card-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg></div>
             <div class="catalogo-card-body">
                 <h4>${m.Nombre}</h4>
                 ${m.Descripcion ? `<p>${m.Descripcion}</p>` : ''}
@@ -85,7 +85,7 @@ function renderTabServs(lista) {
     }
     contenedor.innerHTML = lista.map(s => `
         <div class="catalogo-card" data-nombre="${s.Nombre.toLowerCase()} ${(s.Descripcion||'').toLowerCase()}">
-            <div class="catalogo-card-icon">🏥</div>
+            <div class="catalogo-card-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
             <div class="catalogo-card-body">
                 <h4>${s.Nombre}</h4>
                 ${s.Descripcion ? `<p>${s.Descripcion}</p>` : ''}
