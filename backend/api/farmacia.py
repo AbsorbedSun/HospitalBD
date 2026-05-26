@@ -24,11 +24,14 @@ farmacia_bp = Blueprint('farmacia', __name__)
 # para mostrarse en la landing page sin requerir login.
 @farmacia_bp.route('/catalogo', methods=['GET'])
 def catalogo_publico():
+    # VW_InventarioFarmacia añade AlertaStock y el flag Disponible (Stock > 0)
+    # Solo mostramos los disponibles en el catálogo público
     medicamentos = execute_query(
         """
-        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad, Stock
-        FROM   Farmacia
-        WHERE  Stock > 0
+        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad,
+               Stock, AlertaStock
+        FROM   VW_InventarioFarmacia
+        WHERE  Disponible = 1
         ORDER  BY Nombre
         """
     )
@@ -55,10 +58,15 @@ def listar_medicamentos():
         filtro = 'WHERE Nombre LIKE ?'
         params.append(f'%{nombre}%')
 
+    # VW_InventarioFarmacia incluye AlertaStock calculado y flag Disponible
+    # El filtro de nombre se aplica sobre la vista igual que sobre la tabla
+    if nombre:
+        filtro = 'WHERE Nombre LIKE ?'
     rows = execute_query(
         f"""
-        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad, Stock
-        FROM Farmacia
+        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad,
+               Stock, AlertaStock, Disponible
+        FROM VW_InventarioFarmacia
         {filtro}
         ORDER BY Nombre
         """,

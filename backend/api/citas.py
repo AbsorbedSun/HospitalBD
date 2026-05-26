@@ -33,53 +33,49 @@ def listar_citas():
     filtros, params = [], []
 
     if rol == 'paciente':
-        filtros.append('c.Id_Paciente = ?')
+        filtros.append('Id_Paciente = ?')
         params.append(id_esp)
     elif rol == 'doctor':
-        filtros.append('c.Id_Doctor = ?')
+        filtros.append('Id_Doctor = ?')
         params.append(id_esp)
     # recepcionista y admin ven todas
 
     if fecha_inicio:
-        filtros.append('c.Fecha_Cita >= ?')
+        filtros.append('Fecha_Cita >= ?')
         params.append(fecha_inicio)
     if fecha_fin:
-        filtros.append('c.Fecha_Cita <= ?')
+        filtros.append('Fecha_Cita <= ?')
         params.append(fecha_fin)
     if estatus_f:
         # Valor especial: agrupa los tres tipos de cancelación
         if estatus_f == 'canceladas':
             filtros.append(
-                "ec.Clave IN ('cancelada_paciente', 'cancelada_doctor', 'cancelada_falta_pago')"
+                "Estatus IN ('cancelada_paciente', 'cancelada_doctor', 'cancelada_falta_pago')"
             )
         else:
-            filtros.append('ec.Clave = ?')
+            filtros.append('Estatus = ?')
             params.append(estatus_f)
 
     where = ('WHERE ' + ' AND '.join(filtros)) if filtros else ''
 
+    # Usa VW_CitasCompletas — centraliza el JOIN complejo de
+    # Cita + Paciente + Doctor + Especialidad + Consultorio + Pago
     rows = execute_query(
         f"""
-        SELECT c.Folio_Cita, c.Fecha_Cita, c.Hora_Cita, c.Solicitud_Cita,
-               ec.Clave AS Estatus, ec.Descripcion AS DescripcionEstatus,
-               up.Nombre AS NombrePaciente, up.Ap_Paterno AS ApPaciPat,
-               ud.Nombre AS NombreDoctor,  ud.Ap_Paterno AS ApDocPat,
-               e.Especialidad, e.Precio,
-               con.Nombre AS Consultorio, con.Piso,
-               d.Id_Doctor, p.Id_Paciente,
-               pago.Id_Pago, pago.Estado AS EstadoPago, pago.Monto
-        FROM Cita c
-        JOIN EstatusCita  ec  ON c.Id_EstatusCita  = ec.Id_EstatusCita
-        JOIN Paciente     p   ON c.Id_Paciente      = p.Id_Paciente
-        JOIN Usuario      up  ON p.Id_Usuario       = up.Id_Usuario
-        JOIN Doctor       d   ON c.Id_Doctor        = d.Id_Doctor
-        JOIN Usuario      ud  ON d.Id_Usuario       = ud.Id_Usuario
-        JOIN Especialidad e   ON d.Id_Especialidad  = e.Id_Especialidad
-        LEFT JOIN Consultorio con ON c.Id_Consultorio = con.Id_Consultorio
-        LEFT JOIN Pago pago ON pago.Folio_Cita = c.Folio_Cita
-                           AND pago.Estado <> 'Cancelado'
+        SELECT Folio_Cita, Fecha_Cita, Hora_Cita, Solicitud_Cita,
+               Estatus, DescripcionEstatus,
+               Id_Paciente, Id_UsuarioPaciente,
+               NombrePaciente, ApPaternoPaciente, ApMaternoPaciente,
+               TelefonoPaciente, EmailPaciente, EdadPaciente,
+               Id_Doctor, Id_UsuarioDoctor,
+               NombreDoctor, ApPaternoDoctor, Cedula_prof,
+               Id_Especialidad, Especialidad, PrecioEspecialidad,
+               Id_Consultorio, NombreConsultorio, PisoConsultorio,
+               Id_Pago, MetodoPago, MontoPago, FechaPago,
+               EstadoPago, MontoDevuelto
+        FROM VW_CitasCompletas
         {where}
-        ORDER BY c.Fecha_Cita DESC, c.Hora_Cita DESC
+        ORDER BY Fecha_Cita DESC, Hora_Cita DESC
         """,
         tuple(params) if params else None
     )
@@ -148,30 +144,20 @@ def agendar_cita():
             'error': f'El horario {hora_str} está fuera del horario laboral del doctor ({hora_inic} – {hora_final}).'
         }), 422
 
-    # ── Regla 3: doctor no ocupado en esa fecha/hora ────────────────
-    ocupado = execute_query(
-        """
-        SELECT 1 FROM Cita c
-        JOIN EstatusCita ec ON c.Id_EstatusCita = ec.Id_EstatusCita
-        WHERE c.Id_Doctor = ? AND c.Fecha_Cita = ? AND c.Hora_Cita = ?
-          AND ec.Clave IN ('agendada_pendiente_pago','pagada_pendiente_atender')
-        """,
+    # ── Regla 3: FN_DoctorDisponible — doctor libre en fecha/hora ──
+    disponible = execute_query(
+        "SELECT dbo.FN_DoctorDisponible(?, ?, ?) AS disponible",
         (id_doctor, fecha_str, hora_str)
     )
-    if ocupado:
+    if not disponible or not disponible[0]['disponible']:
         return jsonify({'error': 'El doctor ya tiene una cita en esa fecha y horario.'}), 422
 
-    # ── Regla 4: paciente sin cita pendiente con el mismo doctor ────
-    pendiente = execute_query(
-        """
-        SELECT 1 FROM Cita c
-        JOIN EstatusCita ec ON c.Id_EstatusCita = ec.Id_EstatusCita
-        WHERE c.Id_Paciente = ? AND c.Id_Doctor = ?
-          AND ec.Clave IN ('agendada_pendiente_pago','pagada_pendiente_atender')
-        """,
+    # ── Regla 4: FN_PacienteTieneCitaPendiente ───────────────────────
+    tiene_pendiente = execute_query(
+        "SELECT dbo.FN_PacienteTieneCitaPendiente(?, ?) AS pendiente",
         (id_paciente, id_doctor)
     )
-    if pendiente:
+    if tiene_pendiente and tiene_pendiente[0]['pendiente']:
         return jsonify({'error': 'Ya tienes una cita pendiente con este doctor.'}), 422
 
     # ── Asignar consultorio disponible de la especialidad ───────────
@@ -406,29 +392,32 @@ def cancelar_cita(folio_cita):
         return jsonify({'error': 'No puedes cancelar la cita de otro paciente.'}), 403
 
     # Calcular política de cancelación
-    politica    = calcular_politica_cancelacion(c['Fecha_Cita'], c['Hora_Cita'])
-    porcentaje  = politica['porcentaje']
-    etiqueta    = politica['politica']
-
     # Si cancela el doctor (vía recepcionista), siempre 100%
     if rol in ('recepcionista', 'admin') and data.get('cancelacion_doctor'):
-        porcentaje = 100
-        etiqueta   = '100%'
         clave_nuevo_estatus = 'cancelada_doctor'
-    elif rol == 'paciente' or rol in ('recepcionista', 'admin'):
-        clave_nuevo_estatus = 'cancelada_paciente'
+        etiqueta            = '100%'
+        # Cancelación por doctor: reembolso total directo
+        pago = execute_query(
+            "SELECT Id_Pago, Monto FROM Pago WHERE Folio_Cita = ? AND Estado = 'Pagado'",
+            (folio_cita,)
+        )
+        monto_devuelto = float(pago[0]['Monto']) if pago else 0.0
     else:
         clave_nuevo_estatus = 'cancelada_paciente'
-
-    # Obtener monto pagado
-    pago = execute_query(
-        "SELECT Id_Pago, Monto FROM Pago WHERE Folio_Cita = ? AND Estado = 'Pagado'",
-        (folio_cita,)
-    )
-    monto_devuelto = 0.0
-    if pago:
-        monto_pagado   = float(pago[0]['Monto'])
-        monto_devuelto = calcular_monto_devolucion(monto_pagado, porcentaje)
+        # FN_MontoDevolucion aplica la política de cancelación del hospital
+        # según las horas de anticipación: >= 48h = 100%, >= 24h = 50%, < 24h = 0%
+        res = execute_query(
+            "SELECT dbo.FN_MontoDevolucion(?, GETDATE()) AS monto",
+            (folio_cita,)
+        )
+        monto_devuelto = float(res[0]['monto']) if res else 0.0
+        pago = execute_query(
+            "SELECT Id_Pago FROM Pago WHERE Folio_Cita = ? AND Estado = 'Pagado'",
+            (folio_cita,)
+        )
+        # Determinar etiqueta de política para la bitácora
+        politica   = calcular_politica_cancelacion(c['Fecha_Cita'], c['Hora_Cita'])
+        etiqueta   = politica['politica']
 
     _cambiar_estatus(folio_cita, clave_nuevo_estatus, float(c['Precio']),
                      int(c['Id_Especialidad']), etiqueta, monto_devuelto)

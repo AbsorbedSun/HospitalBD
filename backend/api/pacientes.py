@@ -27,7 +27,7 @@ def obtener_perfil():
         SELECT u.Id_Usuario, p.Id_Paciente,
                u.Nombre, u.Ap_Paterno, u.Ap_Materno, u.CURP, u.Email,
                u.Fecha_Nac,
-               DATEDIFF(year, u.Fecha_Nac, GETDATE()) AS Edad,
+               dbo.FN_CalcularEdad(u.Fecha_Nac)       AS Edad,
                u.Telefono, u.Calle, u.Numero, u.Colonia, u.Direccion
         FROM Usuario u
         JOIN Paciente p ON p.Id_Usuario = u.Id_Usuario
@@ -111,26 +111,19 @@ def mis_recetas():
     claims     = get_jwt()
     id_usuario = claims.get('id_usuario')
 
+    # VW_HistorialPaciente consolida Paciente + Historial + Citas + Recetas.
+    # Filtramos solo filas con receta (Id_Receta IS NOT NULL) ordenadas
+    # por fecha de emisión descendente — mismo resultado, sin JOIN manual.
     rows = execute_query(
         """
-        SELECT r.Id_Receta, r.Folio_Cita, r.FechaEmision,
-               r.Medicamento, r.Tratamiento, r.Observaciones,
-               ud.Nombre       AS NombreDoctor,
-               ud.Ap_Paterno   AS ApPaternoDoctor,
-               d.Cedula_prof,
-               e.Especialidad,
-               c.Fecha_Cita,
-               c.Hora_Cita,
-               DATEDIFF(year, up.Fecha_Nac, GETDATE()) AS EdadPaciente
-        FROM Receta r
-        JOIN Cita        c   ON r.Folio_Cita      = c.Folio_Cita
-        JOIN Paciente    p   ON c.Id_Paciente      = p.Id_Paciente
-        JOIN Usuario     up  ON p.Id_Usuario       = up.Id_Usuario
-        JOIN Doctor      d   ON c.Id_Doctor        = d.Id_Doctor
-        JOIN Usuario     ud  ON d.Id_Usuario       = ud.Id_Usuario
-        JOIN Especialidad e  ON d.Id_Especialidad  = e.Id_Especialidad
-        WHERE p.Id_Usuario = ?
-        ORDER BY r.FechaEmision DESC
+        SELECT Id_Receta, Folio_Cita, FechaEmision,
+               Medicamento, Tratamiento, Observaciones,
+               NombreDoctor, ApPaternoDoctor, Cedula_prof,
+               Especialidad, Fecha_Cita, Hora_Cita, Edad AS EdadPaciente
+        FROM VW_HistorialPaciente
+        WHERE Id_Usuario = ?
+          AND Id_Receta IS NOT NULL
+        ORDER BY FechaEmision DESC
         """,
         (id_usuario,)
     )
@@ -155,7 +148,7 @@ def listar_pacientes():
         SELECT p.Id_Paciente,
                u.Nombre, u.Ap_Paterno, u.Ap_Materno, u.Email, u.Telefono,
                u.CURP,
-               DATEDIFF(year, u.Fecha_Nac, GETDATE()) AS Edad
+               dbo.FN_CalcularEdad(u.Fecha_Nac)       AS Edad
         FROM Paciente p
         JOIN Usuario u ON p.Id_Usuario = u.Id_Usuario
         {filtro}
@@ -177,7 +170,7 @@ def obtener_paciente(id_paciente):
         SELECT p.Id_Paciente,
                u.Nombre, u.Ap_Paterno, u.Ap_Materno, u.Email, u.Telefono,
                u.CURP, u.Fecha_Nac,
-               DATEDIFF(year, u.Fecha_Nac, GETDATE()) AS Edad,
+               dbo.FN_CalcularEdad(u.Fecha_Nac)       AS Edad,
                u.Calle, u.Numero, u.Colonia
         FROM Paciente p
         JOIN Usuario u ON p.Id_Usuario = u.Id_Usuario

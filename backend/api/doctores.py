@@ -111,15 +111,21 @@ def mis_pacientes():
     claims = get_jwt()
     id_doctor = claims.get('id_especifico')
 
+    # VW_AgendaDoctor incluye los datos del paciente por cita;
+    # usamos DISTINCT para obtener pacientes únicos del doctor
     rows = execute_query(
         """
-        SELECT DISTINCT p.Id_Paciente,
-               u.Nombre, u.Ap_Paterno, u.Ap_Materno, u.Email, u.Telefono
-        FROM Cita c
-        JOIN Paciente p ON c.Id_Paciente = p.Id_Paciente
-        JOIN Usuario  u ON p.Id_Usuario  = u.Id_Usuario
-        WHERE c.Id_Doctor = ?
-        ORDER BY u.Ap_Paterno
+        SELECT DISTINCT
+               Id_Paciente, Id_UsuarioPaciente,
+               NombrePaciente    AS Nombre,
+               ApPaternoPaciente AS Ap_Paterno,
+               ApMaternoPaciente AS Ap_Materno,
+               TelefonoPaciente  AS Telefono,
+               EmailPaciente     AS Email,
+               EdadPaciente      AS Edad
+        FROM VW_AgendaDoctor
+        WHERE Id_Doctor = ?
+        ORDER BY Ap_Paterno
         """,
         (id_doctor,)
     )
@@ -178,18 +184,18 @@ def listar_recetas():
     claims = get_jwt()
     id_doctor = claims.get('id_especifico')
 
+    # VW_HistorialPaciente incluye citas + recetas + datos del paciente.
+    # Filtramos por el doctor y solo filas que tienen receta emitida.
     rows = execute_query(
         """
-        SELECT r.Id_Receta, r.Folio_Cita, r.FechaEmision,
-               r.Medicamento, r.Tratamiento, r.Observaciones,
-               u.Nombre AS NombrePaciente, u.Ap_Paterno,
-               DATEDIFF(year, u.Fecha_Nac, GETDATE()) AS EdadPaciente
-        FROM Receta r
-        JOIN Cita     c  ON r.Folio_Cita  = c.Folio_Cita
-        JOIN Paciente p  ON c.Id_Paciente = p.Id_Paciente
-        JOIN Usuario  u  ON p.Id_Usuario  = u.Id_Usuario
-        WHERE c.Id_Doctor = ?
-        ORDER BY r.FechaEmision DESC
+        SELECT Id_Receta, Folio_Cita, FechaEmision,
+               Medicamento, Tratamiento, Observaciones,
+               NombrePaciente, ApPaternoPaciente,
+               Edad AS EdadPaciente
+        FROM VW_HistorialPaciente
+        WHERE Id_Doctor   = ?
+          AND Id_Receta IS NOT NULL
+        ORDER BY FechaEmision DESC
         """,
         (id_doctor,)
     )
