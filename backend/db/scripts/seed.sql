@@ -1,24 +1,10 @@
--- ============================================================
 -- DATOS DE PRUEBA - HospitalDB
--- Ejecutar DESPUÉS de schema.sql
--- Contraseñas de ejemplo: todas usan "Hospital123!"
---
--- CORRECCIÓN (2025-04): El hash anterior era inválido y causaba
--- que doctores/recepcionistas no pudieran iniciar sesión.
--- Hash actualizado y verificado con bcrypt.checkpw().
---
--- Si ya tienes usuarios en BD con el hash antiguo, usa:
---   POST /api/auth/reset-password
---   Body: { "email": "...", "nueva_password": "Hospital123!" }
--- ============================================================
 
 USE HospitalDB;
 GO
 
--- ============================================================
 -- RECEPCIONISTA ADMIN (para poder dar de alta doctores)
 -- Password: Hospital123!
--- ============================================================
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email,
                      Fecha_Nac, Contrasena, Telefono, Calle, Numero, Colonia)
 VALUES (3, 'Ana', 'Rodríguez', 'López',
@@ -34,11 +20,8 @@ VALUES (SCOPE_IDENTITY(), 1, 'ROLA900101AB1', 15000.00, 15, 'Activo');
 INSERT INTO Recepcionista (Id_Usuario)
 SELECT Id_Usuario FROM Usuario WHERE Email = 'recepcion@hospital.com';
 
--- ============================================================
--- DOCTORES (al menos 4 por especialidad)
--- ============================================================
+-- DOCTORES 
 
--- Helper: inserta un doctor
 -- Cardiología (Id_Especialidad = 1)
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono)
 VALUES (2,'Carlos','García','Martínez','GAMC750312HDFRRR01','dr.garcia@hospital.com','1975-03-12',
@@ -105,9 +88,7 @@ VALUES (SCOPE_IDENTITY(), 2, 'FOVC870425QR8', 29000.00, 20, 'Activo');
 INSERT INTO Doctor (Id_Usuario, Id_Especialidad, Id_Horario, Cedula_prof)
 SELECT Id_Usuario, 4, 2, 'CED-MG-004' FROM Usuario WHERE Email='dr.flores@hospital.com';
 
--- ============================================================
 -- PACIENTE DE PRUEBA
--- ============================================================
 INSERT INTO Usuario (Id_TipoUsuario, Nombre, Ap_Paterno, Ap_Materno, CURP, Email, Fecha_Nac, Contrasena, Telefono, Calle, Numero, Colonia)
 VALUES (1,'Juan','Pérez','González','PEGJ950830HDFRRR01','paciente@test.com','1995-08-30',
         '$2b$12$4y1WblU1O4CfmdWm7t0m..aFYDqVec7Fm0WZtdBSvvtIApRmMSA46',
@@ -121,9 +102,7 @@ SELECT Id_Paciente, 'O+', 1.75, 72.00, 'Penicilina', 'Ninguno'
 FROM Paciente p JOIN Usuario u ON p.Id_Usuario = u.Id_Usuario
 WHERE u.Email = 'paciente@test.com';
 
--- ============================================================
 -- FARMACIA - Medicamentos de ejemplo
--- ============================================================
 INSERT INTO Farmacia (Nombre, Descripcion, Precio, Unidad, Stock) VALUES
     ('Paracetamol 500mg',  'Analgésico y antipirético',                 35.00, 'Caja x 10', 200),
     ('Ibuprofeno 400mg',   'Antiinflamatorio no esteroideo',             45.00, 'Caja x 20', 150),

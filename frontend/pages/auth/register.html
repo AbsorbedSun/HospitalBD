@@ -68,18 +68,30 @@
 
                     <div class="form-group">
                         <label for="password">Contraseña</label>
-                        <input id="password" type="password" placeholder="Mínimo 8 caracteres" required>
+                        <div class="input-wrapper">
+                            <input id="password" type="password" placeholder="Mínimo 8 caracteres" required style="padding-right:2.75rem">
+                            <button type="button" class="toggle-password" onclick="togglePw('password',this)" tabindex="-1" aria-label="Ver contraseña">
+                                <svg class="eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label for="confirmPassword">Confirmar Contraseña</label>
-                        <input id="confirmPassword" type="password" placeholder="Repite tu contraseña" required>
+                        <div class="input-wrapper">
+                            <input id="confirmPassword" type="password" placeholder="Repite tu contraseña" required style="padding-right:2.75rem">
+                            <button type="button" class="toggle-password" onclick="togglePw('confirmPassword',this)" tabindex="-1" aria-label="Ver contraseña">
+                                <svg class="eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="terms" required>
-                            Acepto los <a href="#">Términos y Condiciones</a>
+                            <input type="checkbox" id="termsCheck" name="terms" required>
+                            Acepto los <button type="button" onclick="abrirTerminos()" style="background:none;border:none;padding:0;color:#121e31;font-weight:600;font-size:inherit;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">Términos y Condiciones</button>
                         </label>
                     </div>
 
@@ -128,8 +140,109 @@
         </div>
     </div>
 
-    <!-- Scripts: primero api.js, luego auth.js -->
+    <!-- ── Modal Términos y Condiciones ── -->
+    <div id="modalTerminos" style="display:none;position:fixed;inset:0;background:rgba(8,13,22,.6);
+         z-index:9000;overflow-y:auto;padding:2rem 1rem" onclick="if(event.target===this)cerrarTerminos()">
+        <div style="background:#fff;border-radius:20px;max-width:680px;margin:0 auto;
+                    padding:2.5rem 2.5rem 2rem;position:relative;
+                    box-shadow:0 24px 80px rgba(18,30,49,.25)">
+
+            <button onclick="cerrarTerminos()" style="position:absolute;top:1.25rem;right:1.25rem;
+                    background:rgba(18,30,49,.06);border:none;width:34px;height:34px;border-radius:50%;
+                    font-size:1rem;cursor:pointer;color:#64748b;display:flex;align-items:center;
+                    justify-content:center" aria-label="Cerrar">✕</button>
+
+            <!-- Header del modal -->
+            <div style="display:flex;align-items:center;gap:.875rem;margin-bottom:1.75rem">
+                <div style="width:42px;height:42px;background:#121e31;border-radius:11px;
+                            display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z" stroke="#e6c280" stroke-width="1.5"/>
+                        <path d="M8 8H12M8 11H12M8 14H10" stroke="#e6c280" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:#0f172a;margin:0">
+                        Términos y Condiciones
+                    </h2>
+                    <p style="font-size:.8rem;color:#64748b;margin:0">MediConnect · Última actualización: 2026</p>
+                </div>
+            </div>
+
+            <!-- Contenido desplazable -->
+            <div style="max-height:60vh;overflow-y:auto;padding-right:.5rem;
+                        font-size:.88rem;line-height:1.75;color:#374151">
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">1. Aceptación de los Términos</h3>
+                <p>Al registrarse y utilizar MediConnect, el usuario acepta expresamente estos Términos y Condiciones. Si no está de acuerdo con alguno de los puntos aquí establecidos, deberá abstenerse de usar el sistema.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">2. Descripción del Servicio</h3>
+                <p>MediConnect es un sistema de gestión hospitalaria desarrollado por el Instituto Politécnico Nacional (IPN) – ESCOM. Permite a los pacientes registrarse, agendar citas médicas, consultar recetas electrónicas, visualizar su historial médico y solicitar medicamentos o servicios de farmacia. El sistema opera con tres perfiles de usuario: Paciente, Doctor y Recepcionista.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">3. Registro y Cuentas de Usuario</h3>
+                <p>El paciente puede darse de alta a sí mismo proporcionando nombre, apellidos, fecha de nacimiento, CURP, correo electrónico y contraseña. El usuario es responsable de mantener la confidencialidad de sus credenciales. Las cuentas de doctor y recepcionista son asignadas exclusivamente por el personal administrativo del hospital.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">4. Gestión de Citas Médicas</h3>
+                <p>Las citas deben agendarse con un mínimo de 48 horas de anticipación y con un máximo de 3 meses. Al agendar se genera una línea de pago con vigencia de <strong>8 horas</strong>; si no se confirma el pago, la cita se cancela automáticamente. Política de devolución:</p>
+                <ul style="margin:.5rem 0 .5rem 1.25rem">
+                    <li>48 horas o más de anticipación: <strong>100 %</strong> de devolución.</li>
+                    <li>Entre 24 y 48 horas: <strong>50 %</strong> de devolución.</li>
+                    <li>Menos de 24 horas: <strong>sin devolución</strong>.</li>
+                    <li>Cancelación por el doctor: <strong>100 %</strong> de devolución.</li>
+                </ul>
+                <p>No se pueden reagendar citas; solo cancelar y solicitar una nueva.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">5. Recetas Médicas y Farmacia</h3>
+                <p>Las recetas electrónicas son emitidas exclusivamente por los doctores del hospital. El paciente puede consultar sus recetas desde su perfil. Para adquirir medicamentos o servicios (inyecciones, vacunas, curaciones, estudios de sangre) no es necesario ser paciente registrado; las ventas son procesadas por la recepcionista del hospital.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">6. Privacidad y Protección de Datos</h3>
+                <p>MediConnect almacena datos personales y médicos con fines exclusivamente clínicos y administrativos. Los datos sensibles (recetas, historial médico) son accesibles únicamente por el personal médico autorizado. Las contraseñas se almacenan cifradas mediante bcrypt. Los datos de identidad (nombre, CURP, fecha de nacimiento) solo pueden ser modificados por el personal administrativo.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">7. Responsabilidades del Usuario</h3>
+                <p>El usuario se compromete a proporcionar información verídica al registrarse, a no compartir sus credenciales con terceros y a notificar de inmediato al hospital cualquier uso no autorizado de su cuenta.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">8. Limitación de Responsabilidad</h3>
+                <p>MediConnect es una herramienta de apoyo administrativo y no sustituye el juicio clínico del médico tratante. El hospital no se responsabiliza por daños derivados del mal uso del sistema o de decisiones médicas tomadas fuera de su ámbito.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">9. Modificaciones</h3>
+                <p>El hospital se reserva el derecho de modificar estos Términos en cualquier momento. Los cambios serán notificados a los usuarios registrados y entrarán en vigor desde su publicación.</p>
+
+                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">10. Legislación Aplicable</h3>
+                <p>Estos términos se rigen por la legislación mexicana, incluyendo la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP) y la NOM-024-SSA3-2012.</p>
+            </div>
+
+            <!-- Acciones -->
+            <div style="margin-top:1.5rem;display:flex;gap:.75rem;justify-content:flex-end;
+                        border-top:1px solid #e2e8f0;padding-top:1.25rem">
+                <button onclick="cerrarTerminos()"
+                        style="padding:.6rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:9px;
+                               background:#fff;color:#374151;font-size:.9rem;cursor:pointer;
+                               font-weight:600;font-family:'Manrope',sans-serif">
+                    Cerrar
+                </button>
+                <button onclick="aceptarTerminos()"
+                        style="padding:.6rem 1.75rem;border:none;border-radius:9px;
+                               background:#121e31;color:#e6c280;font-size:.9rem;cursor:pointer;
+                               font-weight:600;font-family:'Manrope',sans-serif">
+                    Aceptar y cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="/assets/js/api.js"></script>
     <script src="/assets/js/auth.js"></script>
+    <script>
+    function togglePw(id, btn) {
+        const inp  = document.getElementById(id);
+        const show = btn.querySelector('.eye-show');
+        const hide = btn.querySelector('.eye-hide');
+        if (inp.type === 'password') { inp.type = 'text';     show.style.display = 'none'; hide.style.display = ''; }
+        else                         { inp.type = 'password'; show.style.display = '';     hide.style.display = 'none'; }
+    }
+    function abrirTerminos()  { document.getElementById('modalTerminos').style.display = 'block'; document.body.style.overflow = 'hidden'; }
+    function cerrarTerminos() { document.getElementById('modalTerminos').style.display = 'none';  document.body.style.overflow = ''; }
+    function aceptarTerminos() { document.getElementById('termsCheck').checked = true; cerrarTerminos(); }
+    </script>
 </body>
 </html>

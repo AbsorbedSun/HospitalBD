@@ -306,6 +306,9 @@ function abrirModalEditar() {
 /* ── CITAS AGENDADAS ──────────────────────────────── */
 async function renderCitas(container, _token) {
     if (_stale(_token)) return;
+    // Forzar cancelación automática de citas vencidas (> 8 hrs sin pago)
+    // antes de traer la lista, para que el estado sea siempre el correcto.
+    try { await citas.verificarVencidas(); } catch (_) {}
     STATE.citas = await citas.obtenerMisCitas();
     dibujarTablaCitas(container, STATE.citas);
 }
@@ -373,8 +376,20 @@ async function pagarCitaUI(folio) {
         <select id="p-metodo"><option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option><option value="Transferencia">Transferencia</option></select>
       </div>`,
         async () => {
-            await citas.confirmarPago(folio, document.getElementById('p-metodo').value);
-            toast('¡Pago confirmado!', 'success'); cerrarModal(); loadView('citas-agendadas');
+            try {
+                await citas.confirmarPago(folio, document.getElementById('p-metodo').value);
+                toast('¡Pago confirmado! Tu cita está reservada.', 'success');
+            } catch (e) {
+                // El backend rechazó el pago (cita vencida, ya cancelada, etc.)
+                // Mostramos el error y recargamos la lista para que el estatus
+                // actualizado sea visible sin necesidad de refrescar la página.
+                toast(e.message || 'No se pudo procesar el pago.', 'error');
+            } finally {
+                // Siempre cerramos el modal y recargamos la lista,
+                // tanto si el pago fue exitoso como si fue rechazado.
+                cerrarModal();
+                loadView('citas-agendadas');
+            }
         }, 'Confirmar Pago', 'btn-success');
 }
 
@@ -584,125 +599,198 @@ async function renderFarmaciaPaciente(container, _token) {
         </div>
       </div>
 
-      <!-- Tabs catálogo -->
-      <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
-        <button class="tab-btn active" data-tab="cat-meds"
-                onclick="switchCatTab('cat-meds')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Medicamentos (${meds.length})</button>
-        <button class="tab-btn" data-tab="cat-servs"
-                onclick="switchCatTab('cat-servs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg> Servicios (${servs.length})</button>
-        <button class="tab-btn" data-tab="cat-hist"
-                onclick="switchCatTab('cat-hist')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Mis Solicitudes (${solicitudes.length})</button>
+      <!-- Tabs catálogo rediseñados — paleta "Alto Mando" -->
+      <div style="display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap;
+                  background:#f1f5f9;border-radius:12px;padding:.35rem">
+        <button class="farm-tab active" data-tab="cat-meds" onclick="switchCatTab('cat-meds')">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg>
+          <span>Medicamentos</span>
+          <span class="farm-tab-count">${meds.length}</span>
+        </button>
+        <button class="farm-tab" data-tab="cat-servs" onclick="switchCatTab('cat-servs')">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg>
+          <span>Servicios</span>
+          <span class="farm-tab-count">${servs.length}</span>
+        </button>
+        <button class="farm-tab" data-tab="cat-hist" onclick="switchCatTab('cat-hist')">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/></svg>
+          <span>Mis Solicitudes</span>
+          <span class="farm-tab-count" id="sol-count-badge">${solicitudes.length}</span>
+        </button>
       </div>
 
       <!-- Panel Medicamentos -->
       <div id="cat-meds">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
-          ${meds.length ? meds.map(m => `
-            <div class="info-card" style="gap:.5rem">
-              <div style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg></div>
-              <div>
-                <div style="font-weight:700;font-size:.95rem">${m.Nombre}</div>
-                ${m.Descripcion ? `<div style="font-size:.8rem;color:var(--text-secondary)">${m.Descripcion}</div>` : ''}
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;
-                          border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem">
-                <strong style="color:var(--primary,#2D5F5D)">$${parseFloat(m.Precio).toFixed(2)}</strong>
-                <span style="font-size:.75rem;color:var(--text-secondary)">${m.Unidad}</span>
-              </div>
-              <button class="btn btn-secondary btn-sm" style="width:100%"
-                      onclick="agregarAlCarrito('farmacia',${m.Id_Farmacia},'${m.Nombre.replace(/'/g,"\\'")}',${m.Precio},'${m.Unidad}')">
-                + Agregar
-              </button>
-            </div>`).join('') :
-            '<p style="color:var(--text-secondary)">Sin medicamentos disponibles.</p>'}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem">
+          ${buildMedCards(meds)}
         </div>
       </div>
 
       <!-- Panel Servicios -->
       <div id="cat-servs" style="display:none">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
-          ${servs.length ? servs.map(s => `
-            <div class="info-card" style="gap:.5rem">
-              <div style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
-              <div>
-                <div style="font-weight:700;font-size:.95rem">${s.Nombre}</div>
-                ${s.Descripcion ? `<div style="font-size:.8rem;color:var(--text-secondary)">${s.Descripcion}</div>` : ''}
-              </div>
-              <div style="border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem">
-                <strong style="color:var(--primary,#2D5F5D)">$${parseFloat(s.Precio).toFixed(2)}</strong>
-              </div>
-              <button class="btn btn-secondary btn-sm" style="width:100%"
-                      onclick="agregarAlCarrito('servicio',${s.Id_Servicio},'${s.Nombre.replace(/'/g,"\\'")}',${s.Precio},'')">
-                + Agregar
-              </button>
-            </div>`).join('') :
-            '<p style="color:var(--text-secondary)">Sin servicios disponibles.</p>'}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem">
+          ${buildServCards(servs)}
         </div>
       </div>
 
       <!-- Panel Mis Solicitudes -->
       <div id="cat-hist" style="display:none">
-        ${solicitudes.length ? `
-        <div class="table-container">
-          <table>
-            <thead><tr>
-              <th>Folio</th><th>Fecha</th><th>Total</th><th>Estatus</th><th>Procesada por</th>
-            </tr></thead>
-            <tbody>
-              ${solicitudes.map(s => `<tr>
-                <td>#${String(s.Id_Solicitud).padStart(4,'0')}</td>
-                <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
-                <td><strong>$${parseFloat(s.Total).toFixed(2)}</strong></td>
-                <td><span class="badge ${s.Estatus==='Pendiente'?'badge-warning':s.Estatus==='Procesada'?'badge-success':'badge-error'}">
-                  ${s.Estatus}</span></td>
-                <td>${s.NombreRecep ? `${s.NombreRecep} ${s.ApRecep}` : '—'}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>` :
-        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg></div><h3>Sin solicitudes</h3><p>Aún no has enviado ninguna solicitud.</p></div>'}
+        ${buildSolTable(solicitudes)}
       </div>
 
-      <!-- Carrito flotante -->
+      <!-- Carrito flotante — paleta navy/gold -->
       <div id="carrito-panel" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;
-           width:320px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);
-           border:1.5px solid var(--border);z-index:1000;padding:1.25rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-          <strong><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Carrito</strong>
-          <button onclick="cerrarCarrito()" style="background:none;border:none;font-size:1.1rem;cursor:pointer">✕</button>
+           width:340px;background:#fff;border-radius:18px;overflow:hidden;
+           box-shadow:0 12px 40px rgba(18,30,49,.18);border:1.5px solid #e2e8f0;z-index:1000">
+        <div style="background:#121e31;padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center">
+          <strong style="color:#e6c280;display:flex;align-items:center;gap:.5rem;font-size:.95rem">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg>
+            Carrito
+            <span id="carrito-count-badge" style="background:#ef4444;color:#fff;border-radius:999px;
+                  padding:.1rem .45rem;font-size:.72rem;font-weight:700">0</span>
+          </strong>
+          <button onclick="cerrarCarrito()" style="background:rgba(255,255,255,.12);border:none;
+                  color:#e6c280;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:.85rem">✕</button>
         </div>
-        <div id="carrito-items" style="max-height:220px;overflow-y:auto;margin-bottom:.75rem"></div>
-        <div style="border-top:1px solid var(--border);padding-top:.75rem">
-          <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:.75rem">
-            <span>Total</span><span id="carrito-total">$0.00</span>
+        <div id="carrito-items" style="max-height:240px;overflow-y:auto;padding:.75rem 1.25rem"></div>
+        <div style="border-top:1px solid #e2e8f0;padding:1rem 1.25rem;background:#f8fafc">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+            <span style="font-size:.85rem;color:#64748b">Total estimado</span>
+            <strong style="font-size:1.15rem;color:#121e31" id="carrito-total">$0.00</strong>
           </div>
-          <button class="btn btn-primary" style="width:100%" onclick="enviarSolicitud()">
-            📤 Enviar solicitud
-          </button>
+          <button style="width:100%;padding:.65rem;border-radius:10px;border:none;
+                         background:#121e31;color:#e6c280;font-weight:700;font-size:.9rem;
+                         cursor:pointer;font-family:'Manrope',sans-serif;
+                         transition:background .2s"
+                  onmouseover="this.style.background='#080d16'"
+                  onmouseout="this.style.background='#121e31'"
+                  onclick="enviarSolicitud()">Enviar solicitud</button>
+          <p style="font-size:.72rem;color:#94a3b8;text-align:center;margin-top:.5rem">
+            La recepcionista procesará tu pedido
+          </p>
         </div>
       </div>
 
-      <!-- Botón flotante carrito -->
+      <!-- FAB carrito -->
       <button id="carrito-fab" onclick="toggleCarrito()"
               style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;
-                     width:56px;height:56px;border-radius:50%;background:var(--primary,#2D5F5D);
-                     color:#fff;border:none;font-size:1.4rem;cursor:pointer;
-                     box-shadow:0 4px 16px rgba(45,95,93,.4);z-index:999">
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg><span id="carrito-count"
-               style="position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;
-                      border-radius:50%;width:18px;height:18px;font-size:.7rem;
-                      display:flex;align-items:center;justify-content:center;font-weight:700">0</span>
+                     width:58px;height:58px;border-radius:50%;background:#121e31;
+                     color:#e6c280;border:none;font-size:1.2rem;cursor:pointer;
+                     box-shadow:0 6px 20px rgba(18,30,49,.4);z-index:999;
+                     align-items:center;justify-content:center;transition:transform .2s"
+              onmouseover="this.style.transform='scale(1.08)'"
+              onmouseout="this.style.transform=''">
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg>
+        <span id="carrito-count" style="position:absolute;top:2px;right:2px;background:#ef4444;
+              color:#fff;border-radius:50%;width:20px;height:20px;font-size:.7rem;
+              display:flex;align-items:center;justify-content:center;font-weight:700">0</span>
       </button>
 
     </div>`;
 }
+
+// ── Helper: tarjetas de medicamentos ──────────────────────────────────────────
+function buildMedCards(meds) {
+    if (!meds.length) return '<div class="empty-state"><p>Sin medicamentos disponibles.</p></div>';
+    return meds.map(function(m) {
+        var alerta  = m.AlertaStock || 'Disponible';
+        var bgBadge = alerta === 'Agotado'       ? '#fee2e2' :
+                      alerta === 'Stock Crítico'  ? '#fef3c7' :
+                      alerta === 'Stock Bajo'     ? '#fef9c3' : '#dcfce7';
+        var clBadge = alerta === 'Agotado'       ? '#991b1b' :
+                      alerta === 'Stock Crítico'  ? '#92400e' :
+                      alerta === 'Stock Bajo'     ? '#854d0e' : '#166534';
+        var nom = m.Nombre.replace(/'/g, "\\'");
+        var uni = (m.Unidad || '').replace(/'/g, "\\'");
+        return '<div class="farm-card">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">' +
+            '<div style="width:38px;height:38px;background:rgba(18,30,49,.07);border-radius:10px;' +
+                  'display:flex;align-items:center;justify-content:center;color:#121e31">' +
+              '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg>' +
+            '</div>' +
+            '<span style="font-size:.72rem;font-weight:700;padding:.2rem .6rem;border-radius:999px;' +
+                  'background:' + bgBadge + ';color:' + clBadge + '">' + alerta + '</span>' +
+          '</div>' +
+          '<div style="flex:1;margin-bottom:.5rem">' +
+            '<div style="font-weight:700;font-size:.93rem;color:#0f172a;margin-bottom:.2rem">' + m.Nombre + '</div>' +
+            (m.Descripcion ? '<div style="font-size:.78rem;color:#64748b;line-height:1.4">' + m.Descripcion + '</div>' : '') +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;' +
+                      'border-top:1px solid #e2e8f0;padding-top:.5rem;margin-bottom:.5rem">' +
+            '<strong style="color:#121e31;font-size:1rem">$' + parseFloat(m.Precio).toFixed(2) + '</strong>' +
+            '<span style="font-size:.72rem;color:#94a3b8">' + (m.Unidad || '') + '</span>' +
+          '</div>' +
+          '<button class="farm-add-btn" onclick="agregarAlCarrito(\'farmacia\',' +
+            m.Id_Farmacia + ',\'' + nom + '\',' + m.Precio + ',\'' + uni + '\')">' +
+            '+ Agregar al carrito' +
+          '</button>' +
+        '</div>';
+    }).join('');
+}
+
+// ── Helper: tarjetas de servicios ─────────────────────────────────────────────
+function buildServCards(servs) {
+    if (!servs.length) return '<div class="empty-state"><p>Sin servicios disponibles.</p></div>';
+    return servs.map(function(s) {
+        var nom = s.Nombre.replace(/'/g, "\\'");
+        return '<div class="farm-card">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">' +
+            '<div style="width:38px;height:38px;background:rgba(18,30,49,.07);border-radius:10px;' +
+                  'display:flex;align-items:center;justify-content:center;color:#121e31">' +
+              '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg>' +
+            '</div>' +
+            '<span style="font-size:.72rem;font-weight:700;padding:.2rem .6rem;border-radius:999px;' +
+                  'background:#dcfce7;color:#166534">Disponible</span>' +
+          '</div>' +
+          '<div style="flex:1;margin-bottom:.5rem">' +
+            '<div style="font-weight:700;font-size:.93rem;color:#0f172a;margin-bottom:.2rem">' + s.Nombre + '</div>' +
+            (s.Descripcion ? '<div style="font-size:.78rem;color:#64748b;line-height:1.4">' + s.Descripcion + '</div>' : '') +
+          '</div>' +
+          '<div style="border-top:1px solid #e2e8f0;padding-top:.5rem;margin-bottom:.5rem">' +
+            '<strong style="color:#121e31;font-size:1rem">$' + parseFloat(s.Precio).toFixed(2) + '</strong>' +
+          '</div>' +
+          '<button class="farm-add-btn" onclick="agregarAlCarrito(\'servicio\',' +
+            s.Id_Servicio + ',\'' + nom + '\',' + s.Precio + ',\'\')">' +
+            '+ Agregar al carrito' +
+          '</button>' +
+        '</div>';
+    }).join('');
+}
+
+// ── Helper: tabla de solicitudes ──────────────────────────────────────────────
+function buildSolTable(solicitudes) {
+    if (!solicitudes.length) return (
+        '<div class="empty-state">' +
+          '<h3>Sin solicitudes aún</h3>' +
+          '<p>Agrega productos al carrito y envía tu primera solicitud.</p>' +
+          '<button class="btn btn-secondary" style="margin-top:.75rem" ' +
+                  'onclick="switchCatTab(\'cat-meds\')">Ver medicamentos</button>' +
+        '</div>'
+    );
+    var filas = solicitudes.map(function(s) {
+        var badge = s.Estatus === 'Pendiente' ? 'badge-warning' :
+                    s.Estatus === 'Procesada' ? 'badge-success' : 'badge-error';
+        var recep = s.NombreRecep ? s.NombreRecep + ' ' + s.ApRecep : '—';
+        return '<tr>' +
+            '<td><strong>#' + String(s.Id_Solicitud).padStart(4, '0') + '</strong></td>' +
+            '<td>' + utils.formatearFecha(s.Fecha_Solicitud) + '</td>' +
+            '<td><strong style="color:#121e31">$' + parseFloat(s.Total).toFixed(2) + '</strong></td>' +
+            '<td><span class="badge ' + badge + '">' + s.Estatus + '</span></td>' +
+            '<td>' + recep + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<div class="table-container"><table>' +
+        '<thead><tr><th>Folio</th><th>Fecha</th><th>Total</th><th>Estatus</th><th>Procesada por</th></tr></thead>' +
+        '<tbody>' + filas + '</tbody></table></div>';
+}
+
 
 function switchCatTab(tab) {
     ['cat-meds','cat-servs','cat-hist'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = id === tab ? '' : 'none';
     });
-    document.querySelectorAll('.tab-btn[data-tab]').forEach(b =>
+    document.querySelectorAll('.farm-tab[data-tab]').forEach(b =>
         b.classList.toggle('active', b.dataset.tab === tab));
 }
 
@@ -724,12 +812,15 @@ function actualizarCarritoUI() {
     const items   = document.getElementById('carrito-items');
     const totalEl = document.getElementById('carrito-total');
     const countEl = document.getElementById('carrito-count');
+    const badgeEl = document.getElementById('carrito-count-badge');
     const fab     = document.getElementById('carrito-fab');
     if (!items) return;
 
     const total = _carrito.reduce((s, i) => s + i.subtotal, 0);
     if (totalEl)  totalEl.textContent  = `$${total.toFixed(2)}`;
-    if (countEl)  countEl.textContent  = _carrito.reduce((s, i) => s + i.cantidad, 0);
+    const qty = _carrito.reduce((s, i) => s + i.cantidad, 0);
+    if (countEl)  countEl.textContent  = qty;
+    if (badgeEl)  badgeEl.textContent  = qty;
     if (fab)      fab.style.display    = _carrito.length ? 'flex' : 'none';
 
     items.innerHTML = _carrito.length ? _carrito.map((item, idx) => `

@@ -27,6 +27,18 @@ body {
   overflow-x: hidden;
 }
 
+/* Gradiente de fondo muy tenue — profundidad sin distracción */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 55% at 10% 15%,  rgba(18,30,49,0.055)  0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 10%,  rgba(230,194,128,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(18,30,49,0.04)   0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .grain-overlay {
   position: fixed; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
@@ -106,6 +118,29 @@ body {
   gap: 5rem;
   align-items: center;
   min-height: calc(100vh - 70px);
+  position: relative;
+  z-index: 1;
+}
+
+/* Orbes decorativos del hero — sutiles, no distraen del contenido */
+.hero::before,
+.hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  pointer-events: none;
+  z-index: -1;
+}
+.hero::before {
+  width: 420px; height: 420px;
+  top: -80px; right: -60px;
+  background: radial-gradient(circle, rgba(230,194,128,0.12) 0%, transparent 70%);
+}
+.hero::after {
+  width: 360px; height: 360px;
+  bottom: 0; left: -80px;
+  background: radial-gradient(circle, rgba(18,30,49,0.09) 0%, transparent 70%);
 }
 .hero-content { animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) 0.1s backwards; }
 @keyframes fadeUp {

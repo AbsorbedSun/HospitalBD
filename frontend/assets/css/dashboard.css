@@ -587,3 +587,83 @@ tbody td { padding: 0.78rem 0.9rem; color: var(--text); font-size: 0.875rem; }
   .form-actions { flex-direction: column; }
   .btn { width: 100%; justify-content: center; }
 }
+
+/* ══════════════════════════════════════════════════════
+   FARMACIA PACIENTE — paleta "Alto Mando" (navy/gold)
+══════════════════════════════════════════════════════ */
+
+/* ── Tabs selector ───────────────────────────────── */
+.farm-tab {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1rem;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #64748b);
+    font-weight: 600;
+    font-size: .88rem;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+    font-family: 'Manrope', sans-serif;
+}
+.farm-tab.active {
+    background: #fff;
+    color: var(--primary, #121e31);
+    box-shadow: 0 1px 6px rgba(18,30,49,.10);
+}
+.farm-tab:not(.active):hover {
+    background: rgba(255,255,255,.6);
+    color: var(--primary, #121e31);
+}
+.farm-tab-count {
+    background: #e2e8f0;
+    color: #64748b;
+    border-radius: 999px;
+    padding: .1rem .45rem;
+    font-size: .72rem;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+}
+.farm-tab.active .farm-tab-count {
+    background: rgba(18,30,49,.10);
+    color: var(--primary, #121e31);
+}
+
+/* ── Product card ────────────────────────────────── */
+.farm-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    padding: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.farm-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(18,30,49,.13);
+    border-color: var(--primary, #121e31);
+}
+
+/* ── Add to cart button ──────────────────────────── */
+.farm-add-btn {
+    width: 100%;
+    padding: .5rem;
+    border-radius: 9px;
+    border: 1.5px solid var(--primary, #121e31);
+    background: transparent;
+    color: var(--primary, #121e31);
+    font-weight: 700;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: .01em;
+}
+.farm-add-btn:hover {
+    background: var(--primary, #121e31);
+    color: var(--accent, #e6c280);
+}

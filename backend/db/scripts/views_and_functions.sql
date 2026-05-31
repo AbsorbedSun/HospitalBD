@@ -1,22 +1,15 @@
--- ============================================================
 -- HospitalDB — Vistas y Funciones
--- Ejecutar DESPUÉS de schema.sql y seed.sql
--- IPN · ESCOM · Bases de Datos · Grupo 3CM3
--- ============================================================
 
 USE HospitalDB;
 GO
 
--- ============================================================
--- FUNCIONES ESCALARES (5)
--- ============================================================
-
+-- FUNCIONES ESCALARES 
 -- ------------------------------------------------------------
 -- FN_CalcularEdad
--- Propósito : Calcula la edad exacta en años a partir de la
---             fecha de nacimiento, considerando si ya cumplió
---             años en el año en curso.
--- Uso       : dbo.FN_CalcularEdad(Fecha_Nac)
+-- Calcula la edad exacta en años a partir de la
+-- fecha de nacimiento, considerando si ya cumplió
+-- años en el año en curso.
+-- 
 -- Retorna   : INT  (edad en años completos)
 -- Usado en  : VW_CitasCompletas, VW_AgendaDoctor,
 --             VW_HistorialPaciente, perfiles de usuario
@@ -38,10 +31,10 @@ GO
 
 -- ------------------------------------------------------------
 -- FN_DoctorDisponible
--- Propósito : Verifica si un doctor NO tiene una cita activa
---             (pendiente de pago o confirmada) en la fecha y
---             hora solicitadas.
--- Uso       : dbo.FN_DoctorDisponible(Id_Doctor, Fecha, Hora)
+-- Verifica si un doctor NO tiene una cita activa
+-- (pendiente de pago o confirmada) en la fecha y
+-- hora solicitadas.
+-- 
 -- Retorna   : BIT  1 = disponible, 0 = ocupado
 -- Usado en  : agendar_cita (validación de traslape)
 -- ------------------------------------------------------------
@@ -69,10 +62,9 @@ GO
 
 -- ------------------------------------------------------------
 -- FN_PacienteTieneCitaPendiente
--- Propósito : Verifica si un paciente ya tiene una cita activa
---             (pendiente o confirmada) con el doctor indicado.
---             Evita citas duplicadas con el mismo médico.
--- Uso       : dbo.FN_PacienteTieneCitaPendiente(Id_Paciente, Id_Doctor)
+-- Verifica si un paciente ya tiene una cita activa
+-- (pendiente o confirmada) con el doctor indicado.
+-- 
 -- Retorna   : BIT  1 = tiene cita pendiente, 0 = libre
 -- Usado en  : agendar_cita (validación de restricción de agendado)
 -- ------------------------------------------------------------
@@ -98,13 +90,13 @@ GO
 
 -- ------------------------------------------------------------
 -- FN_MontoDevolucion
--- Propósito : Calcula el monto a devolver al paciente según la
---             política de cancelación del hospital:
+-- Calcula el monto a devolver al paciente según la
+-- política de cancelación del hospital:
 --               >= 48 hrs de anticipación → 100 % del pago
 --               >= 24 hrs de anticipación → 50 % del pago
 --               <  24 hrs de anticipación → 0 % (sin devolución)
---             Si no existe pago confirmado retorna 0.
--- Uso       : dbo.FN_MontoDevolucion(Folio_Cita, Fecha_Cancelacion)
+-- Si no existe pago confirmado retorna 0.
+-- 
 -- Retorna   : DECIMAL(10,2) monto a reembolsar
 -- Usado en  : cancelar_cita (cálculo automático de reembolso)
 -- ------------------------------------------------------------
@@ -144,9 +136,9 @@ GO
 
 -- ------------------------------------------------------------
 -- FN_StockSuficiente
--- Propósito : Verifica si hay suficiente inventario de un
---             medicamento para cubrir la cantidad solicitada.
--- Uso       : dbo.FN_StockSuficiente(Id_Farmacia, Cantidad)
+-- Verifica si hay suficiente inventario de un
+-- medicamento para cubrir la cantidad solicitada.
+-- 
 -- Retorna   : BIT  1 = stock suficiente, 0 = insuficiente/no existe
 -- Usado en  : crear solicitud de compra, validaciones de venta
 -- ------------------------------------------------------------
@@ -167,19 +159,15 @@ GO
 
 
 -- ============================================================
--- VISTAS (4)
--- ============================================================
+-- VISTAS
 
 -- ------------------------------------------------------------
 -- VW_CitasCompletas
--- Propósito : Vista unificada de todas las citas con datos del
---             paciente, doctor, especialidad, consultorio y pago.
---             Centraliza el JOIN más complejo del sistema y evita
---             repetirlo en cada endpoint de la API.
--- Columnas  : Folio_Cita, Fecha_Cita, Hora_Cita, Solicitud_Cita,
---             Estatus, NombrePaciente, NombreDoctor, Especialidad,
---             PrecioEspecialidad, NombreConsultorio, PisoConsultorio,
---             MontoPago, EstadoPago, MontoDevuelto, EdadPaciente…
+-- Vista de todas las citas con datos del
+-- paciente, doctor, especialidad, consultorio y pago.
+-- Centraliza el JOIN más complejo del sistema y evita
+-- repetirlo en cada consulta de la API.
+--
 -- Usado en  : listar_citas (recepcionista), citas del paciente,
 --             citas del doctor, dashboard de recepcionista
 -- ------------------------------------------------------------
@@ -246,14 +234,10 @@ GO
 
 -- ------------------------------------------------------------
 -- VW_AgendaDoctor
--- Propósito : Vista de la agenda de cada doctor. Muestra solo
---             citas activas (pendientes de pago o confirmadas)
---             ordenadas por fecha y hora ascendente.
---             Incluye datos completos del paciente para que el
---             doctor pueda preparar la consulta.
--- Columnas  : Id_Doctor, NombreDoctor, Especialidad,
---             Folio_Cita, Fecha_Cita, Hora_Cita, Estatus,
---             NombrePaciente, EdadPaciente, TelefonoPaciente…
+-- Vista de la agenda de cada doctor. Muestra solo
+-- citas activas (pendientes de pago o confirmadas)
+-- ordenadas por fecha y hora ascendente.
+-- 
 -- Usado en  : dashboard del doctor (inicio + citas asignadas)
 -- ------------------------------------------------------------
 CREATE OR ALTER VIEW dbo.VW_AgendaDoctor AS
@@ -294,12 +278,10 @@ GO
 
 -- ------------------------------------------------------------
 -- VW_InventarioFarmacia
--- Propósito : Vista del inventario de medicamentos enriquecida
---             con una columna de alerta de stock calculada y un
---             flag de disponibilidad para el catálogo público.
--- Columnas  : Id_Farmacia, Nombre, Descripcion, Precio, Unidad,
---             Stock, AlertaStock (Agotado/Crítico/Bajo/OK),
---             Disponible (BIT)
+-- Vista del inventario de medicamentos enriquecida
+-- con una columna de alerta de stock calculada y un
+-- flag de disponibilidad para el catálogo público.
+--
 -- Usado en  : catalogo público (landing page), farmacia del
 --             paciente, gestión de inventario de recepcionista
 -- ------------------------------------------------------------
@@ -323,17 +305,12 @@ GO
 
 -- ------------------------------------------------------------
 -- VW_HistorialPaciente
--- Propósito : Vista consolidada del historial clínico completo
---             de cada paciente: datos personales, ficha médica
---             (tipo de sangre, alergias, etc.), historial de
---             citas y recetas emitidas.
---             Cada fila combina una cita con su receta (si existe).
---             Un paciente sin citas aparece con columnas de cita/
---             receta en NULL (LEFT JOIN).
--- Columnas  : Id_Paciente, NombrePaciente, Edad, Tipo_sangre,
---             Peso, Estatura, Alergias, Padecimientos,
---             Folio_Cita, Fecha_Cita, EstatusCita, Especialidad,
---             NombreDoctor, Id_Receta, Medicamento…
+-- Vista consolidada del historial clínico completo
+-- de cada paciente: datos personales, ficha médica
+-- (tipo de sangre, alergias, etc.), historial de
+-- citas y recetas emitidas.
+-- Cada fila combina una cita con su receta (si existe).
+--
 -- Usado en  : mis-recetas del paciente, historial del paciente,
 --             consulta del doctor sobre su paciente
 -- ------------------------------------------------------------

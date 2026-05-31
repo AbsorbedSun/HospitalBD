@@ -753,11 +753,24 @@ async function renderSolicitudes(container) {
         ? `<span style="background:#ef4444;color:#fff;border-radius:999px;padding:.1rem .45rem;font-size:.75rem;margin-left:.35rem">${comprasPend.length}</span>` : '';
 
     container.innerHTML = `<div class="view-content">
-      <div style="display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <button class="tab-btn active" data-tab="sol-cancel"
-                onclick="switchSolTab('sol-cancel')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg> Cancelaciones${badgeCancelaciones}</button>
-        <button class="tab-btn" data-tab="sol-compra"
-                onclick="switchSolTab('sol-compra')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Compras pendientes${badgeCompras}</button>
+      <div style="display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap;
+                  background:#f1f5f9;border-radius:12px;padding:.35rem">
+        <button class="farm-tab active" data-tab="sol-cancel"
+                onclick="switchSolTab('sol-cancel')">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg>
+          <span>Cancelaciones</span>
+          ${cancelaciones.length
+            ? `<span class="farm-tab-count" style="background:#ef4444;color:#fff">${cancelaciones.length}</span>`
+            : `<span class="farm-tab-count">0</span>`}
+        </button>
+        <button class="farm-tab" data-tab="sol-compra"
+                onclick="switchSolTab('sol-compra')">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg>
+          <span>Compras pendientes</span>
+          ${comprasPend.length
+            ? `<span class="farm-tab-count" style="background:#ef4444;color:#fff">${comprasPend.length}</span>`
+            : `<span class="farm-tab-count">0</span>`}
+        </button>
       </div>
 
       <!-- Tab: Cancelaciones de citas -->
@@ -823,7 +836,7 @@ function switchSolTab(tab) {
         const el = document.getElementById(id);
         if (el) el.style.display = id === tab ? '' : 'none';
     });
-    document.querySelectorAll('.tab-btn[data-tab]').forEach(b =>
+    document.querySelectorAll('.farm-tab[data-tab]').forEach(b =>
         b.classList.toggle('active', b.dataset.tab === tab));
 }
 

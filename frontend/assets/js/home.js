@@ -69,8 +69,8 @@ function renderTabMeds(lista) {
             </div>
             <div class="catalogo-card-footer">
                 <span class="catalogo-precio">$${parseFloat(m.Precio).toFixed(2)}</span>
-                <span class="catalogo-badge ${m.Stock < 10 ? 'badge-warn' : 'badge-ok'}">
-                    ${m.Stock < 10 ? 'Pocas unidades' : 'Disponible'}
+                <span class="catalogo-badge ${m.AlertaStock==='Agotado'||m.AlertaStock==='Stock Crítico'?'badge-warn':'badge-ok'}">
+                    ${m.AlertaStock||'Disponible'}
                 </span>
                 <span class="catalogo-unidad">${m.Unidad}</span>
             </div>

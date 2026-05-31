@@ -1,18 +1,4 @@
--- ============================================================
 -- SISTEMA DE GESTIÓN HOSPITALARIA - HospitalDB
--- Esquema corregido a partir del MER del equipo 4 (3CM3)
--- IPN - ESCOM - Bases de Datos Periodo 26-2
---
--- Correcciones al MER original:
---   1. Eliminada referencia circular Paciente ↔ Historial_medico
---      (Paciente ya no tiene FK a Historial; la relación va
---       de Historial → Paciente)
---   2. Eliminada referencia circular Cita ↔ Pago
---      (Pago tiene Folio_Cita nullable; Cita NO tiene Id_Pago)
---   3. EstatusCita como tabla catálogo
---   4. Tabla SolicitudCancelacion para flujo Doctor → Recepcionista
---   5. Bitácoras con permisos solo INSERT/SELECT (vía vista + trigger)
--- ============================================================
 
 USE master;
 GO
@@ -31,9 +17,7 @@ GO
 USE HospitalDB;
 GO
 
--- ============================================================
--- CATÁLOGOS BASE
--- ============================================================
+-- CATÁLOGOS
 
 CREATE TABLE TipoUsuario (
     Id_TipoUsuario   INT           IDENTITY(1,1) PRIMARY KEY,
@@ -59,9 +43,7 @@ CREATE TABLE Especialidad (
     Precio            DECIMAL(10,2)   NOT NULL
 );
 
--- ============================================================
 -- USUARIOS (tabla base para todos los perfiles)
--- ============================================================
 
 CREATE TABLE Usuario (
     Id_Usuario       INT            IDENTITY(1,1) PRIMARY KEY,
@@ -81,9 +63,7 @@ CREATE TABLE Usuario (
     -- Edad se calcula: DATEDIFF(year, Fecha_Nac, GETDATE())
 );
 
--- ============================================================
 -- EMPLEADOS (subtipo de Usuario)
--- ============================================================
 
 CREATE TABLE Empleado (
     Id_Empleado        INT            IDENTITY(1,1) PRIMARY KEY,
@@ -110,9 +90,7 @@ CREATE TABLE Doctor (
     Cedula_prof       VARCHAR(20)   NOT NULL UNIQUE
 );
 
--- ============================================================
 -- CONSULTORIOS
--- ============================================================
 
 CREATE TABLE Consultorio (
     Id_Consultorio    INT            IDENTITY(1,1) PRIMARY KEY,
@@ -123,9 +101,7 @@ CREATE TABLE Consultorio (
     EquipoM           VARCHAR(255)   NULL
 );
 
--- ============================================================
 -- PACIENTES (subtipo de Usuario)
--- ============================================================
 
 CREATE TABLE Paciente (
     Id_Paciente   INT   IDENTITY(1,1) PRIMARY KEY,
@@ -143,9 +119,7 @@ CREATE TABLE Historial_medico (
     Padecimientos     VARCHAR(500)   NULL
 );
 
--- ============================================================
 -- CITAS
--- ============================================================
 
 CREATE TABLE Cita (
     Folio_Cita       INT     IDENTITY(1,1) PRIMARY KEY,
@@ -171,9 +145,7 @@ CREATE UNIQUE INDEX UX_Cita_Doctor_FechaHora
     WHERE Id_EstatusCita IN (1, 2);
 GO
 
--- ============================================================
 -- PAGOS
--- ============================================================
 
 CREATE TABLE Pago (
     Id_Pago        INT            IDENTITY(1,1) PRIMARY KEY,
@@ -187,9 +159,7 @@ CREATE TABLE Pago (
     MontoDevuelto  DECIMAL(10,2)  NOT NULL DEFAULT 0.00
 );
 
--- ============================================================
 -- SOLICITUDES DE CANCELACIÓN (doctor pide, recepcionista aprueba)
--- ============================================================
 
 CREATE TABLE SolicitudCancelacion (
     Id_Solicitud         INT           IDENTITY(1,1) PRIMARY KEY,
@@ -203,9 +173,7 @@ CREATE TABLE SolicitudCancelacion (
     Fecha_Resolucion     DATETIME      NULL
 );
 
--- ============================================================
 -- RECETAS
--- ============================================================
 
 CREATE TABLE Receta (
     Id_Receta      INT            IDENTITY(1,1) PRIMARY KEY,
@@ -216,9 +184,7 @@ CREATE TABLE Receta (
     FechaEmision   DATE           NOT NULL DEFAULT CAST(GETDATE() AS DATE)
 );
 
--- ============================================================
 -- FARMACIA / SERVICIOS
--- ============================================================
 
 CREATE TABLE Farmacia (
     Id_Farmacia   INT             IDENTITY(1,1) PRIMARY KEY,
@@ -237,9 +203,7 @@ CREATE TABLE Servicio (
     Descripcion   VARCHAR(255)    NULL
 );
 
--- ============================================================
--- VENTAS (farmacia / servicios de mostrador)
--- ============================================================
+-- VENTAS (farmacia / servicios)
 
 CREATE TABLE Venta (
     Id_Venta          INT            IDENTITY(1,1) PRIMARY KEY,
@@ -264,9 +228,7 @@ CREATE TABLE Detalle_Venta (
     )
 );
 
--- ============================================================
--- BITÁCORAS (solo INSERT y SELECT - restringir UPDATE/DELETE vía permisos)
--- ============================================================
+-- BITÁCORAS (solo INSERT y SELECT)
 
 CREATE TABLE Bitacora_EstatusCita (
     Id_Registro    INT             IDENTITY(1,1) PRIMARY KEY,
@@ -301,27 +263,23 @@ CREATE TABLE Bitacora_HistorialCitas (
 -- (Se ejecuta en lecturas; en producción usar SQL Agent Job)
 -- ============================================================
 
--- ============================================================
--- ÍNDICES de performance
--- ============================================================
+
+-- ÍNDICES
+
 CREATE INDEX IX_Cita_Paciente   ON Cita(Id_Paciente);
 CREATE INDEX IX_Cita_Fecha      ON Cita(Fecha_Cita);
 CREATE INDEX IX_Pago_Cita       ON Pago(Folio_Cita);
 CREATE INDEX IX_Receta_Cita     ON Receta(Folio_Cita);
 CREATE INDEX IX_Usuario_Email   ON Usuario(Email);
 
--- ============================================================
 -- DATOS CATÁLOGO: TipoUsuario
--- ============================================================
 INSERT INTO TipoUsuario (Descripcion) VALUES
     ('Paciente'),
     ('Doctor'),
     ('Recepcionista'),
     ('Administrador');
 
--- ============================================================
 -- DATOS CATÁLOGO: EstatusCita
--- ============================================================
 INSERT INTO EstatusCita (Clave, Descripcion) VALUES
     ('agendada_pendiente_pago',    'Agendada - Pendiente de Pago'),
     ('pagada_pendiente_atender',   'Pagada - Pendiente por Atender'),
@@ -331,17 +289,13 @@ INSERT INTO EstatusCita (Clave, Descripcion) VALUES
     ('atendida',                   'Atendida'),
     ('no_acudio',                  'No Acudió');
 
--- ============================================================
 -- DATOS CATÁLOGO: Horarios
--- ============================================================
 INSERT INTO Horario (Turno, Hora_inic, Hora_final) VALUES
     ('Matutino',   '07:00', '15:00'),
     ('Vespertino', '15:00', '22:00'),
     ('Nocturno',   '22:00', '07:00');
 
--- ============================================================
 -- DATOS CATÁLOGO: Especialidades (mínimo 10)
--- ============================================================
 INSERT INTO Especialidad (Especialidad, Precio) VALUES
     ('Cardiología',      800.00),
     ('Dermatología',     600.00),
@@ -354,9 +308,7 @@ INSERT INTO Especialidad (Especialidad, Precio) VALUES
     ('Ortopedia',        800.00),
     ('Pediatría',        550.00);
 
--- ============================================================
 -- DATOS CATÁLOGO: Servicios extra
--- ============================================================
 INSERT INTO Servicio (Nombre, Precio, Descripcion) VALUES
     ('Inyección',           80.00,  'Aplicación de inyección intramuscular o intravenosa'),
     ('Vacuna',             200.00,  'Aplicación de vacuna'),
@@ -364,9 +316,7 @@ INSERT INTO Servicio (Nombre, Precio, Descripcion) VALUES
     ('Estudio de sangre',  350.00,  'Análisis clínico de muestra de sangre'),
     ('Electrocardiograma', 450.00,  'Registro de actividad eléctrica del corazón');
 
--- ============================================================
 -- CONSULTORIOS (2 por especialidad como ejemplo)
--- ============================================================
 INSERT INTO Consultorio (Id_Especialidad, Nombre, Piso, Telefono, EquipoM) VALUES
     (1, 'Consultorio Cardiología 1',      2, '5555-0101', 'ECG, Desfibrilador'),
     (1, 'Consultorio Cardiología 2',      2, '5555-0102', 'ECG, Monitor cardiaco'),
@@ -392,12 +342,9 @@ INSERT INTO Consultorio (Id_Especialidad, Nombre, Piso, Telefono, EquipoM) VALUE
 GO
 PRINT 'Schema HospitalDB creado exitosamente.';
 
--- ============================================================
 -- SOLICITUDES DE COMPRA  (paciente → recepcionista)
--- Patrón idéntico a SolicitudCancelacion:
 --   1. Paciente crea la solicitud con su carrito
 --   2. Recepcionista la procesa (→ Venta) o la rechaza
--- ============================================================
 
 CREATE TABLE SolicitudCompra (
     Id_Solicitud      INT            IDENTITY(1,1) PRIMARY KEY,
