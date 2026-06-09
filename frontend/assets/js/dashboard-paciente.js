@@ -46,7 +46,7 @@ const VIEWS = {
     'agendar-cita':      { title: 'Agendar Nueva Cita', subtitle: 'Programa tu próxima consulta' },
     'historial-medico':  { title: 'Historial Médico',   subtitle: 'Tu información de salud' },
     'mis-recetas':       { title: 'Mis Recetas',        subtitle: 'Prescripciones médicas emitidas por tus doctores' },
-    'farmacia-paciente': { title: 'Farmacia',           subtitle: 'Solicita medicamentos y servicios sin salir del sistema' },
+    'farmacia-paciente': { title: 'Medicamentos',           subtitle: 'Solicita medicamentos y servicios sin salir del sistema' },
 };
 
 async function loadView(viewName) {
@@ -201,7 +201,7 @@ async function renderInicio(container, _token) {
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'datos-personales\')">👤 Mis Datos</button>' +
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'historial-medico\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z"/></svg> Historial Médico</button>' +
             '<button class="btn btn-secondary" onclick="irPacienteVista(\'mis-recetas\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Mis Recetas</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'farmacia-paciente\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Farmacia</button>' +
+            '<button class="btn btn-secondary" onclick="irPacienteVista(\'farmacia-paciente\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Medicamentos</button>' +
           '</div>' +
         '</div>' +
 
@@ -568,7 +568,7 @@ function irACitas() {
     loadView('citas-agendadas');
 }
 
-/* ── FARMACIA (PACIENTE) ─────────────────────────── */
+/* ── MEDICAMENTOS (PACIENTE) ─────────────────────────── */
 
 // Estado del carrito — vive en memoria mientras la vista esté activa
 let _carrito = [];
@@ -578,8 +578,8 @@ async function renderFarmaciaPaciente(container, _token) {
     _carrito = [];
 
     const [catalogo, solicitudes] = await Promise.all([
-        farmacia.catalogo(),
-        farmacia.misSolicitudes()
+        medicamentos.catalogo(),
+        medicamentos.misSolicitudes()
     ]);
     const meds  = catalogo.medicamentos || [];
     const servs = catalogo.servicios    || [];
@@ -720,8 +720,8 @@ function buildMedCards(meds) {
             '<strong style="color:#121e31;font-size:1rem">$' + parseFloat(m.Precio).toFixed(2) + '</strong>' +
             '<span style="font-size:.72rem;color:#94a3b8">' + (m.Unidad || '') + '</span>' +
           '</div>' +
-          '<button class="farm-add-btn" onclick="agregarAlCarrito(\'farmacia\',' +
-            m.Id_Farmacia + ',\'' + nom + '\',' + m.Precio + ',\'' + uni + '\')">' +
+          '<button class="farm-add-btn" onclick="agregarAlCarrito(\'medicamento\',' +
+            m.Id_Medicamento + ',\'' + nom + '\',' + m.Precio + ',\'' + uni + '\')">' +
             '+ Agregar al carrito' +
           '</button>' +
         '</div>';
@@ -875,7 +875,7 @@ function toggleCarrito() {
 async function enviarSolicitud() {
     if (!_carrito.length) { toast('El carrito está vacío.', 'error'); return; }
     try {
-        const res = await farmacia.crearSolicitud({
+        const res = await medicamentos.crearSolicitud({
             items: _carrito.map(i => ({ tipo: i.tipo, id: i.id, cantidad: i.cantidad }))
         });
         toast(`Solicitud #${String(res.id_solicitud).padStart(4,'0')} enviada. La recepcionista la procesará pronto.`, 'success');

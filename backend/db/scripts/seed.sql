@@ -102,8 +102,8 @@ SELECT Id_Paciente, 'O+', 1.75, 72.00, 'Penicilina', 'Ninguno'
 FROM Paciente p JOIN Usuario u ON p.Id_Usuario = u.Id_Usuario
 WHERE u.Email = 'paciente@test.com';
 
--- FARMACIA - Medicamentos de ejemplo
-INSERT INTO Farmacia (Nombre, Descripcion, Precio, Unidad, Stock) VALUES
+-- MEDICAMENTOS - Medicamentos de ejemplo
+INSERT INTO Medicamentos (Nombre, Descripcion, Precio, Unidad, Stock) VALUES
     ('Paracetamol 500mg',  'Analgésico y antipirético',                 35.00, 'Caja x 10', 200),
     ('Ibuprofeno 400mg',   'Antiinflamatorio no esteroideo',             45.00, 'Caja x 20', 150),
     ('Amoxicilina 500mg',  'Antibiótico de amplio espectro',             85.00, 'Caja x 12', 100),

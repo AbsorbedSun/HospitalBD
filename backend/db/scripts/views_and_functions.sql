@@ -148,13 +148,13 @@ SELECT dbo.FN_MontoDevolucion(1, '2026-06-06 09:00:00') AS SinReembolso;
 -- Retorna  1 = stock suficiente, 0 = insuficiente/no existe
 
 
-CREATE OR ALTER FUNCTION dbo.FN_StockSuficiente(@Id_Farmacia INT, @Cantidad    INT)
+CREATE OR ALTER FUNCTION dbo.FN_StockSuficiente(@Id_Medicamento INT, @Cantidad    INT)
 RETURNS BIT AS
 BEGIN
 -- Declaracion de variables a usar
     DECLARE @Stock INT = 0;
-    -- Asigna a la variable Stock el valor obtenido de seleccionar de la tabla Farmacia (variable = valor de la columna)
-    SELECT @Stock = Stock FROM Farmacia WHERE Id_Farmacia = @Id_Farmacia;
+    -- Asigna a la variable Stock el valor obtenido de seleccionar de la tabla Medicamentos (variable = valor de la columna)
+    SELECT @Stock = Stock FROM Medicamentos WHERE Id_Medicamento = @Id_Medicamento;
     -- Si no existe regresa 0 (no hay cantidad)
     IF @Stock IS NULL RETURN 0;
     -- Si hay mayor cantidad a la solicitada regresa 1 (hay cantidad suficiente)
@@ -286,14 +286,14 @@ SELECT * FROM VW_AgendaDoctor
 
 
 -- ------------------------------------------------------------
--- VW_InventarioFarmacia
+-- VW_InventarioMedicamentos
 -- Vista del inventario de medicamentos + una columna de alerta de stock calculada y una
 -- señalización de disponibilidad para el catálogo público.
 
 
-CREATE OR ALTER VIEW dbo.VW_InventarioFarmacia AS
--- Selecciona el id, nombre, descripcion, precio, unidad, stock de la tabla Farmacia
-SELECT f.Id_Farmacia, f.Nombre, f.Descripcion, f.Precio, f.Unidad, f.Stock,
+CREATE OR ALTER VIEW dbo.VW_InventarioMedicamentos AS
+-- Selecciona el id, nombre, descripcion, precio, unidad, stock de la tabla Medicamentos
+SELECT f.Id_Medicamento, f.Nombre, f.Descripcion, f.Precio, f.Unidad, f.Stock,
     CASE -- Clasifica los numeros en palabras
         WHEN f.Stock =  0  THEN 'Agotado' -- Cuando la cantidad es 0
         WHEN f.Stock < 10  THEN 'Stock Crítico' -- Cantidades menores a 10 piezas
@@ -305,10 +305,10 @@ SELECT f.Id_Farmacia, f.Nombre, f.Descripcion, f.Precio, f.Unidad, f.Stock,
                                 WHEN f.Stock > 0 THEN 1 
                                 ELSE 0 
                                 END AS BIT) AS Disponible
-FROM Farmacia f;
+FROM Medicamentos f;
 GO
 
-SELECT * FROM VW_InventarioFarmacia
+SELECT * FROM VW_InventarioMedicamentos
 
 
 -- ------------------------------------------------------------

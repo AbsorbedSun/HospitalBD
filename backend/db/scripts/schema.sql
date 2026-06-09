@@ -184,10 +184,10 @@ CREATE TABLE Receta (
     FechaEmision   DATE           NOT NULL DEFAULT CAST(GETDATE() AS DATE)
 );
 
--- FARMACIA / SERVICIOS
+-- MEDICAMENTOS / SERVICIOS
 
-CREATE TABLE Farmacia (
-    Id_Farmacia   INT             IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE Medicamentos (
+    Id_Medicamento   INT             IDENTITY(1,1) PRIMARY KEY,
     Nombre        NVARCHAR(100)   NOT NULL,
     Descripcion   VARCHAR(255)    NULL,
     Precio        DECIMAL(10,2)   NOT NULL,
@@ -203,7 +203,7 @@ CREATE TABLE Servicio (
     Descripcion   VARCHAR(255)    NULL
 );
 
--- VENTAS (farmacia / servicios)
+-- VENTAS (medicamentos / servicios)
 
 CREATE TABLE Venta (
     Id_Venta          INT            IDENTITY(1,1) PRIMARY KEY,
@@ -211,20 +211,20 @@ CREATE TABLE Venta (
     Total             DECIMAL(10,2)  NOT NULL,
     Fecha             DATETIME       NOT NULL DEFAULT GETDATE(),
     Tipo_Venta        VARCHAR(20)    NOT NULL
-        CHECK (Tipo_Venta IN ('Servicio','Farmacia','Mixta'))
+        CHECK (Tipo_Venta IN ('Servicio','Medicamento','Mixta'))
 );
 
 CREATE TABLE Detalle_Venta (
     Id_Detalle    INT             IDENTITY(1,1) PRIMARY KEY,
     Id_Venta      INT             NOT NULL REFERENCES Venta(Id_Venta),
     Id_Servicio   INT             NULL REFERENCES Servicio(Id_Servicio),
-    Id_Farmacia   INT             NULL REFERENCES Farmacia(Id_Farmacia),
+    Id_Medicamento   INT             NULL REFERENCES Medicamentos(Id_Medicamento),
     Cantidad      INT             NOT NULL CHECK (Cantidad > 0),
     Subtotal      DECIMAL(10,2)   NOT NULL,
     -- Al menos uno de los dos debe estar presente
     CONSTRAINT CK_Detalle_TipoItem CHECK (
-        (Id_Servicio IS NOT NULL AND Id_Farmacia IS NULL) OR
-        (Id_Servicio IS NULL AND Id_Farmacia IS NOT NULL)
+        (Id_Servicio IS NOT NULL AND Id_Medicamento IS NULL) OR
+        (Id_Servicio IS NULL AND Id_Medicamento IS NOT NULL)
     )
 );
 
@@ -363,12 +363,12 @@ CREATE TABLE Detalle_SolicitudCompra (
     Id_Detalle    INT             IDENTITY(1,1) PRIMARY KEY,
     Id_Solicitud  INT             NOT NULL REFERENCES SolicitudCompra(Id_Solicitud),
     Id_Servicio   INT             NULL REFERENCES Servicio(Id_Servicio),
-    Id_Farmacia   INT             NULL REFERENCES Farmacia(Id_Farmacia),
+    Id_Medicamento   INT             NULL REFERENCES Medicamentos(Id_Medicamento),
     Cantidad      INT             NOT NULL CHECK (Cantidad > 0),
     Subtotal      DECIMAL(10,2)   NOT NULL,
     CONSTRAINT CK_DetalleSolicitud_TipoItem CHECK (
-        (Id_Servicio IS NOT NULL AND Id_Farmacia IS NULL) OR
-        (Id_Servicio IS NULL     AND Id_Farmacia IS NOT NULL)
+        (Id_Servicio IS NOT NULL AND Id_Medicamento IS NULL) OR
+        (Id_Servicio IS NULL     AND Id_Medicamento IS NOT NULL)
     )
 );
 GO

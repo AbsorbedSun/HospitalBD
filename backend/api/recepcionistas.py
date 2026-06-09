@@ -395,10 +395,10 @@ def procesar_solicitud_compra(id_solicitud):
     # Obtener detalle
     detalle = execute_query(
         """
-        SELECT dsc.Id_Servicio, dsc.Id_Farmacia, dsc.Cantidad, dsc.Subtotal,
-               f.Stock, f.Nombre AS NombreFarmacia
+        SELECT dsc.Id_Servicio, dsc.Id_Medicamento, dsc.Cantidad, dsc.Subtotal,
+               f.Stock, f.Nombre AS NombreMedicamento
         FROM   Detalle_SolicitudCompra dsc
-        LEFT JOIN Farmacia f ON dsc.Id_Farmacia = f.Id_Farmacia
+        LEFT JOIN Medicamentos f ON dsc.Id_Medicamento = f.Id_Medicamento
         WHERE  dsc.Id_Solicitud = ?
         """,
         (id_solicitud,)
@@ -406,9 +406,9 @@ def procesar_solicitud_compra(id_solicitud):
 
     # Re-validar stock antes de procesar
     for d in rows_to_json(detalle):
-        if d['Id_Farmacia'] and d['Stock'] < d['Cantidad']:
+        if d['Id_Medicamento'] and d['Stock'] < d['Cantidad']:
             return jsonify({
-                'error': f'Stock insuficiente para "{d["NombreFarmacia"]}". '
+                'error': f'Stock insuficiente para "{d["NombreMedicamento"]}". '
                          f'Disponible: {d["Stock"]}.'
             }), 409
 
@@ -419,9 +419,9 @@ def procesar_solicitud_compra(id_solicitud):
         cursor = conn.cursor()
 
         sol_d       = rows_to_json(detalle)
-        tiene_farm  = any(d['Id_Farmacia'] for d in sol_d)
+        tiene_farm  = any(d['Id_Medicamento'] for d in sol_d)
         tiene_serv  = any(d['Id_Servicio'] for d in sol_d)
-        tipo_venta  = 'Mixta' if (tiene_farm and tiene_serv) else ('Farmacia' if tiene_farm else 'Servicio')
+        tipo_venta  = 'Mixta' if (tiene_farm and tiene_serv) else ('Medicamento' if tiene_farm else 'Servicio')
 
         # Crear Venta
         cursor.execute(
@@ -439,15 +439,15 @@ def procesar_solicitud_compra(id_solicitud):
             cursor.execute(
                 """
                 INSERT INTO Detalle_Venta
-                       (Id_Venta, Id_Servicio, Id_Farmacia, Cantidad, Subtotal)
+                       (Id_Venta, Id_Servicio, Id_Medicamento, Cantidad, Subtotal)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (id_venta, d['Id_Servicio'], d['Id_Farmacia'], d['Cantidad'], d['Subtotal'])
+                (id_venta, d['Id_Servicio'], d['Id_Medicamento'], d['Cantidad'], d['Subtotal'])
             )
-            if d['Id_Farmacia']:
+            if d['Id_Medicamento']:
                 cursor.execute(
-                    'UPDATE Farmacia SET Stock = Stock - ? WHERE Id_Farmacia = ?',
-                    (d['Cantidad'], d['Id_Farmacia'])
+                    'UPDATE Medicamentos SET Stock = Stock - ? WHERE Id_Medicamento = ?',
+                    (d['Cantidad'], d['Id_Medicamento'])
                 )
 
         # Marcar solicitud como Procesada

@@ -37,7 +37,7 @@ const VIEWS = {
     'citas':       { title:'Gestión de Citas',      subtitle:'Todas las citas del hospital' },
     'pacientes':   { title:'Pacientes',             subtitle:'Gestión de pacientes' },
     'doctores':    { title:'Doctores',              subtitle:'Gestión del personal médico' },
-    'farmacia':    { title:'Farmacia y Servicios',  subtitle:'Inventario y ventas de mostrador' },
+    'farmacia':    { title:'Medicamentos y Servicios',  subtitle:'Inventario y ventas de mostrador' },
     'bitacoras':   { title:'Bitácoras',             subtitle:'Registro de auditoría del sistema' },
     'solicitudes': { title:'Solicitudes',           subtitle:'Cancelaciones pendientes de aprobación' },
     'mi-perfil':   { title:'Mi Perfil',             subtitle:'Tu información personal y laboral' },
@@ -318,10 +318,10 @@ async function nuevoDoctor() {
         }, 'Registrar Doctor');
 }
 
-/* ── FARMACIA Y SERVICIOS ─────────────────────────── */
+/* ── MEDICAMENTOS Y SERVICIOS ─────────────────────────── */
 async function renderFarmacia(container) {
     const [meds, servs, ventas] = await Promise.all([
-        farmacia.obtenerMedicamentos(), farmacia.obtenerServicios(), farmacia.obtenerVentas()
+        medicamentos.obtenerMedicamentos(), medicamentos.obtenerServicios(), medicamentos.obtenerVentas()
     ]);
 
     // ── Filas medicamentos ────────────────────────────────────────────
@@ -333,11 +333,11 @@ async function renderFarmacia(container) {
         <td>${m.Unidad}</td>
         <td style="display:flex;gap:.35rem;flex-wrap:wrap">
             <button class="btn btn-sm btn-secondary"
-                onclick="editarMedicamentoModal(${m.Id_Farmacia},'${m.Nombre.replace(/'/g,"\\'")}',${m.Precio},'${(m.Unidad||'').replace(/'/g,"\\'")}',${m.Stock},'${(m.Descripcion||'').replace(/'/g,"\\'")}')">
+                onclick="editarMedicamentoModal(${m.Id_Medicamento},'${m.Nombre.replace(/'/g,"\\'")}',${m.Precio},'${(m.Unidad||'').replace(/'/g,"\\'")}',${m.Stock},'${(m.Descripcion||'').replace(/'/g,"\\'")}')">
                 ✏️ Editar
             </button>
             <button class="btn btn-sm btn-danger"
-                onclick="eliminarMedicamentoModal(${m.Id_Farmacia},'${m.Nombre.replace(/'/g,"\\'")}')">
+                onclick="eliminarMedicamentoModal(${m.Id_Medicamento},'${m.Nombre.replace(/'/g,"\\'")}')">
                 🗑️ Eliminar
             </button>
         </td></tr>`).join('') ||
@@ -410,7 +410,7 @@ async function editarMedicamentoModal(id, nombre, precio, unidad, stock, descrip
         async () => {
             const g = id => document.getElementById(id)?.value?.trim();
             if (!g('em-nom') || !g('em-pre') || !g('em-uni')) throw new Error('Completa los campos requeridos.');
-            await farmacia.actualizarMedicamento(id, {
+            await medicamentos.actualizarMedicamento(id, {
                 nombre:      g('em-nom'),
                 precio:      parseFloat(g('em-pre')),
                 unidad:      g('em-uni'),
@@ -430,7 +430,7 @@ async function eliminarMedicamentoModal(id, nombre) {
         Esta acción es irreversible. Si el medicamento tiene ventas registradas no podrá eliminarse.
       </p>`,
         async () => {
-            await farmacia.eliminarMedicamento(id);
+            await medicamentos.eliminarMedicamento(id);
             toast(`"${nombre}" eliminado correctamente.`, 'success');
             cerrarModal(); loadView('farmacia');
         }, 'Eliminar', 'btn-danger');
@@ -450,7 +450,7 @@ async function editarServicioModal(id, nombre, precio, descripcion) {
         async () => {
             const g = id => document.getElementById(id)?.value?.trim();
             if (!g('es-nom') || !g('es-pre')) throw new Error('Nombre y precio son requeridos.');
-            await farmacia.actualizarServicio(id, {
+            await medicamentos.actualizarServicio(id, {
                 nombre:      g('es-nom'),
                 precio:      parseFloat(g('es-pre')),
                 descripcion: g('es-des')
@@ -468,7 +468,7 @@ async function eliminarServicioModal(id, nombre) {
         Esta acción es irreversible. Si el servicio tiene ventas registradas no podrá eliminarse.
       </p>`,
         async () => {
-            await farmacia.eliminarServicio(id);
+            await medicamentos.eliminarServicio(id);
             toast(`"${nombre}" eliminado correctamente.`, 'success');
             cerrarModal(); loadView('farmacia');
         }, 'Eliminar', 'btn-danger');
@@ -476,11 +476,11 @@ async function eliminarServicioModal(id, nombre) {
 
 
 async function nuevaVentaModal() {
-    const [meds, servs] = await Promise.all([farmacia.obtenerMedicamentos(), farmacia.obtenerServicios()]);
+    const [meds, servs] = await Promise.all([medicamentos.obtenerMedicamentos(), medicamentos.obtenerServicios()]);
     let items = [];
     const renderItems = () => items.map((item,i) => `
       <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
-        <span style="flex:1">${item.tipo==='farmacia'?'Med':'Serv'} ${item.nombre}</span>
+        <span style="flex:1">${item.tipo==='medicamento'?'Med':'Serv'} ${item.nombre}</span>
         <input type="number" min="1" value="${item.cantidad}" style="width:60px;padding:.3rem;border:1px solid var(--border);border-radius:6px"
           onchange="actualizarCantItem(${i},this.value)">
         <span style="width:80px;text-align:right">${utils.formatearMoneda(item.precio*item.cantidad)}</span>
@@ -501,11 +501,11 @@ async function nuevaVentaModal() {
       <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1rem">El cliente NO necesita ser paciente del hospital.</p>
       <div class="form-grid">
         <div class="form-group"><label>Tipo</label>
-          <select id="v-tipo"><option value="farmacia">Medicamento</option><option value="servicio">Servicio</option></select>
+          <select id="v-tipo"><option value="medicamento">Medicamento</option><option value="servicio">Servicio</option></select>
         </div>
         <div class="form-group"><label>Producto/Servicio</label>
           <select id="v-item">
-            ${meds.map(m=>`<option value="${m.Id_Farmacia}" data-tipo="farmacia" data-precio="${m.Precio}" data-nombre="${m.Nombre}">${m.Nombre} – ${utils.formatearMoneda(m.Precio)}</option>`).join('')}
+            ${meds.map(m=>`<option value="${m.Id_Medicamento}" data-tipo="medicamento" data-precio="${m.Precio}" data-nombre="${m.Nombre}">${m.Nombre} – ${utils.formatearMoneda(m.Precio)}</option>`).join('')}
             ${servs.map(s=>`<option value="${s.Id_Servicio}" data-tipo="servicio" data-precio="${s.Precio}" data-nombre="${s.Nombre}">${s.Nombre} – ${utils.formatearMoneda(s.Precio)}</option>`).join('')}
           </select>
         </div>
@@ -524,7 +524,7 @@ async function nuevaVentaModal() {
                     tipo: it.tipo, id: it.id, cantidad: it.cantidad
                 }))
             };
-            const res = await farmacia.realizarVenta(payload);
+            const res = await medicamentos.realizarVenta(payload);
             toast(`Venta #${res.id_venta} registrada. Total: ${utils.formatearMoneda(res.total)}`,'success');
             cerrarModal(); loadView('farmacia');
         }, 'Registrar Venta');
@@ -554,7 +554,7 @@ async function nuevoMedicamento() {
         async () => {
             const g=id=>document.getElementById(id)?.value?.trim();
             if (!g('nm-nom')||!g('nm-pre')||!g('nm-uni')||!g('nm-stk')) throw new Error('Completa los campos requeridos.');
-            await farmacia.crearMedicamento({nombre:g('nm-nom'),precio:parseFloat(g('nm-pre')),unidad:g('nm-uni'),stock:parseInt(g('nm-stk')),descripcion:g('nm-des')});
+            await medicamentos.crearMedicamento({nombre:g('nm-nom'),precio:parseFloat(g('nm-pre')),unidad:g('nm-uni'),stock:parseInt(g('nm-stk')),descripcion:g('nm-des')});
             toast('Medicamento agregado.','success'); cerrarModal(); loadView('farmacia');
         });
 }
@@ -569,7 +569,7 @@ async function nuevoServicio() {
         async () => {
             const g=id=>document.getElementById(id)?.value?.trim();
             if (!g('ns-nom')||!g('ns-pre')) throw new Error('Nombre y precio son requeridos.');
-            await farmacia.crearServicio({nombre:g('ns-nom'),precio:parseFloat(g('ns-pre')),descripcion:g('ns-des')});
+            await medicamentos.crearServicio({nombre:g('ns-nom'),precio:parseFloat(g('ns-pre')),descripcion:g('ns-des')});
             toast('Servicio agregado.','success'); cerrarModal(); loadView('farmacia');
         });
 }
@@ -842,10 +842,10 @@ function switchSolTab(tab) {
 
 async function verDetalleSolicitudCompra(id, paciente, total) {
     let detalle = [];
-    try { detalle = await farmacia.detalleSolicitud(id); } catch(e) {}
+    try { detalle = await medicamentos.detalleSolicitud(id); } catch(e) {}
 
     const filas = detalle.map(d => `<tr>
-        <td>${d.NombreFarmacia || d.NombreServicio}</td>
+        <td>${d.NombreMedicamento || d.NombreServicio}</td>
         <td>${d.Cantidad}</td>
         <td>$${parseFloat(d.Subtotal).toFixed(2)}</td>
     </tr>`).join('') || '<tr><td colspan="3">Sin detalle</td></tr>';

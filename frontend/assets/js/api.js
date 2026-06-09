@@ -216,32 +216,32 @@ const recepcionista = {
 };
 
 // ============================================================
-// FARMACIA
+// MEDICAMENTOS
 // ============================================================
-const farmacia = {
+const medicamentos = {
     obtenerMedicamentos: (f={}) => {
         const p = new URLSearchParams(f).toString();
-        return apiRequest(`/farmacia/medicamentos${p ? '?' + p : ''}`);
+        return apiRequest(`/medicamentos/medicamentos${p ? '?' + p : ''}`);
     },
-    obtenerMedicamento:   (id)  => apiRequest(`/farmacia/medicamentos/${id}`),
-    crearMedicamento:     (d)   => apiRequest('/farmacia/medicamentos',  { method:'POST', body:JSON.stringify(d) }),
-    actualizarMedicamento:(id,d)=> apiRequest(`/farmacia/medicamentos/${id}`, { method:'PUT', body:JSON.stringify(d) }),
-    eliminarMedicamento:  (id)  => apiRequest(`/farmacia/medicamentos/${id}`, { method:'DELETE' }),
-    obtenerServicios:     ()    => apiRequest('/farmacia/servicios'),
-    crearServicio:        (d)   => apiRequest('/farmacia/servicios',    { method:'POST', body:JSON.stringify(d) }),
-    actualizarServicio:   (id,d)=> apiRequest(`/farmacia/servicios/${id}`, { method:'PUT', body:JSON.stringify(d) }),
-    eliminarServicio:     (id)  => apiRequest(`/farmacia/servicios/${id}`, { method:'DELETE' }),
-    catalogo:             ()    => apiRequest('/farmacia/catalogo'),
+    obtenerMedicamento:   (id)  => apiRequest(`/medicamentos/medicamentos/${id}`),
+    crearMedicamento:     (d)   => apiRequest('/medicamentos/medicamentos',  { method:'POST', body:JSON.stringify(d) }),
+    actualizarMedicamento:(id,d)=> apiRequest(`/medicamentos/medicamentos/${id}`, { method:'PUT', body:JSON.stringify(d) }),
+    eliminarMedicamento:  (id)  => apiRequest(`/medicamentos/medicamentos/${id}`, { method:'DELETE' }),
+    obtenerServicios:     ()    => apiRequest('/medicamentos/servicios'),
+    crearServicio:        (d)   => apiRequest('/medicamentos/servicios',    { method:'POST', body:JSON.stringify(d) }),
+    actualizarServicio:   (id,d)=> apiRequest(`/medicamentos/servicios/${id}`, { method:'PUT', body:JSON.stringify(d) }),
+    eliminarServicio:     (id)  => apiRequest(`/medicamentos/servicios/${id}`, { method:'DELETE' }),
+    catalogo:             ()    => apiRequest('/medicamentos/catalogo'),
     // Solicitudes de compra (paciente)
-    crearSolicitud:       (d)   => apiRequest('/farmacia/solicitudes',  { method:'POST', body:JSON.stringify(d) }),
-    misSolicitudes:       ()    => apiRequest('/farmacia/solicitudes'),
-    detalleSolicitud:     (id)  => apiRequest(`/farmacia/solicitudes/${id}/detalle`),
-    realizarVenta:        (d)   => apiRequest('/farmacia/ventas',       { method:'POST', body:JSON.stringify(d) }),
+    crearSolicitud:       (d)   => apiRequest('/medicamentos/solicitudes',  { method:'POST', body:JSON.stringify(d) }),
+    misSolicitudes:       ()    => apiRequest('/medicamentos/solicitudes'),
+    detalleSolicitud:     (id)  => apiRequest(`/medicamentos/solicitudes/${id}/detalle`),
+    realizarVenta:        (d)   => apiRequest('/medicamentos/ventas',       { method:'POST', body:JSON.stringify(d) }),
     obtenerVentas: (f={}) => {
         const p = new URLSearchParams(f).toString();
-        return apiRequest(`/farmacia/ventas${p ? '?' + p : ''}`);
+        return apiRequest(`/medicamentos/ventas${p ? '?' + p : ''}`);
     },
-    obtenerDetalleVenta:  (id)  => apiRequest(`/farmacia/ventas/${id}`)
+    obtenerDetalleVenta:  (id)  => apiRequest(`/medicamentos/ventas/${id}`)
 };
 
 // ============================================================

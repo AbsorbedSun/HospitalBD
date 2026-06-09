@@ -36,7 +36,7 @@ let _tabActual      = 'medicamentos';
 
 async function cargarCatalogo() {
     try {
-        const res  = await fetch('/api/farmacia/catalogo');
+        const res  = await fetch('/api/medicamentos/catalogo');
         if (!res.ok) throw new Error('Error al cargar catálogo');
         const data = await res.json();
         _catalogoMeds  = data.medicamentos || [];

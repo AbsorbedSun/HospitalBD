@@ -1,5 +1,5 @@
 """
-Rutas de Farmacia, Servicios y Ventas de mostrador.
+Rutas de Medicamentos, Servicios y Ventas de mostrador.
 IMPORTANTE: Para vender medicamentos o servicios el cliente
 NO necesita ser paciente del hospital.
 """
@@ -12,25 +12,25 @@ from db.connection import execute_query, execute_non_query, execute_insert_retur
 from core.decorators import requiere_auth, requiere_rol
 from core.helpers import rows_to_json
 
-farmacia_bp = Blueprint('farmacia', __name__)
+medicamentos_bp = Blueprint('medicamentos', __name__)
 
 
 # ================================================================
 # MEDICAMENTOS
 # ================================================================
 
-# GET /api/farmacia/catalogo   (público — sin autenticación)
+# GET /api/medicamentos/catalogo   (público — sin autenticación)
 # Devuelve medicamentos con stock > 0 y todos los servicios
 # para mostrarse en la landing page sin requerir login.
-@farmacia_bp.route('/catalogo', methods=['GET'])
+@medicamentos_bp.route('/catalogo', methods=['GET'])
 def catalogo_publico():
-    # VW_InventarioFarmacia añade AlertaStock y el flag Disponible (Stock > 0)
+    # VW_InventarioMedicamentos añade AlertaStock y el flag Disponible (Stock > 0)
     # Solo mostramos los disponibles en el catálogo público
     medicamentos = execute_query(
         """
-        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad,
+        SELECT Id_Medicamento, Nombre, Descripcion, Precio, Unidad,
                Stock, AlertaStock
-        FROM   VW_InventarioFarmacia
+        FROM   VW_InventarioMedicamentos
         WHERE  Disponible = 1
         ORDER  BY Nombre
         """
@@ -48,8 +48,8 @@ def catalogo_publico():
     }), 200
 
 
-# GET /api/farmacia/medicamentos
-@farmacia_bp.route('/medicamentos', methods=['GET'])
+# GET /api/medicamentos/medicamentos
+@medicamentos_bp.route('/medicamentos', methods=['GET'])
 @requiere_auth
 def listar_medicamentos():
     nombre = request.args.get('nombre', '')
@@ -58,15 +58,15 @@ def listar_medicamentos():
         filtro = 'WHERE Nombre LIKE ?'
         params.append(f'%{nombre}%')
 
-    # VW_InventarioFarmacia incluye AlertaStock calculado y flag Disponible
+    # VW_InventarioMedicamentos incluye AlertaStock calculado y flag Disponible
     # El filtro de nombre se aplica sobre la vista igual que sobre la tabla
     if nombre:
         filtro = 'WHERE Nombre LIKE ?'
     rows = execute_query(
         f"""
-        SELECT Id_Farmacia, Nombre, Descripcion, Precio, Unidad,
+        SELECT Id_Medicamento, Nombre, Descripcion, Precio, Unidad,
                Stock, AlertaStock, Disponible
-        FROM VW_InventarioFarmacia
+        FROM VW_InventarioMedicamentos
         {filtro}
         ORDER BY Nombre
         """,
@@ -75,20 +75,20 @@ def listar_medicamentos():
     return jsonify(rows_to_json(rows)), 200
 
 
-# GET /api/farmacia/medicamentos/<id>
-@farmacia_bp.route('/medicamentos/<int:id_farmacia>', methods=['GET'])
+# GET /api/medicamentos/medicamentos/<id>
+@medicamentos_bp.route('/medicamentos/<int:id_medicamento>', methods=['GET'])
 @requiere_auth
-def obtener_medicamento(id_farmacia):
+def obtener_medicamento(id_medicamento):
     rows = execute_query(
-        'SELECT * FROM Farmacia WHERE Id_Farmacia = ?', (id_farmacia,)
+        'SELECT * FROM Medicamentos WHERE Id_Medicamento = ?', (id_medicamento,)
     )
     if not rows:
         return jsonify({'error': 'Medicamento no encontrado.'}), 404
     return jsonify(rows_to_json(rows[0])), 200
 
 
-# POST /api/farmacia/medicamentos   (solo recepcionista/admin)
-@farmacia_bp.route('/medicamentos', methods=['POST'])
+# POST /api/medicamentos/medicamentos   (solo recepcionista/admin)
+@medicamentos_bp.route('/medicamentos', methods=['POST'])
 @requiere_rol('recepcionista', 'admin')
 def crear_medicamento():
     data = request.get_json(silent=True) or {}
@@ -99,8 +99,8 @@ def crear_medicamento():
 
     id_nuevo = execute_insert_returning_id(
         """
-        INSERT INTO Farmacia (Nombre, Descripcion, Precio, Unidad, Stock)
-        OUTPUT INSERTED.Id_Farmacia
+        INSERT INTO Medicamentos (Nombre, Descripcion, Precio, Unidad, Stock)
+        OUTPUT INSERTED.Id_Medicamento
         VALUES (?, ?, ?, ?, ?)
         """,
         (
@@ -111,13 +111,13 @@ def crear_medicamento():
             int(data['stock'])
         )
     )
-    return jsonify({'id_farmacia': id_nuevo, 'mensaje': 'Medicamento registrado.'}), 201
+    return jsonify({'id_medicamento': id_nuevo, 'mensaje': 'Medicamento registrado.'}), 201
 
 
-# PUT /api/farmacia/medicamentos/<id>   (actualizar stock/precio)
-@farmacia_bp.route('/medicamentos/<int:id_farmacia>', methods=['PUT'])
+# PUT /api/medicamentos/medicamentos/<id>   (actualizar stock/precio)
+@medicamentos_bp.route('/medicamentos/<int:id_medicamento>', methods=['PUT'])
 @requiere_rol('recepcionista', 'admin')
-def actualizar_medicamento(id_farmacia):
+def actualizar_medicamento(id_medicamento):
     data = request.get_json(silent=True) or {}
     campos, params = [], []
 
@@ -133,30 +133,30 @@ def actualizar_medicamento(id_farmacia):
     if not campos:
         return jsonify({'error': 'Sin campos para actualizar.'}), 400
 
-    params.append(id_farmacia)
+    params.append(id_medicamento)
     execute_non_query(
-        f"UPDATE Farmacia SET {', '.join(campos)} WHERE Id_Farmacia = ?",
+        f"UPDATE Medicamentos SET {', '.join(campos)} WHERE Id_Medicamento = ?",
         tuple(params)
     )
     return jsonify({'mensaje': 'Medicamento actualizado.'}), 200
 
 
-# DELETE /api/farmacia/medicamentos/<id>   (eliminar medicamento)
-@farmacia_bp.route('/medicamentos/<int:id_farmacia>', methods=['DELETE'])
+# DELETE /api/medicamentos/medicamentos/<id>   (eliminar medicamento)
+@medicamentos_bp.route('/medicamentos/<int:id_medicamento>', methods=['DELETE'])
 @requiere_rol('recepcionista', 'admin')
-def eliminar_medicamento(id_farmacia):
+def eliminar_medicamento(id_medicamento):
     # Verificar que el medicamento existe
     existe = execute_query(
-        'SELECT Id_Farmacia, Nombre FROM Farmacia WHERE Id_Farmacia = ?',
-        (id_farmacia,)
+        'SELECT Id_Medicamento, Nombre FROM Medicamentos WHERE Id_Medicamento = ?',
+        (id_medicamento,)
     )
     if not existe:
         return jsonify({'error': 'Medicamento no encontrado.'}), 404
 
     # Verificar que no tiene ventas asociadas (integridad referencial)
     en_uso = execute_query(
-        'SELECT TOP 1 Id_Venta FROM Detalle_Venta WHERE Id_Farmacia = ?',
-        (id_farmacia,)
+        'SELECT TOP 1 Id_Venta FROM Detalle_Venta WHERE Id_Medicamento = ?',
+        (id_medicamento,)
     )
     if en_uso:
         return jsonify({
@@ -165,7 +165,7 @@ def eliminar_medicamento(id_farmacia):
         }), 409
 
     execute_non_query(
-        'DELETE FROM Farmacia WHERE Id_Farmacia = ?', (id_farmacia,)
+        'DELETE FROM Medicamentos WHERE Id_Medicamento = ?', (id_medicamento,)
     )
     return jsonify({'mensaje': 'Medicamento eliminado correctamente.'}), 200
 
@@ -174,8 +174,8 @@ def eliminar_medicamento(id_farmacia):
 # SERVICIOS
 # ================================================================
 
-# GET /api/farmacia/servicios
-@farmacia_bp.route('/servicios', methods=['GET'])
+# GET /api/medicamentos/servicios
+@medicamentos_bp.route('/servicios', methods=['GET'])
 @requiere_auth
 def listar_servicios():
     rows = execute_query(
@@ -184,8 +184,8 @@ def listar_servicios():
     return jsonify(rows_to_json(rows)), 200
 
 
-# POST /api/farmacia/servicios   (solo recepcionista/admin)
-@farmacia_bp.route('/servicios', methods=['POST'])
+# POST /api/medicamentos/servicios   (solo recepcionista/admin)
+@medicamentos_bp.route('/servicios', methods=['POST'])
 @requiere_rol('recepcionista', 'admin')
 def crear_servicio():
     data = request.get_json(silent=True) or {}
@@ -203,8 +203,8 @@ def crear_servicio():
     return jsonify({'id_servicio': id_nuevo, 'mensaje': 'Servicio registrado.'}), 201
 
 
-# PUT /api/farmacia/servicios/<id>
-@farmacia_bp.route('/servicios/<int:id_servicio>', methods=['PUT'])
+# PUT /api/medicamentos/servicios/<id>
+@medicamentos_bp.route('/servicios/<int:id_servicio>', methods=['PUT'])
 @requiere_rol('recepcionista', 'admin')
 def actualizar_servicio(id_servicio):
     data = request.get_json(silent=True) or {}
@@ -223,8 +223,8 @@ def actualizar_servicio(id_servicio):
     return jsonify({'mensaje': 'Servicio actualizado.'}), 200
 
 
-# DELETE /api/farmacia/servicios/<id>   (eliminar servicio)
-@farmacia_bp.route('/servicios/<int:id_servicio>', methods=['DELETE'])
+# DELETE /api/medicamentos/servicios/<id>   (eliminar servicio)
+@medicamentos_bp.route('/servicios/<int:id_servicio>', methods=['DELETE'])
 @requiere_rol('recepcionista', 'admin')
 def eliminar_servicio(id_servicio):
     existe = execute_query(
@@ -253,8 +253,8 @@ def eliminar_servicio(id_servicio):
 # VENTAS
 # ================================================================
 
-# GET /api/farmacia/ventas
-@farmacia_bp.route('/ventas', methods=['GET'])
+# GET /api/medicamentos/ventas
+@medicamentos_bp.route('/ventas', methods=['GET'])
 @requiere_rol('recepcionista', 'admin')
 def listar_ventas():
     filtros, params = [], []
@@ -281,8 +281,8 @@ def listar_ventas():
     return jsonify(rows_to_json(rows)), 200
 
 
-# GET /api/farmacia/ventas/<id>
-@farmacia_bp.route('/ventas/<int:id_venta>', methods=['GET'])
+# GET /api/medicamentos/ventas/<id>
+@medicamentos_bp.route('/ventas/<int:id_venta>', methods=['GET'])
 @requiere_rol('recepcionista', 'admin')
 def detalle_venta(id_venta):
     encabezado = execute_query(
@@ -306,7 +306,7 @@ def detalle_venta(id_venta):
                f.Nombre AS NombreProducto
         FROM Detalle_Venta dv
         LEFT JOIN Servicio s  ON dv.Id_Servicio = s.Id_Servicio
-        LEFT JOIN Farmacia f  ON dv.Id_Farmacia = f.Id_Farmacia
+        LEFT JOIN Medicamentos f  ON dv.Id_Medicamento = f.Id_Medicamento
         WHERE dv.Id_Venta = ?
         """,
         (id_venta,)
@@ -316,15 +316,15 @@ def detalle_venta(id_venta):
     return jsonify(result), 200
 
 
-# POST /api/farmacia/ventas   (realizar venta de mostrador)
-@farmacia_bp.route('/ventas', methods=['POST'])
+# POST /api/medicamentos/ventas   (realizar venta de mostrador)
+@medicamentos_bp.route('/ventas', methods=['POST'])
 @requiere_rol('recepcionista', 'admin')
 def realizar_venta():
     """
     Body esperado:
     {
         "items": [
-            {"tipo": "farmacia",  "id": 3, "cantidad": 2},
+            {"tipo": "medicamento",  "id": 3, "cantidad": 2},
             {"tipo": "servicio",  "id": 1, "cantidad": 1}
         ]
     }
@@ -347,13 +347,13 @@ def realizar_venta():
         detalles   = []
 
         for item in items:
-            tipo     = item.get('tipo')       # 'farmacia' o 'servicio'
+            tipo     = item.get('tipo')       # 'medicamento' o 'servicio'
             id_item  = item.get('id')
             cantidad = int(item.get('cantidad', 1))
 
-            if tipo == 'farmacia':
+            if tipo == 'medicamento':
                 prod = execute_query(
-                    'SELECT Precio, Stock FROM Farmacia WHERE Id_Farmacia = ?', (id_item,)
+                    'SELECT Precio, Stock FROM Medicamentos WHERE Id_Medicamento = ?', (id_item,)
                 )
                 if not prod:
                     return jsonify({'error': f'Medicamento {id_item} no encontrado.'}), 404
@@ -361,8 +361,8 @@ def realizar_venta():
                     return jsonify({'error': f'Stock insuficiente para medicamento {id_item}.'}), 422
                 subtotal = float(prod[0]['Precio']) * cantidad
                 total   += subtotal
-                tipos_set.add('Farmacia')
-                detalles.append({'tipo': 'farmacia', 'id': id_item,
+                tipos_set.add('Medicamento')
+                detalles.append({'tipo': 'medicamento', 'id': id_item,
                                   'cantidad': cantidad, 'subtotal': subtotal})
 
             elif tipo == 'servicio':
@@ -397,19 +397,19 @@ def realizar_venta():
         # Insertar Detalles y actualizar stock
         for d in detalles:
             id_serv = d['id'] if d['tipo'] == 'servicio' else None
-            id_farm = d['id'] if d['tipo'] == 'farmacia' else None
+            id_med = d['id'] if d['tipo'] == 'medicamento' else None
 
             cursor.execute(
                 """
-                INSERT INTO Detalle_Venta (Id_Venta, Id_Servicio, Id_Farmacia, Cantidad, Subtotal)
+                INSERT INTO Detalle_Venta (Id_Venta, Id_Servicio, Id_Medicamento, Cantidad, Subtotal)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (id_venta, id_serv, id_farm, d['cantidad'], d['subtotal'])
+                (id_venta, id_serv, id_med, d["cantidad"], d["subtotal"])
             )
 
-            if d['tipo'] == 'farmacia':
+            if d["tipo"] == "medicamento":
                 cursor.execute(
-                    'UPDATE Farmacia SET Stock = Stock - ? WHERE Id_Farmacia = ?',
+                    'UPDATE Medicamentos SET Stock = Stock - ? WHERE Id_Medicamento = ?',
                     (d['cantidad'], d['id'])
                 )
 
@@ -432,8 +432,8 @@ def realizar_venta():
 # SOLICITUDES DE COMPRA  (paciente ↔ recepcionista)
 # ================================================================
 
-# POST /api/farmacia/solicitudes   (paciente crea solicitud)
-@farmacia_bp.route('/solicitudes', methods=['POST'])
+# POST /api/medicamentos/solicitudes   (paciente crea solicitud)
+@medicamentos_bp.route('/solicitudes', methods=['POST'])
 @requiere_auth
 def crear_solicitud_compra():
     claims     = get_jwt()
@@ -456,13 +456,13 @@ def crear_solicitud_compra():
     total = 0.0
     items_validados = []
     for item in items:
-        tipo     = item.get('tipo')       # 'farmacia' o 'servicio'
+        tipo     = item.get('tipo')       # 'medicamento' o 'servicio'
         id_item  = item.get('id')
         cantidad = int(item.get('cantidad', 1))
 
-        if tipo == 'farmacia':
+        if tipo == 'medicamento':
             prod = execute_query(
-                'SELECT Nombre, Precio, Stock FROM Farmacia WHERE Id_Farmacia = ?',
+                'SELECT Nombre, Precio, Stock FROM Medicamentos WHERE Id_Medicamento = ?',
                 (id_item,)
             )
             if not prod:
@@ -507,14 +507,14 @@ def crear_solicitud_compra():
 
         for item in items_validados:
             id_serv = item['id'] if item['tipo'] == 'servicio' else None
-            id_farm = item['id'] if item['tipo'] == 'farmacia'  else None
+            id_med = item['id'] if item['tipo'] == 'medicamento'  else None
             cursor.execute(
                 """
                 INSERT INTO Detalle_SolicitudCompra
-                       (Id_Solicitud, Id_Servicio, Id_Farmacia, Cantidad, Subtotal)
+                       (Id_Solicitud, Id_Servicio, Id_Medicamento, Cantidad, Subtotal)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (id_solicitud, id_serv, id_farm, item['cantidad'], item['subtotal'])
+                (id_solicitud, id_serv, id_med, item["cantidad"], item["subtotal"])
             )
 
         conn.commit()
@@ -533,8 +533,8 @@ def crear_solicitud_compra():
             conn.close()
 
 
-# GET /api/farmacia/solicitudes   (paciente consulta sus propias solicitudes)
-@farmacia_bp.route('/solicitudes', methods=['GET'])
+# GET /api/medicamentos/solicitudes   (paciente consulta sus propias solicitudes)
+@medicamentos_bp.route('/solicitudes', methods=['GET'])
 @requiere_auth
 def mis_solicitudes_compra():
     claims     = get_jwt()
@@ -558,8 +558,8 @@ def mis_solicitudes_compra():
     return jsonify(rows_to_json(rows)), 200
 
 
-# GET /api/farmacia/solicitudes/<id>/detalle   (detalle de una solicitud)
-@farmacia_bp.route('/solicitudes/<int:id_solicitud>/detalle', methods=['GET'])
+# GET /api/medicamentos/solicitudes/<id>/detalle   (detalle de una solicitud)
+@medicamentos_bp.route('/solicitudes/<int:id_solicitud>/detalle', methods=['GET'])
 @requiere_auth
 def detalle_solicitud(id_solicitud):
     claims     = get_jwt()
@@ -582,10 +582,10 @@ def detalle_solicitud(id_solicitud):
     rows = execute_query(
         """
         SELECT dsc.Id_Detalle, dsc.Cantidad, dsc.Subtotal,
-               f.Nombre  AS NombreFarmacia, f.Unidad,
+               f.Nombre  AS NombreMedicamento, f.Unidad,
                s.Nombre  AS NombreServicio
         FROM   Detalle_SolicitudCompra dsc
-        LEFT JOIN Farmacia f ON dsc.Id_Farmacia = f.Id_Farmacia
+        LEFT JOIN Medicamentos f ON dsc.Id_Medicamento = f.Id_Medicamento
         LEFT JOIN Servicio s ON dsc.Id_Servicio = s.Id_Servicio
         WHERE  dsc.Id_Solicitud = ?
         """,
