@@ -1,110 +1,161 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - MediConnect</title>
-    <link rel="stylesheet" href="/assets/css/auth.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión — MediConnect</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ['Playfair Display','serif'], body: ['Manrope','sans-serif'] },
+          colors: {
+            brand: { 50:'#eff2f4',100:'#e5e8eb',200:'#ced2d7',300:'#a7adb4',400:'#6e7682',500:'#3b4555',600:'#121e31',700:'#0e1828',800:'#0b131f',900:'#080e17',950:'#05090f' },
+            gold:  { 50:'#fdfaf2',100:'#fbf3dd',200:'#f5e6bb',300:'#eed699',400:'#e6c280',500:'#d4af37',600:'#b3942e',700:'#8a7424' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family:'Manrope',sans-serif; }
+    .font-display { font-family:'Playfair Display',serif; }
+    .auth-panel-bg {
+      background: linear-gradient(160deg, #080e17 0%, #121e31 55%, #1e2d4a 100%);
+    }
+    .input-field {
+      width:100%; padding:.7rem 1rem;
+      border:1.5px solid #e2e8f0; border-radius:.75rem;
+      font-size:.9rem; outline:none; transition: border-color .2s, box-shadow .2s;
+      background:#fafafa; color:#0f172a;
+    }
+    .input-field:focus { border-color:#121e31; box-shadow:0 0 0 3px rgba(18,30,49,.1); background:#fff; }
+    .input-field::placeholder { color:#94a3b8; }
+    .btn-primary {
+      width:100%; padding:.8rem 1.5rem;
+      background:#121e31; color:#e6c280; font-weight:600;
+      border:none; border-radius:.75rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:.4rem;
+      transition: background .2s, transform .15s, box-shadow .2s;
+      font-family:'Manrope',sans-serif; font-size:.9rem;
+    }
+    .btn-primary:hover { background:#080e17; transform:translateY(-1px); box-shadow:0 6px 20px rgba(18,30,49,.25); }
+    .btn-primary:active { transform:translateY(0); }
+    .error-msg { color:#ef4444; font-size:.78rem; margin-top:.3rem; display:none; }
+    .grain { position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  </style>
 </head>
-<body>
-    <div class="grain-overlay"></div>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+  <div class="grain"></div>
 
-    <div class="auth-container">
-        <div class="auth-left">
-            <a href="/" class="back-link">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M15 10H5M5 10L10 15M5 10L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                Volver al inicio
-            </a>
+  <div class="w-full max-w-4xl bg-white rounded-3xl shadow-2xl shadow-slate-200 overflow-hidden flex" style="min-height:600px; animation: fadeUp .5s cubic-bezier(.16,1,.3,1) both;">
+    <style>@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}</style>
 
-            <div class="auth-content">
-                <div class="logo">
-                    <div class="logo-mark">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <span class="logo-name">MediConnect</span>
-                </div>
+    <!-- LEFT: form -->
+    <div class="flex-1 p-10 flex flex-col">
+      <a href="/" class="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-600 text-sm font-medium transition-colors mb-8 self-start">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M15 10H5M5 10L10 15M5 10L10 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Volver al inicio
+      </a>
 
-                <h1>Bienvenido de nuevo</h1>
-                <p class="subtitle">Ingresa tus credenciales para acceder a tu cuenta</p>
-
-                <!-- ID="loginForm" requerido por auth.js -->
-                <form class="auth-form" id="loginForm">
-                    <div class="form-group">
-                        <label for="email">Correo Electrónico</label>
-                        <input id="email" type="email" placeholder="ejemplo@correo.com" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">Contraseña</label>
-                        <div class="input-wrapper">
-                            <input id="password" type="password" placeholder="••••••••" required style="padding-right:2.75rem">
-                            <button type="button" class="toggle-password" onclick="togglePw('password',this)" tabindex="-1" aria-label="Ver contraseña">
-                                <svg class="eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                <svg class="eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <label class="checkbox-label">
-                            <input type="checkbox"> Recordarme
-                        </label>
-                        <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
-                    </div>
-
-                    <button type="submit" class="btn-submit">
-                        Iniciar Sesión
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M5 10H15M15 10L10 5M15 10L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </button>
-                </form>
-
-                <div class="auth-footer">
-                    ¿No tienes una cuenta? <a href="/pages/auth/register.html">Regístrate aquí</a>
-                </div>
-            </div>
+      <div class="flex-1 flex flex-col justify-center max-w-sm">
+        <!-- Logo -->
+        <div class="flex items-center gap-2 mb-8">
+          <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </div>
+          <span class="font-display font-700 text-slate-900 text-lg">MediConnect</span>
         </div>
 
-        <div class="auth-right">
-            <div class="testimonial">
-                <div class="quote-icon">"</div>
-                <blockquote>
-                    La tecnología al servicio de la salud. Gestiona tus citas y tratamientos con la eficiencia que mereces.
-                </blockquote>
-                <div class="testimonial-author">
-                    <div class="author-avatar">MC</div>
-                    <div>
-                        <strong>MediConnect</strong>
-                        <p>Sistema Integral</p>
-                    </div>
-                </div>
-            </div>
+        <h1 class="font-display font-700 text-3xl text-slate-900 mb-1.5">Bienvenido de nuevo</h1>
+        <p class="text-slate-400 text-sm mb-8">Ingresa tus credenciales para continuar</p>
 
-            <div class="stats-grid">
-                <div class="stat-card"><h3>24/7</h3><p>Soporte</p></div>
-                <div class="stat-card"><h3>100%</h3><p>Seguro</p></div>
-                <div class="stat-card"><h3>+40</h3><p>Doctores</p></div>
+        <form id="loginForm" class="space-y-5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Correo Electrónico</label>
+            <input id="email" type="email" class="input-field" placeholder="correo@ejemplo.com" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Contraseña</label>
+            <div class="relative">
+              <input id="password" type="password" class="input-field" placeholder="••••••••" required style="padding-right:3rem">
+              <button type="button" onclick="togglePw('password',this)" tabindex="-1"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1">
+                <svg class="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
             </div>
-        </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" class="accent-brand-600 w-4 h-4">
+              <span class="text-sm text-slate-500">Recordarme</span>
+            </label>
+            <a href="#" class="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">¿Olvidaste tu contraseña?</a>
+          </div>
+
+          <button type="submit" class="btn-primary">
+            Iniciar sesión
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 10H15M15 10L10 5M15 10L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </form>
+
+        <p class="text-center text-sm text-slate-400 mt-6">
+          ¿Sin cuenta? <a href="/pages/auth/register.html" class="text-brand-600 font-semibold hover:text-brand-700 transition-colors">Regístrate aquí</a>
+        </p>
+      </div>
     </div>
 
-    <!-- Scripts: primero api.js, luego auth.js -->
-    <script src="/assets/js/api.js"></script>
-    <script src="/assets/js/auth.js"></script>
-    <script>
+    <!-- RIGHT: decorative panel -->
+    <div class="hidden md:flex flex-col justify-between auth-panel-bg text-white p-10 w-80 xl:w-96 relative overflow-hidden">
+      <!-- decorative circles -->
+      <div class="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/5"></div>
+      <div class="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-white/5"></div>
+
+      <div class="relative z-10">
+        <div class="text-5xl font-display font-800 leading-none opacity-20 mb-4">"</div>
+        <blockquote class="text-base leading-relaxed font-medium opacity-95 mb-5">
+          La tecnología al servicio de la salud. Gestiona tus citas y tratamientos con la eficiencia que mereces.
+        </blockquote>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-white/15 border border-white/25 flex items-center justify-center font-bold text-sm">MC</div>
+          <div>
+            <div class="font-semibold text-sm">MediConnect</div>
+            <div class="text-xs opacity-70">Sistema Integral · ESCOM</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relative z-10 grid grid-cols-3 gap-3">
+        <div class="text-center bg-white/10 border border-white/15 rounded-xl py-3 px-2">
+          <div class="font-display font-700 text-xl text-gold-400">24/7</div>
+          <div class="text-xs opacity-75 uppercase tracking-wide mt-0.5">Soporte</div>
+        </div>
+        <div class="text-center bg-white/10 border border-white/15 rounded-xl py-3 px-2">
+          <div class="font-display font-700 text-xl text-gold-400">100%</div>
+          <div class="text-xs opacity-75 uppercase tracking-wide mt-0.5">Seguro</div>
+        </div>
+        <div class="text-center bg-white/10 border border-white/15 rounded-xl py-3 px-2">
+          <div class="font-display font-700 text-xl text-gold-400">+40</div>
+          <div class="text-xs opacity-75 uppercase tracking-wide mt-0.5">Médicos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script>
     function togglePw(id, btn) {
-        const inp  = document.getElementById(id);
-        const show = btn.querySelector('.eye-show');
-        const hide = btn.querySelector('.eye-hide');
-        if (inp.type === 'password') { inp.type = 'text';     show.style.display = 'none'; hide.style.display = ''; }
-        else                         { inp.type = 'password'; show.style.display = '';     hide.style.display = 'none'; }
+      const inp  = document.getElementById(id);
+      const show = btn.querySelector('.eye-show');
+      const hide = btn.querySelector('.eye-hide');
+      if (inp.type === 'password') { inp.type = 'text'; show.classList.add('hidden'); hide.classList.remove('hidden'); }
+      else { inp.type = 'password'; show.classList.remove('hidden'); hide.classList.add('hidden'); }
     }
-    </script>
+  </script>
 </body>
 </html>

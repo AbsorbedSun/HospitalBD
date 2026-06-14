@@ -187,7 +187,8 @@ const doctor = {
     solicitarCancelacion: (folio, motivo) => apiRequest('/doctores/solicitar-cancelacion', {
         method:'POST', body:JSON.stringify({ folio_cita: folio, motivo })
     }),
-    crear: (d) => apiRequest('/doctores', { method:'POST', body:JSON.stringify(d) })
+    crear:    (d)  => apiRequest('/doctores', { method:'POST', body:JSON.stringify(d) }),
+    darBaja:  (id) => apiRequest(`/doctores/${id}/dar-baja`, { method:'PATCH' })
 };
 
 // ============================================================
@@ -278,6 +279,37 @@ const utils = {
         };
         window.location.href = rutas[user.rol] || '/pages/auth/login.html';
     }
+};
+
+// ── COMPRAS PÚBLICAS (walk-in, sin autenticación requerida) ──────────
+const compras = {
+    /** Crea una solicitud de compra sin necesidad de estar registrado */
+    solicitar: (nombreCliente, telefonoCliente, items) =>
+        fetch(`${CONFIG.API_URL}/compras/solicitar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre_cliente:   nombreCliente,
+                telefono_cliente: telefonoCliente,
+                items
+            })
+        }).then(r => r.json()),
+
+    /** Listar solicitudes pendientes (recepcionista) */
+    listarPendientes: () => apiRequest('/compras/pendientes'),
+
+    /** Ver detalle de una solicitud (recepcionista) */
+    detalle: (id) => apiRequest(`/compras/${id}/detalle`),
+
+    /** Procesar / aprobar una solicitud (recepcionista) */
+    procesar: (id) => apiRequest(`/compras/${id}/procesar`, { method: 'PATCH' }),
+
+    /** Rechazar una solicitud (recepcionista) */
+    rechazar: (id, motivo) =>
+        apiRequest(`/compras/${id}/rechazar`, {
+            method: 'PATCH',
+            body: JSON.stringify({ motivo })
+        }),
 };
 
 console.log('✓ API Client cargado – rutas relativas en', CONFIG.API_URL);

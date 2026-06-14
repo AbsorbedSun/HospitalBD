@@ -1,335 +1,675 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediConnect - Sistema de Gestión Hospitalaria</title>
-    <link rel="stylesheet" href="/assets/css/home.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediConnect — Sistema de Gestión Hospitalaria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Playfair Display', 'serif'],
+            body: ['Manrope', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50:  '#eff2f4',
+              100: '#e5e8eb',
+              200: '#ced2d7',
+              300: '#a7adb4',
+              400: '#6e7682',
+              500: '#3b4555',
+              600: '#121e31',
+              700: '#0e1828',
+              800: '#0b131f',
+              900: '#080e17',
+              950: '#05090f',
+            },
+            gold: {
+              50:  '#fdfaf2',
+              100: '#fbf3dd',
+              200: '#f5e6bb',
+              300: '#eed699',
+              400: '#e6c280',
+              500: '#d4af37',
+              600: '#b3942e',
+              700: '#8a7424',
+            },
+            slate: {
+              50:  '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both',
+            'fade-in': 'fadeIn 0.4s ease both',
+            'float': 'float 6s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            float: {
+              '0%,100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-8px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Manrope', sans-serif; }
+    .font-display { font-family: 'Playfair Display', serif; }
+    .hero-bg {
+      background: radial-gradient(ellipse 80% 60% at 60% 0%, rgba(18,30,49,0.07) 0%, transparent 60%),
+                  radial-gradient(ellipse 50% 40% at 0% 80%, rgba(230,194,128,0.10) 0%, transparent 55%),
+                  #f8fafc;
+    }
+    .card-hover { transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(18,30,49,0.16); }
+    .nav-link-pill { transition: background 0.2s, color 0.2s; }
+    .nav-link-pill:hover { background: rgba(18,30,49,0.06); color: #121e31; }
+    .specialties-scroll { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.875rem; }
+    @media (max-width: 1024px) { .specialties-scroll { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px) { .specialties-scroll { grid-template-columns: repeat(2, 1fr); } }
+    .grain {
+      position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .tab-active { background: #121e31; color: #fff; }
+    .tab-inactive { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+    .tab-inactive:hover { border-color: #121e31; color: #121e31; }
+    .spinner { width:20px;height:20px;border:3px solid #e2e8f0;border-top-color:#121e31;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Compatibilidad con home.js (catálogo dinámico) ── */
+    .navbar { } /* alias para el selector usado en home.js (scroll shadow) */
+    .catalogo-card {
+      background:#fff; border-radius:14px; border:1.5px solid #e2e8f0;
+      padding:1.1rem 1rem 0.9rem; display:flex; flex-direction:column; gap:.6rem;
+      transition:transform .2s, box-shadow .2s, border-color .2s;
+    }
+    .catalogo-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(18,30,49,.12); border-color:#121e31; }
+    .catalogo-card-icon {
+      width:38px; height:38px; background:#eff2f4; border-radius:10px;
+      display:flex; align-items:center; justify-content:center; color:#121e31;
+    }
+    .catalogo-card-body { flex:1; }
+    .catalogo-card-body h4 { margin:0 0 .25rem; font-size:.95rem; color:#0f172a; font-weight:600; }
+    .catalogo-card-body p  { margin:0; font-size:.8rem; color:#64748b; line-height:1.4; }
+    .catalogo-card-footer {
+      display:flex; align-items:center; flex-wrap:wrap; gap:.4rem;
+      border-top:1px solid #f1f5f9; padding-top:.6rem;
+    }
+    .catalogo-precio { font-weight:700; font-size:1.05rem; color:#121e31; flex:1; }
+    .catalogo-unidad { font-size:.75rem; color:#94a3b8; }
+    .catalogo-badge { font-size:.7rem; font-weight:600; padding:.2rem .55rem; border-radius:999px; }
+    .badge-ok   { background:#dcfce7; color:#166534; }
+    .badge-warn { background:#fef9c3; color:#854d0e; }
+    .catalogo-vacio-inner { text-align:center; color:#94a3b8; padding:2.5rem 0; font-size:.9rem; width:100%; }
+    .catalogo-error { grid-column:1/-1; text-align:center; color:#ef4444; padding:2rem 0; font-size:.9rem; }
+
+    /* ── Carrito flotante ── */
+    #carrito-btn {
+      position:fixed; bottom:1.5rem; right:1.5rem; z-index:8000;
+      width:56px; height:56px; border-radius:50%;
+      background:#121e31; color:#e6c280;
+      border:none; cursor:pointer; font-size:1.4rem;
+      display:none; align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(15,23,42,.35);
+      transition:transform .2s, box-shadow .2s;
+    }
+    #carrito-btn:hover { transform:scale(1.08); box-shadow:0 8px 28px rgba(15,23,42,.4); }
+    #carrito-badge {
+      position:absolute; top:-4px; right:-4px;
+      min-width:20px; height:20px; border-radius:999px;
+      background:#e6c280; color:#121e31;
+      font-size:.7rem; font-weight:700;
+      display:none; align-items:center; justify-content:center;
+      border:2px solid #fff; padding:0 4px;
+    }
+    @keyframes toastIn  { from { transform:translateX(110%);opacity:0; } to { transform:none;opacity:1; } }
+    @keyframes slideInRight { from { transform:translateX(100%); } to { transform:none; } }
+    @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
+    @keyframes slideUp  { from { transform:translateY(12px);opacity:0; } to { transform:none;opacity:1; } }
+  </style>
 </head>
-<body>
-    <div class="grain-overlay"></div>
-    
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <div class="logo-mark"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></div>
-                <span class="logo-text">MediConnect</span>
-            </div>
-            <div class="nav-links">
-                <a href="#inicio" class="nav-link active">Inicio</a>
-                <a href="#servicios" class="nav-link">Servicios</a>
-                <a href="#especialidades" class="nav-link">Especialidades</a>
-                <a href="#farmacia" class="nav-link">Medicamentos</a>
-                <a href="#contacto" class="nav-link">Contacto</a>
-            </div>
-            <div class="nav-actions">
-                <a href="/pages/auth/login.html" class="btn-login">Iniciar Sesión</a>
-                <a href="/pages/auth/register.html" class="btn-register">Registrarse</a>
-            </div>
+<body class="bg-slate-50 text-slate-900 antialiased overflow-x-hidden">
+  <div class="grain"></div>
+
+  <!-- NAV -->
+  <nav class="navbar fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
         </div>
-    </nav>
+        <span class="font-display font-700 text-slate-900 text-lg tracking-tight">MediConnect</span>
+      </a>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <div class="hero-badge">
-                <div class="badge-dot"></div>
-                <span>Sistema de Gestión Integral</span>
-            </div>
-            <h1 class="hero-title">
-                Tu salud, <br/>
-                <span class="gradient-text">nuestra prioridad</span>
-            </h1>
-            <p class="hero-description">
-                Agenda citas médicas, gestiona consultas y accede a tu historial médico 
-                desde una plataforma moderna y segura.
-            </p>
-            <div class="hero-actions">
-                <a href="/pages/auth/register.html" class="btn-primary">
-                    Comenzar Ahora
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M4 10H16M16 10L10 4M16 10L10 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </a>
-                <a href="#servicios" class="btn-secondary">
-                    Conocer Más
-                </a>
-            </div>
-            <div class="hero-stats">
-                <div class="stat">
-                    <h3>10+</h3>
-                    <p>Especialidades</p>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat">
-                    <h3>40+</h3>
-                    <p>Médicos Especialistas</p>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat">
-                    <h3>24/7</h3>
-                    <p>Atención Disponible</p>
-                </div>
-            </div>
+      <div class="hidden md:flex items-center gap-1">
+        <a href="#servicios" class="nav-link-pill px-4 py-2 rounded-full text-sm font-medium text-slate-600">Servicios</a>
+        <a href="#especialidades" class="nav-link-pill px-4 py-2 rounded-full text-sm font-medium text-slate-600">Especialidades</a>
+        <a href="#perfiles" class="nav-link-pill px-4 py-2 rounded-full text-sm font-medium text-slate-600">Perfiles</a>
+        <a href="#farmacia" class="nav-link-pill px-4 py-2 rounded-full text-sm font-medium text-slate-600">Farmacia</a>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="/pages/auth/login.html" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Iniciar sesión</a>
+        <a href="/pages/auth/register.html" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-gold-400 text-sm font-semibold rounded-lg transition-colors">Registrarse</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero-bg min-h-screen pt-16 flex items-center">
+    <div class="max-w-7xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-16 items-center">
+      <div class="animate-fade-up">
+        <div class="inline-flex items-center gap-2 bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-6">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
+          Sistema activo · 10 especialidades
         </div>
-        <div class="hero-visual">
-            <div class="visual-card card-1">
-                <div class="card-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#121e31" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
-                    </svg>
-                </div>
-                <h4>Medicamentos Integrados</h4>
-                <p>Inventario de medicamentos actualizado en tiempo real</p>
-            </div>
-            <div class="visual-card card-2">
-                <div class="card-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#121e31" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
-                    </svg>
-                </div>
-                <h4>Citas en Línea</h4>
-                <p>Agenda con +40 doctores en 10 especialidades médicas</p>
-            </div>
-            <div class="visual-card card-3">
-                <div class="card-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#121e31" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>
-                    </svg>
-                </div>
-                <h4>Historial Médico Digital</h4>
-                <p>Recetas, diagnósticos y seguimiento en un solo lugar</p>
-            </div>
+        <h1 class="font-display text-5xl md:text-6xl font-800 text-slate-900 leading-[1.08] mb-5">
+          Salud moderna,<br><span class="text-brand-600">sin filas.</span>
+        </h1>
+        <p class="text-slate-500 text-lg leading-relaxed mb-8 max-w-md">
+          Agenda citas, consulta tu historial médico y accede a tu farmacia desde un solo lugar. Para pacientes, doctores y personal.
+        </p>
+        <div class="flex items-center gap-3">
+          <a href="/pages/auth/register.html" class="flex items-center gap-2 px-5 py-3 bg-brand-600 hover:bg-brand-700 text-gold-400 font-semibold rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand-200">
+            Comenzar gratis
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 10H16M16 10L10 4M16 10L10 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </a>
+          <a href="/pages/auth/login.html" class="px-5 py-3 text-slate-700 font-semibold border border-slate-200 rounded-xl hover:border-slate-300 hover:bg-white transition-all">
+            Ya tengo cuenta
+          </a>
         </div>
-    </section>
 
-    <!-- Features Section -->
-    <section id="servicios" class="features">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">SERVICIOS</span>
-                <h2 class="section-title">Todo lo que necesitas en un solo lugar</h2>
-            </div>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="#E8F5F4"/>
-                            <path d="M12 16H20M16 12V20" stroke="#121e31" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <h3>Gestión de Citas</h3>
-                    <p>Agenda, modifica o cancela tus citas médicas de manera sencilla con políticas claras de cancelación.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="#E8F5F4"/>
-                            <path d="M10 12H22M10 16H18M10 20H15" stroke="#121e31" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <h3>Recetas Digitales</h3>
-                    <p>Accede a tus recetas médicas y tratamientos desde cualquier lugar de forma segura.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="#E8F5F4"/>
-                            <circle cx="16" cy="13" r="4" stroke="#121e31" stroke-width="2"/>
-                            <path d="M10 24C10 20.6863 12.6863 18 16 18C19.3137 18 22 20.6863 22 24" stroke="#121e31" stroke-width="2"/>
-                        </svg>
-                    </div>
-                    <h3>Historial Médico</h3>
-                    <p>Consulta tu historial completo: alergias, padecimientos previos y más información relevante.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="#E8F5F4"/>
-                            <circle cx="16" cy="16" r="6" stroke="#121e31" stroke-width="2"/>
-                            <path d="M16 13V16L18 18" stroke="#121e31" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <h3>Pago Seguro</h3>
-                    <p>Sistema de pagos en línea con confirmación automática y comprobantes digitales.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="#E8F5F4"/>
-                            <rect x="10" y="12" width="12" height="10" rx="1" stroke="#121e31" stroke-width="2"/>
-                            <path d="M13 12V10C13 8.89543 13.8954 8 15 8H17C18.1046 8 19 8.89543 19 10V12" stroke="#121e31" stroke-width="2"/>
-                        </svg>
-                    </div>
-                    <h3>Medicamentos Integrados</h3>
-                    <p>Adquiere tus medicamentos directamente con receta electrónica y control de inventario.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="#E8F5F4"/>
-                            <path d="M16 10V16L20 18" stroke="#121e31" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <h3>Servicios Adicionales</h3>
-                    <p>Vacunación, estudios de sangre, curaciones y más servicios disponibles.</p>
-                </div>
-            </div>
+        <div class="flex items-center gap-8 mt-10 pt-8 border-t border-slate-200">
+          <div>
+            <div class="font-display text-2xl font-700 text-slate-900">40+</div>
+            <div class="text-sm text-slate-500 mt-0.5">Médicos</div>
+          </div>
+          <div class="w-px h-8 bg-slate-200"></div>
+          <div>
+            <div class="font-display text-2xl font-700 text-slate-900">10</div>
+            <div class="text-sm text-slate-500 mt-0.5">Especialidades</div>
+          </div>
+          <div class="w-px h-8 bg-slate-200"></div>
+          <div>
+            <div class="font-display text-2xl font-700 text-slate-900">24/7</div>
+            <div class="text-sm text-slate-500 mt-0.5">Disponible</div>
+          </div>
         </div>
-    </section>
+      </div>
 
-    <!-- Specialties Section -->
-    <section id="especialidades" class="specialties">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">ESPECIALIDADES</span>
-                <h2 class="section-title">Atención médica especializada</h2>
+      <!-- Cards bento -->
+      <div class="hidden md:grid grid-cols-2 gap-4 animate-fade-up" style="animation-delay:0.2s">
+        <!-- Card grande -->
+        <div class="col-span-2 bg-white rounded-2xl border border-slate-200 p-5 card-hover animate-float shadow-sm">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5" stroke-linecap="round"/></svg>
             </div>
-            <div class="specialties-grid">
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.343 4.343 4 6 4C7.326 4 8.467 4.833 9 6C9.533 4.833 10.674 4 12 4C13.657 4 15 5.343 15 7C15 12 10 16.5 10 16.5Z" fill="currentColor" stroke="none"/></svg></div>
-                    <h4>Cardiología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="3" width="12" height="14" rx="2"/><path d="M7 7H13M7 10H13M7 13H10"/></svg></div>
-                    <h4>Dermatología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="6" r="3"/><path d="M5 15C5 12.24 7.24 10 10 10C12.76 10 15 12.24 15 15"/><path d="M7 17H13"/></svg></div>
-                    <h4>Ginecología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8"/><path d="M6 2V6"/></svg></div>
-                    <h4>Medicina General</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 5 5 5 10C5 15 10 17 10 17C10 17 15 15 15 10C15 5 10 3 10 3Z"/><path d="M10 3C10 3 8 7 10 10C12 13 10 17 10 17"/></svg></div>
-                    <h4>Nefrología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 6 7 6 11C6 13.21 7.79 15 10 15C12.21 15 14 13.21 14 11C14 7 10 3 10 3Z"/><path d="M10 3V15"/></svg></div>
-                    <h4>Nutriología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10C2 10 5 5 10 5C15 5 18 10 18 10C18 10 15 15 10 15C5 15 2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg></div>
-                    <h4>Oftalmología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L12.5 8H18L13.5 11.5L15.5 17L10 13.5L4.5 17L6.5 11.5L2 8H7.5L10 3Z"/></svg></div>
-                    <h4>Oncología</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 5C7 3.9 7.9 3 9 3C10.1 3 11 3.9 11 5V15C11 16.1 11.9 17 13 17C14.1 17 15 16.1 15 15C15 13.9 14.1 13 13 13H7C5.9 13 5 12.1 5 11C5 9.9 5.9 9 7 9C8.1 9 9 9.9 9 11"/></svg></div>
-                    <h4>Ortopedia</h4>
-                </div>
-                <div class="specialty-card">
-                    <div class="specialty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="6"/><path d="M7 10C7 10 8.5 12 10 12C11.5 12 13 10 13 10"/><circle cx="8" cy="8.5" r="0.8" fill="currentColor" stroke="none"/><circle cx="12" cy="8.5" r="0.8" fill="currentColor" stroke="none"/></svg></div>
-                    <h4>Pediatría</h4>
-                </div>
+            <div>
+              <div class="font-semibold text-sm text-slate-900">Próxima Cita</div>
+              <div class="text-xs text-slate-400">Cardiología · Dr. Méndez</div>
             </div>
+            <span class="ml-auto text-xs font-medium bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full">Confirmada</span>
+          </div>
+          <div class="flex gap-4">
+            <div class="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+              <div class="font-display font-700 text-2xl text-slate-900">14</div>
+              <div class="text-xs text-slate-500">Jun</div>
+            </div>
+            <div class="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+              <div class="font-display font-700 text-2xl text-slate-900">10</div>
+              <div class="text-xs text-slate-500">:00 AM</div>
+            </div>
+            <div class="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+              <div class="font-display font-700 text-2xl text-slate-900">3</div>
+              <div class="text-xs text-slate-500">Consultorio</div>
+            </div>
+          </div>
         </div>
-    </section>
 
-    <!-- Farmacia Pública -->
-    <section id="farmacia" class="farmacia-publica">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">MEDICAMENTOS Y SERVICIOS</span>
-                <h2 class="section-title">Disponible para todos</h2>
-                <p class="section-desc">
-                    No necesitas ser paciente registrado para adquirir medicamentos o servicios.
-                    Consulta nuestro catálogo y acércate a nuestro mostrador.
-                </p>
-            </div>
-
-            <!-- Aviso de compra -->
-            <div class="farmacia-aviso">
-                <div class="aviso-icon"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
-                <div>
-                    <strong>¿Cómo adquirir?</strong>
-                    <p>Acude a nuestro mostrador de medicamentos con o sin receta médica.
-                       Nuestro personal te atenderá sin necesidad de registro previo.</p>
-                </div>
-            </div>
-
-            <!-- Tabs -->
-            <div class="farmacia-tabs">
-                <button class="tab-btn active" data-tab="medicamentos" onclick="switchTab('medicamentos')">
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Medicamentos
-                </button>
-                <button class="tab-btn" data-tab="servicios" onclick="switchTab('servicios')">
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg> Servicios Extra
-                </button>
-            </div>
-
-            <!-- Buscador -->
-            <div class="farmacia-search">
-                <input type="text" id="catalogo-buscar" placeholder="Buscar medicamento o servicio…"
-                       oninput="filtrarCatalogo()">
-            </div>
-
-            <!-- Contenido -->
-            <div id="tab-medicamentos" class="catalogo-grid">
-                <div class="catalogo-loading">
-                    <div class="spinner-pub"></div>
-                    <span>Cargando catálogo…</span>
-                </div>
-            </div>
-            <div id="tab-servicios" class="catalogo-grid" style="display:none">
-                <div class="catalogo-loading">
-                    <div class="spinner-pub"></div>
-                    <span>Cargando servicios…</span>
-                </div>
-            </div>
-
-            <p id="catalogo-vacio" class="catalogo-vacio" style="display:none">
-                No se encontraron resultados para tu búsqueda.
-            </p>
+        <!-- Card historial -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 card-hover shadow-sm" style="animation-delay:0.4s">
+          <div class="w-8 h-8 rounded-lg bg-gold-400/20 flex items-center justify-center text-gold-400 mb-3">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3H15C15.55 3 16 3.45 16 4V16C16 16.55 15.55 17 15 17H5C4.45 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3Z"/><path d="M7 10H13M7 13H11M7 7H13" stroke-linecap="round"/></svg>
+          </div>
+          <div class="font-semibold text-white text-sm mb-1">Historial Médico</div>
+          <div class="text-xs text-slate-400">Recetas, diagnósticos y padecimientos en un solo lugar</div>
         </div>
-    </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-brand">
-                    <div class="logo">
-                <div class="logo-mark"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></div>
-                <span class="logo-text">MediConnect</span>
-                    </div>
-                    <p class="footer-description">
-                        Sistema integral de gestión hospitalaria para una atención médica moderna y eficiente.
-                    </p>
-                </div>
-                <div class="footer-links">
-                    <div class="footer-column">
-                        <h4>Producto</h4>
-                        <a href="#servicios">Servicios</a>
-                        <a href="#especialidades">Especialidades</a>
-                        <a href="/pages/auth/login.html">Iniciar Sesión</a>
-                    </div>
-                    <div class="footer-column">
-                        <h4>Soporte</h4>
-                        <a href="#contacto">Contacto</a>
-                        <a href="#">Ayuda</a>
-                        <a href="#">Preguntas Frecuentes</a>
-                    </div>
-                    <div class="footer-column">
-                        <h4>Legal</h4>
-                        <a href="#">Privacidad</a>
-                        <a href="#">Términos</a>
-                        <a href="#">Cookies</a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 MediConnect. Todos los derechos reservados.</p>
-            </div>
+        <!-- Card medicamentos -->
+        <div class="bg-brand-600 rounded-2xl p-5 card-hover shadow-sm" style="animation-delay:0.6s">
+          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white mb-3">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H12L13 7H7L8 3Z" stroke-linejoin="round"/><rect x="4" y="7" width="12" height="10" rx="2"/><path d="M10 10V14M8 12H12" stroke-linecap="round"/></svg>
+          </div>
+          <div class="font-semibold text-white text-sm mb-1">Farmacia</div>
+          <div class="text-xs text-white/70">Sin registro previo necesario</div>
         </div>
-    </footer>
+      </div>
+    </div>
+  </section>
 
-    <script src="/assets/js/home.js"></script>
+  <!-- SERVICIOS -->
+  <section id="servicios" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <div class="inline-block text-xs font-semibold tracking-widest text-brand-600 uppercase mb-3">Servicios</div>
+        <h2 class="font-display text-4xl font-700 text-slate-900">Todo en un solo sistema</h2>
+      </div>
+      <div class="grid md:grid-cols-3 gap-5">
+        <div class="group p-6 rounded-2xl border border-slate-200 hover:border-brand-300 card-hover bg-white">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 mb-4 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-900 mb-2">Gestión de Citas</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Agenda con mínimo 48 hrs de anticipación, política de cancelación clara y reembolsos automáticos.</p>
+        </div>
+        <div class="group p-6 rounded-2xl border border-slate-200 hover:border-brand-300 card-hover bg-white">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 mb-4 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15C15.55 3 16 3.45 16 4V16C16 16.55 15.55 17 15 17H5C4.45 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3Z"/><path d="M7 10H13M7 13H11M7 7H13"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-900 mb-2">Recetas Digitales</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">El médico genera recetas electrónicas con folio, medicamentos y tratamiento en segundos.</p>
+        </div>
+        <div class="group p-6 rounded-2xl border border-slate-200 hover:border-brand-300 card-hover bg-white">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 mb-4 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 16C4 12.69 6.69 10 10 10C13.31 10 16 12.69 16 16"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-900 mb-2">Historial Médico</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Alergias, tipo de sangre, padecimientos previos, peso y estatura siempre accesibles para el médico.</p>
+        </div>
+        <div class="group p-6 rounded-2xl border border-slate-200 hover:border-brand-300 card-hover bg-white">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 mb-4 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="5" width="14" height="11" rx="1.5"/><path d="M1 8h18M7 5V3M13 5V3"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-900 mb-2">Pagos Seguros</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Línea de pago con 8 horas de vigencia y reembolsos automáticos según política de cancelación.</p>
+        </div>
+        <div class="group p-6 rounded-2xl border border-slate-200 hover:border-brand-300 card-hover bg-white">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 mb-4 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3H12L13 7H7L8 3Z" stroke-linejoin="round"/><rect x="4" y="7" width="12" height="10" rx="2"/><path d="M10 10V14M8 12H12"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-900 mb-2">Farmacia Integrada</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Control de inventario con stock en tiempo real. Sin necesidad de ser paciente registrado.</p>
+        </div>
+        <div class="group p-6 rounded-2xl border border-slate-200 hover:border-brand-300 card-hover bg-white">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 mb-4 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3V17M3 10H17"/></svg>
+          </div>
+          <h3 class="font-semibold text-slate-900 mb-2">Servicios Extras</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Vacunas, inyecciones, curaciones y estudios de sangre disponibles para cualquier persona.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CÓMO FUNCIONA -->
+  <section class="py-24 bg-slate-50 relative overflow-hidden">
+    <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand-50 hidden lg:block"></div>
+    <div class="absolute bottom-0 left-0 w-56 h-56 rounded-full bg-gold-50 -translate-x-1/3 translate-y-1/3 hidden lg:block"></div>
+
+    <div class="max-w-7xl mx-auto px-6 relative">
+      <div class="text-center mb-16">
+        <div class="inline-block text-xs font-semibold tracking-widest text-brand-600 uppercase mb-3">Proceso</div>
+        <h2 class="font-display text-4xl font-700 text-slate-900 mb-3">Agenda tu cita en 4 pasos</h2>
+        <p class="text-slate-500 max-w-lg mx-auto text-sm leading-relaxed">Un flujo simple, transparente y sin sorpresas — desde elegir tu especialidad hasta recibir tu comprobante.</p>
+      </div>
+
+      <div class="grid md:grid-cols-4 gap-6 relative">
+        <!-- connector line (desktop only) -->
+        <div class="hidden md:block absolute top-7 left-[12%] right-[12%] h-px bg-gradient-to-r from-brand-200 via-brand-300 to-gold-300"></div>
+
+        <div class="relative flex flex-col items-center text-center">
+          <div class="w-14 h-14 rounded-2xl bg-brand-600 text-gold-400 flex items-center justify-center font-display font-700 text-xl shadow-lg shadow-brand-200 mb-5 relative z-10">01</div>
+          <h3 class="font-semibold text-slate-900 mb-2">Elige especialidad</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Consulta el costo de cada una de nuestras 10 especialidades médicas.</p>
+        </div>
+
+        <div class="relative flex flex-col items-center text-center">
+          <div class="w-14 h-14 rounded-2xl bg-brand-600 text-gold-400 flex items-center justify-center font-display font-700 text-xl shadow-lg shadow-brand-200 mb-5 relative z-10">02</div>
+          <h3 class="font-semibold text-slate-900 mb-2">Selecciona doctor y horario</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Ve la disponibilidad real de al menos 4 médicos por especialidad.</p>
+        </div>
+
+        <div class="relative flex flex-col items-center text-center">
+          <div class="w-14 h-14 rounded-2xl bg-brand-600 text-gold-400 flex items-center justify-center font-display font-700 text-xl shadow-lg shadow-brand-200 mb-5 relative z-10">03</div>
+          <h3 class="font-semibold text-slate-900 mb-2">Confirma tu pago</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Tienes 8 horas para pagar tu cita antes de que se libere automáticamente.</p>
+        </div>
+
+        <div class="relative flex flex-col items-center text-center">
+          <div class="w-14 h-14 rounded-2xl bg-gold-400 text-brand-700 flex items-center justify-center font-display font-700 text-xl shadow-lg shadow-gold-200 mb-5 relative z-10">04</div>
+          <h3 class="font-semibold text-slate-900 mb-2">Acude a tu consulta</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">Recibe atención médica y tu receta electrónica al finalizar.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ESPECIALIDADES -->
+  <section id="especialidades" class="py-24 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <div class="inline-block text-xs font-semibold tracking-widest text-brand-600 uppercase mb-3">Especialidades</div>
+        <h2 class="font-display text-4xl font-700 text-slate-900">10 especialidades, 40+ médicos</h2>
+      </div>
+      <div class="specialties-scroll">
+        <!-- 10 specialty cards -->
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Cardiología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="3" width="12" height="14" rx="2"/><path d="M7 7H13M7 10H13M7 13H10" stroke-linecap="round"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Dermatología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="6" r="3"/><path d="M5 15C5 12.24 7.24 10 10 10C12.76 10 15 12.24 15 15"/><path d="M7 17H13"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Ginecología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Med. General</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 5 5 5 10C5 15 10 17 10 17C10 17 15 15 15 10C15 5 10 3 10 3Z"/><path d="M10 3C10 3 8 7 10 10C12 13 10 17 10 17"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Nefrología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 6 7 6 11C6 13.21 7.79 15 10 15C12.21 15 14 13.21 14 11C14 7 10 3 10 3Z"/><path d="M10 3V15"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Nutriología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10C2 10 5 5 10 5C15 5 18 10 18 10C18 10 15 15 10 15C5 15 2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Oftalmología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L12.5 7.5H18L13.5 11L15.5 17L10 13.5L4.5 17L6.5 11L2 7.5H7.5L10 2Z"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Oncología</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 5C7 3.9 7.9 3 9 3C10.1 3 11 3.9 11 5V15C11 16.1 11.9 17 13 17C14.1 17 15 16.1 15 15C15 13.9 14.1 13 13 13H7C5.9 13 5 12.1 5 11C5 9.9 5.9 9 7 9C8.1 9 9 9.9 9 11"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Ortopedia</div>
+        </div>
+        <div class="group bg-white rounded-2xl border border-slate-200 hover:border-brand-400 p-5 text-center card-hover cursor-pointer">
+          <div class="w-10 h-10 rounded-xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-white transition-all mx-auto mb-3">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="6"/><path d="M7 10C7 10 8.5 12 10 12C11.5 12 13 10 13 10"/><circle cx="8" cy="8.5" r=".8" fill="currentColor" stroke="none"/><circle cx="12" cy="8.5" r=".8" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="font-semibold text-sm text-slate-800">Pediatría</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PERFILES DE USUARIO -->
+  <section id="perfiles" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-14">
+        <div class="inline-block text-xs font-semibold tracking-widest text-brand-600 uppercase mb-3">Para cada rol</div>
+        <h2 class="font-display text-4xl font-700 text-slate-900 mb-3">Un panel diseñado para ti</h2>
+        <p class="text-slate-500 max-w-lg mx-auto text-sm leading-relaxed">Sea que recibas atención médica, la brindes o gestiones el hospital, MediConnect se adapta a tu rol.</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6">
+
+        <!-- Paciente -->
+        <div class="group rounded-3xl border border-slate-200 hover:border-brand-300 card-hover overflow-hidden bg-white flex flex-col">
+          <div class="p-7 flex-1">
+            <div class="w-12 h-12 rounded-2xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-gold-400 transition-all mb-5">
+              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 17C4 13.69 6.69 11 10 11C13.31 11 16 13.69 16 17"/></svg>
+            </div>
+            <h3 class="font-display font-700 text-xl text-slate-900 mb-2">Paciente</h3>
+            <p class="text-sm text-slate-500 leading-relaxed mb-5">Agenda citas, da seguimiento a tu historial médico y consulta tus recetas electrónicas desde un solo lugar.</p>
+            <ul class="space-y-2.5">
+              <li class="flex items-center gap-2 text-sm text-slate-600"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-brand-600 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Agenda y cancela citas</li>
+              <li class="flex items-center gap-2 text-sm text-slate-600"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-brand-600 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Consulta tu historial médico</li>
+              <li class="flex items-center gap-2 text-sm text-slate-600"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-brand-600 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Recetas electrónicas</li>
+            </ul>
+          </div>
+          <a href="/pages/auth/register.html" class="block text-center py-4 bg-slate-50 group-hover:bg-brand-600 text-sm font-semibold text-slate-700 group-hover:text-gold-400 transition-colors border-t border-slate-200">
+            Crear cuenta de paciente →
+          </a>
+        </div>
+
+        <!-- Doctor -->
+        <div class="group rounded-3xl border-2 border-brand-600 card-hover overflow-hidden bg-brand-600 flex flex-col relative md:-translate-y-3 shadow-xl shadow-brand-200">
+          <span class="absolute top-4 right-4 text-xs font-semibold bg-gold-400 text-brand-700 px-2.5 py-1 rounded-full">Personal</span>
+          <div class="p-7 flex-1">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-gold-400 mb-5">
+              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg>
+            </div>
+            <h3 class="font-display font-700 text-xl text-white mb-2">Doctor</h3>
+            <p class="text-sm text-white/70 leading-relaxed mb-5">Gestiona tu agenda, emite recetas electrónicas y consulta el historial médico de tus pacientes.</p>
+            <ul class="space-y-2.5">
+              <li class="flex items-center gap-2 text-sm text-white/85"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-gold-400 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Agenda diaria organizada</li>
+              <li class="flex items-center gap-2 text-sm text-white/85"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-gold-400 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Emisión de recetas</li>
+              <li class="flex items-center gap-2 text-sm text-white/85"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-gold-400 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Historial de pacientes</li>
+            </ul>
+          </div>
+          <a href="/pages/auth/login.html" class="block text-center py-4 bg-brand-700 group-hover:bg-gold-400 text-sm font-semibold text-gold-400 group-hover:text-brand-700 transition-colors border-t border-white/10">
+            Acceder a mi panel →
+          </a>
+        </div>
+
+        <!-- Recepcionista -->
+        <div class="group rounded-3xl border border-slate-200 hover:border-brand-300 card-hover overflow-hidden bg-white flex flex-col">
+          <div class="p-7 flex-1">
+            <div class="w-12 h-12 rounded-2xl bg-brand-50 group-hover:bg-brand-600 flex items-center justify-center text-brand-600 group-hover:text-gold-400 transition-all mb-5">
+              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg>
+            </div>
+            <h3 class="font-display font-700 text-xl text-slate-900 mb-2">Recepción</h3>
+            <p class="text-sm text-slate-500 leading-relaxed mb-5">Administra citas, doctores, farmacia y bitácoras de auditoría desde un panel centralizado.</p>
+            <ul class="space-y-2.5">
+              <li class="flex items-center gap-2 text-sm text-slate-600"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-brand-600 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Gestión integral de citas</li>
+              <li class="flex items-center gap-2 text-sm text-slate-600"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-brand-600 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Control de farmacia</li>
+              <li class="flex items-center gap-2 text-sm text-slate-600"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-brand-600 flex-shrink-0"><path d="M4 10L8 14L16 6"/></svg>Bitácoras de auditoría</li>
+            </ul>
+          </div>
+          <a href="/pages/auth/login.html" class="block text-center py-4 bg-slate-50 group-hover:bg-brand-600 text-sm font-semibold text-slate-700 group-hover:text-gold-400 transition-colors border-t border-slate-200">
+            Acceder a mi panel →
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BANNER -->
+  <section class="py-16 bg-brand-600 relative overflow-hidden">
+    <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px); background-size:48px 48px"></div>
+    <div class="max-w-7xl mx-auto px-6 relative">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div>
+          <div class="font-display text-4xl md:text-5xl font-800 text-gold-400 mb-1">10</div>
+          <div class="text-sm text-white/70 font-medium">Especialidades médicas</div>
+        </div>
+        <div>
+          <div class="font-display text-4xl md:text-5xl font-800 text-gold-400 mb-1">40+</div>
+          <div class="text-sm text-white/70 font-medium">Doctores certificados</div>
+        </div>
+        <div>
+          <div class="font-display text-4xl md:text-5xl font-800 text-gold-400 mb-1">8h</div>
+          <div class="text-sm text-white/70 font-medium">Para confirmar tu pago</div>
+        </div>
+        <div>
+          <div class="font-display text-4xl md:text-5xl font-800 text-gold-400 mb-1">100%</div>
+          <div class="text-sm text-white/70 font-medium">Reembolso con 48h de aviso</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FARMACIA PÚBLICA -->
+  <section id="farmacia" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-10">
+        <div class="inline-block text-xs font-semibold tracking-widest text-brand-600 uppercase mb-3">Farmacia y Servicios</div>
+        <h2 class="font-display text-4xl font-700 text-slate-900 mb-3">Disponible para todos</h2>
+        <p class="text-slate-500 max-w-md mx-auto text-sm leading-relaxed">No necesitas ser paciente registrado. Acércate al mostrador con o sin receta.</p>
+      </div>
+
+      <!-- Aviso -->
+      <div class="max-w-2xl mx-auto mb-8 flex gap-3 items-start bg-brand-50 border border-brand-200 rounded-xl p-4">
+        <div class="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center text-brand-600 flex-shrink-0">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9V13M10 7V7.01"/></svg>
+        </div>
+        <div>
+          <div class="font-semibold text-sm text-brand-800 mb-0.5">¿Cómo adquirir?</div>
+          <div class="text-xs text-brand-700 leading-relaxed">Acude a nuestro mostrador con o sin receta médica. Nuestro personal te atenderá sin necesidad de registro previo.</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 justify-center mb-6">
+        <button id="tab-med-btn" onclick="switchTab('medicamentos')" class="tab-active flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg>
+          Medicamentos
+        </button>
+        <button id="tab-srv-btn" onclick="switchTab('servicios')" class="tab-inactive flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg>
+          Servicios Extra
+        </button>
+      </div>
+
+      <!-- Buscador -->
+      <div class="max-w-sm mx-auto mb-8 relative">
+        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="M14 14L18 18" stroke-linecap="round"/></svg>
+        <input type="text" id="catalogo-buscar" placeholder="Buscar…" oninput="filtrarCatalogo()"
+          class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 text-sm bg-white">
+      </div>
+
+      <!-- Grids -->
+      <div id="tab-medicamentos" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div class="col-span-full flex items-center justify-center gap-3 py-12 text-slate-400 text-sm">
+          <div class="spinner"></div> Cargando catálogo…
+        </div>
+      </div>
+      <div id="tab-servicios" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div class="col-span-full flex items-center justify-center gap-3 py-12 text-slate-400 text-sm">
+          <div class="spinner"></div> Cargando servicios…
+        </div>
+      </div>
+      <p id="catalogo-vacio" class="hidden text-center text-slate-400 py-10 text-sm">No se encontraron resultados.</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-slate-900 text-white py-14 mt-0">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-10 mb-10">
+        <div class="md:col-span-2">
+          <div class="flex items-center gap-2.5 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+            </div>
+            <span class="font-display font-700 text-white text-lg">MediConnect</span>
+          </div>
+          <p class="text-slate-400 text-sm leading-relaxed max-w-xs">Sistema integral de gestión hospitalaria para una atención médica moderna y eficiente.</p>
+        </div>
+        <div>
+          <div class="font-semibold text-gold-400 text-sm mb-4">Plataforma</div>
+          <div class="space-y-2.5">
+            <a href="#servicios" class="block text-sm text-slate-400 hover:text-white transition-colors">Servicios</a>
+            <a href="#especialidades" class="block text-sm text-slate-400 hover:text-white transition-colors">Especialidades</a>
+            <a href="/pages/auth/login.html" class="block text-sm text-slate-400 hover:text-white transition-colors">Iniciar sesión</a>
+            <a href="/pages/auth/register.html" class="block text-sm text-slate-400 hover:text-white transition-colors">Registrarse</a>
+          </div>
+        </div>
+        <div>
+          <div class="font-semibold text-gold-400 text-sm mb-4">Legal</div>
+          <div class="space-y-2.5">
+            <a href="#" class="block text-sm text-slate-400 hover:text-white transition-colors">Privacidad</a>
+            <a href="#" class="block text-sm text-slate-400 hover:text-white transition-colors">Términos</a>
+            <a href="#" class="block text-sm text-slate-400 hover:text-white transition-colors">Ayuda</a>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-slate-800 pt-6 text-center text-slate-500 text-xs">
+        &copy; 2026 MediConnect · ESCOM — IPN · Equipo 4 · 3CM3
+      </div>
+    </div>
+  </footer>
+
+  <!-- Botón flotante del carrito -->
+  <button id="carrito-btn" onclick="carritoAbrir()" title="Ver carrito">
+    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg>
+    <span id="carrito-badge"></span>
+  </button>
+
+  <script src="/assets/js/home.js"></script>
+  <script>
+    // switchTab/filtrarCatalogo viven en home.js (data-tab driven).
+    // Aquí solo sincronizamos las clases visuales tab-active/tab-inactive de los botones nuevos
+    // y mostramos/ocultamos los grids con la clase .hidden de Tailwind.
+    function switchTab(tab) {
+      const medGrid = document.getElementById('tab-medicamentos');
+      const srvGrid = document.getElementById('tab-servicios');
+      const medBtn  = document.getElementById('tab-med-btn');
+      const srvBtn  = document.getElementById('tab-srv-btn');
+
+      medGrid.classList.toggle('hidden', tab !== 'medicamentos');
+      srvGrid.classList.toggle('hidden', tab !== 'servicios');
+      medGrid.style.display = tab === 'medicamentos' ? 'grid' : 'none';
+      srvGrid.style.display = tab === 'servicios'    ? 'grid' : 'none';
+
+      medBtn.classList.remove('tab-active','tab-inactive');
+      srvBtn.classList.remove('tab-active','tab-inactive');
+      medBtn.classList.add(tab === 'medicamentos' ? 'tab-active' : 'tab-inactive');
+      srvBtn.classList.add(tab === 'servicios'    ? 'tab-active' : 'tab-inactive');
+
+      _tabActualUI = tab;
+      window._tabActual = tab; // home.js usa _tabActual para filtrar
+      document.getElementById('catalogo-buscar').value = '';
+      document.getElementById('catalogo-vacio').style.display = 'none';
+      document.querySelectorAll(`#tab-${tab} .catalogo-card`).forEach(c => c.style.display = '');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('tab-med-btn').dataset.tab = 'medicamentos';
+      document.getElementById('tab-srv-btn').dataset.tab = 'servicios';
+      document.getElementById('tab-med-btn').classList.add('tab-btn');
+      document.getElementById('tab-srv-btn').classList.add('tab-btn','active');
+    });
+  </script>
 </body>
 </html>

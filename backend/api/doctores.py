@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from db.connection import execute_query, execute_non_query, execute_insert_returning_id, get_db
 from core.decorators import requiere_auth, requiere_rol
-from core.helpers import rows_to_json
+from core.helpers import rows_to_json, validar_fecha_nacimiento
 
 doctor_bp = Blueprint('doctores', __name__)
 
@@ -315,6 +315,13 @@ def crear_doctor():
     if existe:
         return jsonify({'error': 'El correo ya está registrado.'}), 409
 
+    # ── Validar fecha de nacimiento / edad ──────────────────────
+    val_fecha = validar_fecha_nacimiento(data['fecha_nac'])
+    if not val_fecha['valido']:
+        return jsonify({'error': val_fecha['error']}), 400
+    if val_fecha['edad'] < 23:
+        return jsonify({'error': 'El doctor debe tener al menos 23 años de edad (edad mínima para contar con cédula profesional).'}), 400
+
     password_hash = bcrypt.hashpw(
         data['password'].encode('utf-8'), bcrypt.gensalt()
     ).decode('utf-8')
@@ -405,3 +412,84 @@ def _registrar_bitacora_historial(folio_cita, folio_receta, estatus, claims):
         )
     except Exception:
         pass  # No interrumpir flujo principal por error en bitácora
+
+
+# PATCH /api/doctores/<id>/dar-baja
+# Solo recepcionista/admin puede ejecutar esta acción.
+@doctor_bp.route('/<int:id_doctor>/dar-baja', methods=['PATCH'])
+@requiere_rol('recepcionista', 'admin')
+def dar_baja_doctor(id_doctor):
+    """
+    Da de baja (inactiva) a un doctor aplicando las validaciones de negocio:
+      - El doctor debe existir y estar Activo.
+      - No puede tener citas con estatus 'agendada_pendiente_pago' o 'pagada_pendiente_atender'.
+      - No puede tener pagos de cita en estatus 'Pendiente' asociados.
+      - Si pasa todas las validaciones, se cambia Estatus_empleado → 'Inactivo'.
+    """
+    # 1. Verificar que el doctor existe y está activo
+    doctor_rows = execute_query(
+        """
+        SELECT d.Id_Doctor, e.Estatus_empleado,
+               u.Nombre, u.Ap_Paterno
+        FROM Doctor d
+        JOIN Empleado e ON d.Id_Usuario = e.Id_Usuario
+        JOIN Usuario  u ON d.Id_Usuario = u.Id_Usuario
+        WHERE d.Id_Doctor = ?
+        """,
+        (id_doctor,)
+    )
+    if not doctor_rows:
+        return jsonify({'error': 'Doctor no encontrado.'}), 404
+
+    doc = doctor_rows[0]
+    if doc['Estatus_empleado'] == 'Inactivo':
+        return jsonify({'error': f"El doctor {doc['Nombre']} {doc['Ap_Paterno']} ya se encuentra inactivo."}), 409
+
+    # 2. Validar que no tenga citas activas (pendientes de pago o por atender)
+    citas_activas = execute_query(
+        """
+        SELECT COUNT(*) AS total
+        FROM Cita
+        WHERE Id_Doctor = ?
+          AND Estado_Cita IN ('agendada_pendiente_pago', 'pagada_pendiente_atender')
+        """,
+        (id_doctor,)
+    )
+    n_citas = citas_activas[0]['total'] if citas_activas else 0
+    if n_citas > 0:
+        return jsonify({
+            'error': f'El doctor tiene {n_citas} cita(s) activa(s) pendiente(s). '
+                     f'Cancélalas o reasígnalas antes de dar de baja al doctor.'
+        }), 409
+
+    # 3. Validar que no tenga pagos pendientes de cita asociados
+    pagos_pendientes = execute_query(
+        """
+        SELECT COUNT(*) AS total
+        FROM Pago p
+        JOIN Cita  c ON p.Folio_Cita = c.Folio_Cita
+        WHERE c.Id_Doctor = ?
+          AND p.Estado    = 'Pendiente'
+        """,
+        (id_doctor,)
+    )
+    n_pagos = pagos_pendientes[0]['total'] if pagos_pendientes else 0
+    if n_pagos > 0:
+        return jsonify({
+            'error': f'El doctor tiene {n_pagos} pago(s) de cita pendiente(s). '
+                     f'Resuelve los pagos antes de dar de baja al doctor.'
+        }), 409
+
+    # 4. Dar de baja: cambiar Estatus_empleado → 'Inactivo'
+    execute_non_query(
+        """
+        UPDATE Empleado
+        SET    Estatus_empleado = 'Inactivo'
+        WHERE  Id_Usuario = (SELECT Id_Usuario FROM Doctor WHERE Id_Doctor = ?)
+        """,
+        (id_doctor,)
+    )
+
+    return jsonify({
+        'mensaje': f"Doctor {doc['Nombre']} {doc['Ap_Paterno']} dado de baja correctamente."
+    }), 200

@@ -43,6 +43,66 @@ const VIEWS = {
     'mi-perfil':   { title:'Mi Perfil',             subtitle:'Tu información personal y laboral' },
 };
 
+/* ── Badge dinámico de Solicitudes en el sidebar ──── */
+function actualizarBadgeSolicitudes(cantidad) {
+    const navItem = document.querySelector('.nav-item[data-view="solicitudes"]');
+    if (!navItem) return;
+    let badge = navItem.querySelector('.nav-badge');
+    if (cantidad > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'nav-badge';
+            navItem.appendChild(badge);
+        }
+        badge.textContent = cantidad;
+    } else if (badge) {
+        badge.remove();
+    }
+}
+
+/* ── Validación de fecha de nacimiento / edad ──────────────────── */
+function calcularEdad(fechaNacStr) {
+    if (!fechaNacStr) return null;
+    const fechaNac = new Date(fechaNacStr + 'T00:00:00');
+    if (isNaN(fechaNac.getTime())) return null;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fechaFutura = fechaNac.getTime() > hoy.getTime();
+
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mesActual = hoy.getMonth() - fechaNac.getMonth();
+    if (mesActual < 0 || (mesActual === 0 && hoy.getDate() < fechaNac.getDate())) edad--;
+
+    return { edad, fechaFutura };
+}
+
+/** Limita un <input type="date"> a un rango de edad razonable (0–120 años). */
+function limitarFechaNacimiento(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const hoy = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    input.max = fmt(hoy);
+    input.min = fmt(new Date(hoy.getFullYear() - 120, hoy.getMonth(), hoy.getDate()));
+}
+
+/**
+ * Valida una fecha de nacimiento y lanza un Error con un mensaje
+ * descriptivo si no cumple el rango permitido. `edadMinima` es opcional
+ * (por ejemplo 18 para personal, 23 para doctores).
+ */
+function validarFechaNacimiento(fechaNacStr, edadMinima = 0) {
+    const info = calcularEdad(fechaNacStr);
+    if (!info) throw new Error('La fecha de nacimiento no es válida.');
+    if (info.fechaFutura) throw new Error('La fecha de nacimiento no puede ser una fecha futura.');
+    if (info.edad > 120) throw new Error('La fecha de nacimiento indica una edad mayor a 120 años. Verifica el dato.');
+    if (info.edad < 0) throw new Error('La fecha de nacimiento es inválida.');
+    if (info.edad < edadMinima) throw new Error(`La edad mínima requerida es de ${edadMinima} años.`);
+    return info.edad;
+}
+
 async function loadView(viewName) {
     const container = document.getElementById('contentContainer');
     const info = VIEWS[viewName]||{};
@@ -70,46 +130,209 @@ async function renderDashboard(container) {
     const stats = await recepcionista.obtenerDashboard();
     const hora   = new Date().getHours();
     const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+    actualizarBadgeSolicitudes(stats.SolicitudesPendientes || 0);
     const user   = STATE.user;
+
+    // ── Citas de hoy (para el widget lateral) ───────────────────────
+    let htmlCitasHoy;
+    try {
+        const hoy = new Date().toISOString().split('T')[0];
+        const todasCitas = await citas.obtenerMisCitas();
+        STATE.todasCitas = Array.isArray(todasCitas) ? todasCitas : [];
+        const citasHoyLista = STATE.todasCitas
+            .filter(c => (c.Fecha_Cita||'').startsWith(hoy))
+            .sort((a,b) => (a.Hora_Cita||'').localeCompare(b.Hora_Cita||''));
+
+        if (citasHoyLista.length) {
+            htmlCitasHoy = '<div class="flex flex-col gap-2">' +
+                citasHoyLista.slice(0, 5).map(c => {
+                    const pac  = ((c.NombrePaciente||'') + ' ' + (c.ApPaciPat||'')).trim();
+                    const horaC = utils.formatearHora(c.Hora_Cita || '');
+                    const badge = badgeEstatus(c.Estatus || '');
+                    return '<div class="flex items-center justify-between gap-3 rounded-xl bg-brand-50 px-3 py-2.5">' +
+                        '<div class="flex items-center gap-3 min-w-0">' +
+                          '<div class="text-xs font-bold flex-shrink-0" style="color:var(--brand-600);font-family:\'Playfair Display\',serif;min-width:52px">' + horaC + '</div>' +
+                          '<div class="text-sm font-medium text-slate-700 truncate">' + (pac || 'Paciente') + '</div>' +
+                        '</div>' +
+                        '<div class="flex-shrink-0">' + badge + '</div>' +
+                      '</div>';
+                }).join('') +
+            '</div>';
+            if (citasHoyLista.length > 5) {
+                htmlCitasHoy += '<button class="btn btn-secondary btn-sm mt-3 w-full" onclick="irVista(\'citas\')">Ver las ' + citasHoyLista.length + ' citas de hoy</button>';
+            }
+        } else {
+            htmlCitasHoy =
+                '<div class="text-center py-4">' +
+                  '<div class="empty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>' +
+                  '<p class="text-sm" style="color:var(--muted)">No hay citas programadas para hoy.</p>' +
+                '</div>';
+        }
+    } catch (e) {
+        console.warn('[Recep/Dashboard] Citas hoy:', e.message);
+        htmlCitasHoy = '<p class="text-sm text-slate-500">No se pudo cargar la agenda de hoy.</p>';
+    }
+
+    // ── Solicitudes de cancelación recientes (para el widget lateral) ──
+    let htmlSolicitudes;
+    try {
+        const solicitudes = await recepcionista.listarSolicitudesCancelacion();
+        STATE.solicitudes = Array.isArray(solicitudes) ? solicitudes : [];
+
+        if (STATE.solicitudes.length) {
+            htmlSolicitudes = '<div class="flex flex-col gap-2">' +
+                STATE.solicitudes.slice(0, 4).map(s => {
+                    const pac   = ((s.NombrePaciente||'') + ' ' + (s.ApPac||'')).trim();
+                    const fecha = utils.formatearFecha(s.Fecha_Cita || '');
+                    return '<div class="rounded-xl bg-amber-50 px-3 py-2.5 border border-amber-100">' +
+                        '<div class="flex items-center justify-between gap-2 mb-0.5">' +
+                          '<div class="text-sm font-semibold text-slate-700 truncate">' + (pac || 'Paciente') + '</div>' +
+                          '<span class="badge badge-warning flex-shrink-0">#' + String(s.Folio_Cita).padStart(5,'0') + '</span>' +
+                        '</div>' +
+                        '<div class="text-xs text-slate-500">Cita: ' + fecha + ' · ' + (s.Motivo || 'Sin motivo especificado') + '</div>' +
+                      '</div>';
+                }).join('') +
+            '</div>' +
+            '<button class="btn btn-primary btn-sm mt-3 w-full" onclick="irVista(\'solicitudes\')">Revisar solicitudes</button>';
+        } else {
+            htmlSolicitudes =
+                '<div class="text-center py-4">' +
+                  '<div class="empty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 10L9 13L14 7"/><circle cx="10" cy="10" r="7"/></svg></div>' +
+                  '<p class="text-sm" style="color:var(--muted)">Sin solicitudes pendientes.</p>' +
+                '</div>';
+        }
+    } catch (e) {
+        console.warn('[Recep/Dashboard] Solicitudes:', e.message);
+        htmlSolicitudes = '<p class="text-sm text-slate-500">No se pudieron cargar las solicitudes.</p>';
+    }
+
     container.innerHTML = `<div class="view-content">
 
       <!-- Saludo principal -->
-      <div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">
-        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
-          <div style="color:var(--primary);margin-bottom:.5rem"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
+      <div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);border:none">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+            <div style="color:var(--gold-400)"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>
+            <div>
+              <h2 style="font-size:1.5rem;font-family:'Playfair Display',serif;color:#fff;margin-bottom:.25rem">
+                ${saludo}, ${user.nombre} ${user.ap_paterno}
+              </h2>
+              <p style="color:rgba(255,255,255,.75);font-size:.95rem">Panel de recepción — MediConnect</p>
+            </div>
+          </div>
+          <button class="btn" style="background:var(--gold-400);color:var(--brand-700);flex-shrink:0" onclick="irVista('citas')">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg> Ver Citas
+          </button>
+        </div>
+      </div>
+
+      <!-- Estadísticas compactas -->
+      <div class="stats-grid-sm">
+        <div class="stat-card-sm">
+          <div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>
+          <div class="stat-info"><div class="stat-value-sm">${stats.CitasHoy||0}</div><div class="stat-label-sm">Citas Hoy</div></div>
+        </div>
+        <div class="stat-card-sm">
+          <div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15M5 17H15"/><path d="M6 3C6 3 6 8 10 10C14 12 14 17 14 17"/><path d="M14 3C14 3 14 8 10 10C6 12 6 17 6 17"/></svg></div>
+          <div class="stat-info"><div class="stat-value-sm">${stats.PendientesPago||0}</div><div class="stat-label-sm">Pend. de Pago</div></div>
+        </div>
+        <div class="stat-card-sm">
+          <div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div>
+          <div class="stat-info"><div class="stat-value-sm">${stats.TotalPacientes||0}</div><div class="stat-label-sm">Pacientes</div></div>
+        </div>
+        <div class="stat-card-sm">
+          <div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div>
+          <div class="stat-info"><div class="stat-value-sm">${stats.DoctoresActivos||0}</div><div class="stat-label-sm">Doctores Activos</div></div>
+        </div>
+        <div class="stat-card-sm" style="${stats.SolicitudesPendientes>0?'border-color:var(--error)':''}">
+          <div class="stat-icon-sm" style="${stats.SolicitudesPendientes>0?'background:#fee2e2;color:var(--error)':''}"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 6 4.5 6 9V14H14V9C14 4.5 10 3 10 3Z"/><path d="M4 14H16"/><path d="M9 17H11"/></svg></div>
+          <div class="stat-info"><div class="stat-value-sm" style="${stats.SolicitudesPendientes>0?'color:var(--error)':''}">${stats.SolicitudesPendientes||0}</div><div class="stat-label-sm">Solicitudes</div></div>
+        </div>
+      </div>
+
+      <!-- Layout dos columnas -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6 items-start">
+
+        <!-- Columna izquierda (2/3): accesos rápidos -->
+        <div class="lg:col-span-2 flex flex-col gap-5">
           <div>
-            <h2 style="font-size:1.5rem;font-family:'Playfair Display',serif;color:white;margin-bottom:.25rem">
-              ${saludo}, ${user.nombre} ${user.ap_paterno}
-            </h2>
-            <p style="color:rgba(255,255,255,.8);font-size:.95rem">Panel de recepción — MediConnect</p>
+            <div class="section-heading"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2L3 11H9L9 18L17 9H11L11 2Z"/></svg> Accesos Rápidos</div>
+            <div class="quick-actions-grid">
+
+              <div class="quick-action-tile" onclick="irVista('citas')">
+                ${stats.PendientesPago>0?`<span class="qa-badge">${stats.PendientesPago}</span>`:''}
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>
+                <div><div class="qa-title">Citas</div><div class="qa-desc">Gestiona la agenda del hospital</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="irVista('solicitudes')">
+                ${stats.SolicitudesPendientes>0?`<span class="qa-badge">${stats.SolicitudesPendientes}</span>`:''}
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10L13 13"/></svg></div>
+                <div><div class="qa-title">Solicitudes</div><div class="qa-desc">Aprueba cancelaciones pendientes</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="irVista('farmacia')">
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg></div>
+                <div><div class="qa-title">Venta Mostrador</div><div class="qa-desc">Medicamentos y servicios extra</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="irVista('pacientes')">
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div>
+                <div><div class="qa-title">Pacientes</div><div class="qa-desc">Consulta el directorio completo</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="irVista('doctores')">
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 17C4 13.69 6.69 11 10 11C13.31 11 16 13.69 16 17"/><path d="M13 5H17M15 3V7"/></svg></div>
+                <div><div class="qa-title">Doctores</div><div class="qa-desc">Directorio y alta de médicos</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="nuevoDoctor()">
+                <span class="qa-badge">+ Alta</span>
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 16C4 12.69 6.69 10 10 10C13.31 10 16 12.69 16 16"/><path d="M13 5H17M15 3V7"/></svg></div>
+                <div><div class="qa-title">Nuevo Doctor</div><div class="qa-desc">Registrar un médico al sistema</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="irVista('bitacoras')">
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>
+                <div><div class="qa-title">Bitácoras</div><div class="qa-desc">Auditoría del sistema</div></div>
+              </div>
+
+              <div class="quick-action-tile" onclick="irVista('mi-perfil')">
+                <div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 17C4 14.24 6.69 12 10 12C13.31 12 16 14.24 16 17"/><path d="M13 5L14.5 6.5L17 4"/></svg></div>
+                <div><div class="qa-title">Mi Perfil</div><div class="qa-desc">Datos personales y laborales</div></div>
+              </div>
+
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Estadísticas del día -->
-      <div class="stats-grid">
-        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div><div class="stat-value">${stats.CitasHoy||0}</div><div class="stat-label">Citas Hoy</div></div>
-        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15M5 17H15"/><path d="M6 3C6 3 6 8 10 10C14 12 14 17 14 17"/><path d="M14 3C14 3 14 8 10 10C6 12 6 17 6 17"/></svg></div><div class="stat-value">${stats.PendientesPago||0}</div><div class="stat-label">Pendientes de Pago</div></div>
-        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div><div class="stat-value">${stats.TotalPacientes||0}</div><div class="stat-label">Total Pacientes</div></div>
-        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div><div class="stat-value">${stats.DoctoresActivos||0}</div><div class="stat-label">Doctores Activos</div></div>
-        <div class="info-card stat-card">
-          <div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3C10 3 6 4.5 6 9V14H14V9C14 4.5 10 3 10 3Z"/><path d="M4 14H16"/><path d="M9 17H11"/></svg></div>
-          <div class="stat-value" style="${stats.SolicitudesPendientes>0?'color:var(--error)':''}">${stats.SolicitudesPendientes||0}</div>
-          <div class="stat-label">Solicitudes Pendientes</div>
-          ${stats.SolicitudesPendientes>0?`<button class="btn btn-sm btn-danger" style="margin-top:.75rem" onclick="irVista('solicitudes')">Ver Solicitudes</button>`:''}
-        </div>
-      </div>
+        <!-- Columna derecha (1/3): citas de hoy + solicitudes -->
+        <div class="flex flex-col gap-5">
 
-      <!-- Acciones rápidas -->
-      <div class="info-card" style="margin-top:1.5rem">
-        <div class="info-header"><h3>Acciones Rápidas</h3></div>
-        <div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">
-          <button class="btn btn-primary"   onclick="irVista('citas')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg> Ver Citas</button>
-          <button class="btn btn-secondary" onclick="nuevoDoctor()">+ Alta Doctor</button>
-          <button class="btn btn-secondary" onclick="irVista('farmacia')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Venta Mostrador</button>
-          <button class="btn btn-secondary" onclick="irVista('pacientes')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg> Pacientes</button>
-          <button class="btn btn-secondary" onclick="irVista('bitacoras')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Bitácoras</button>
+          <div class="info-card">
+            <div class="info-header"><h3>Citas de Hoy</h3></div>
+            <div class="info-body" style="margin-top:.5rem">${htmlCitasHoy}</div>
+          </div>
+
+          <div class="info-card">
+            <div class="info-header"><h3>Solicitudes Recientes</h3></div>
+            <div class="info-body" style="margin-top:.5rem">${htmlSolicitudes}</div>
+          </div>
+
+          <div class="rounded-2xl p-5" style="background:var(--gold-50);border:1px solid var(--gold-200)">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--gold-400);color:var(--brand-700)">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10M10 14H10.01"/></svg>
+              </div>
+              <div class="font-semibold text-sm" style="color:var(--brand-700)">Recuerda</div>
+            </div>
+            <p class="text-sm leading-relaxed" style="color:var(--brand-700)">
+              Las citas sin pago confirmado se liberan automáticamente después de 8 horas.
+            </p>
+          </div>
+
         </div>
+
       </div>
     </div>`;
 }
@@ -247,29 +470,57 @@ async function verPaciente(id) {
 
 /* ── DOCTORES ─────────────────────────────────────── */
 async function renderDoctores(container) {
-    // Usamos doctor.listarTodos() y especialidades.obtenerTodas() — ambos
-    // pasan por apiRequest con la URL correcta (/api/doctores, /api/especialidades)
     const [docs, esps] = await Promise.all([
         doctor.listarTodos(),
         especialidades.obtenerTodas()
     ]);
     STATE.todosDoctores = docs;
     const filas = docs.length ? docs.map(d => `<tr>
-        <td><strong>Dr. ${d.Nombre} ${d.Ap_Paterno}</strong></td>
+        <td>
+          <strong>Dr. ${d.Nombre} ${d.Ap_Paterno}</strong>
+          ${d.Estatus_empleado === 'Inactivo' ? '<span class="badge badge-neutral" style="margin-left:.4rem">Inactivo</span>' : ''}
+        </td>
         <td>${d.Especialidad}</td>
         <td>${d.Cedula_prof}</td>
         <td>${d.Turno}</td>
         <td>${(d.Hora_inic||'').substring(0,5)} – ${(d.Hora_final||'').substring(0,5)}</td>
+        <td>
+          ${d.Estatus_empleado !== 'Inactivo'
+            ? `<button class="btn btn-sm btn-danger" onclick="darBajaDoctor(${d.Id_Doctor},'${(d.Nombre+' '+d.Ap_Paterno).replace(/'/g,"\\'")}')">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 7L13 13M13 7L7 13"/></svg>
+                Dar de Baja
+               </button>`
+            : '<span class="text-sm" style="color:var(--muted)">—</span>'}
+        </td>
       </tr>`).join('') :
-      `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div><h3>Sin doctores</h3></div></td></tr>`;
+      `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div><h3>Sin doctores</h3></div></td></tr>`;
     container.innerHTML = `<div class="view-content">
       <div style="margin-bottom:1.5rem">
         <button class="btn btn-primary" onclick="nuevoDoctor()">+ Alta Doctor</button>
       </div>
       <div class="table-container">
         <div class="table-header"><h3>Personal Médico</h3></div>
-        <table><thead><tr><th>Doctor</th><th>Especialidad</th><th>Cédula</th><th>Turno</th><th>Horario</th></tr></thead>
+        <table><thead><tr><th>Doctor</th><th>Especialidad</th><th>Cédula</th><th>Turno</th><th>Horario</th><th>Acción</th></tr></thead>
         <tbody>${filas}</tbody></table></div></div>`;
+}
+
+async function darBajaDoctor(idDoctor, nombre) {
+    abrirModal('Dar de Baja — ' + nombre, `
+      <div class="flex items-start gap-3 p-4 rounded-xl" style="background:#fee2e2;border:1px solid #fecaca;margin-bottom:1rem">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" class="flex-shrink-0 mt-0.5"><circle cx="10" cy="10" r="7"/><path d="M10 7V10M10 13H10.01"/></svg>
+        <div style="font-size:.88rem;color:#991b1b;line-height:1.5">
+          <strong>Esta acción desactivará al doctor.</strong><br>
+          Solo se puede dar de baja si el doctor <strong>no tiene citas activas</strong> ni <strong>pagos pendientes</strong>.<br>
+          El doctor <strong>no podrá</strong> acceder al sistema ni aparecer en el directorio de disponibles.
+        </div>
+      </div>
+      <p style="font-size:.9rem;color:var(--text)">¿Confirmas que deseas dar de baja a <strong>${nombre}</strong>?</p>`,
+        async () => {
+            await doctor.darBaja(idDoctor);
+            toast(`Dr. ${nombre} dado de baja correctamente.`, 'success');
+            cerrarModal();
+            loadView('doctores');
+        }, 'Confirmar Baja', 'btn-danger');
 }
 
 async function nuevoDoctor() {
@@ -290,7 +541,7 @@ async function nuevoDoctor() {
         <div class="form-group"><label>CURP*</label><input id="nd-curp" maxlength="18" style="text-transform:uppercase"></div>
         <div class="form-group"><label>RFC*</label><input id="nd-rfc" maxlength="13" style="text-transform:uppercase"></div>
         <div class="form-group"><label>Cédula Profesional*</label><input id="nd-ced" placeholder="CED-0000000"></div>
-        <div class="form-group"><label>Fecha de Nacimiento*</label><input id="nd-nac" type="date"></div>
+        <div class="form-group"><label>Fecha de Nacimiento* <small style="color:var(--muted);font-weight:400">(mínimo 23 años)</small></label><input id="nd-nac" type="date"></div>
         <div class="form-group"><label>Teléfono</label><input id="nd-tel"></div>
         <div class="form-group"><label>Especialidad*</label>
           <select id="nd-esp">${esps.map(e=>`<option value="${e.Id_Especialidad}">${e.Especialidad}</option>`).join('')}</select>
@@ -305,6 +556,8 @@ async function nuevoDoctor() {
             const req = ['nd-nom','nd-ap','nd-email','nd-pass','nd-curp','nd-rfc','nd-ced','nd-nac','nd-suel'];
             const miss = req.filter(id=>!g(id));
             if (miss.length) throw new Error('Completa todos los campos requeridos (*).');
+            // Validar edad del doctor (mínimo 23 años para tener cédula profesional)
+            validarFechaNacimiento(g('nd-nac'), 23);
             await doctor.crear({
                 nombre: g('nd-nom'), ap_paterno: g('nd-ap'), ap_materno: g('nd-am'),
                 email: g('nd-email'), password: g('nd-pass'),
@@ -316,6 +569,8 @@ async function nuevoDoctor() {
             toast('Doctor registrado correctamente.','success');
             cerrarModal(); loadView('doctores');
         }, 'Registrar Doctor');
+    // Limitar el datepicker a un rango de 23–120 años en el siguiente tick
+    setTimeout(() => limitarFechaNacimiento('nd-nac'), 0);
 }
 
 /* ── MEDICAMENTOS Y SERVICIOS ─────────────────────────── */
@@ -744,36 +999,27 @@ async function filtrarBitacora() {
 async function renderSolicitudes(container) {
     const [cancelaciones, comprasPend] = await Promise.all([
         recepcionista.listarSolicitudesCancelacion(),
-        recepcionista.listarSolicitudesCompra('Pendiente')
+        compras.listarPendientes()
     ]);
-
-    const badgeCancelaciones = cancelaciones.length
-        ? `<span style="background:#ef4444;color:#fff;border-radius:999px;padding:.1rem .45rem;font-size:.75rem;margin-left:.35rem">${cancelaciones.length}</span>` : '';
-    const badgeCompras = comprasPend.length
-        ? `<span style="background:#ef4444;color:#fff;border-radius:999px;padding:.1rem .45rem;font-size:.75rem;margin-left:.35rem">${comprasPend.length}</span>` : '';
+    actualizarBadgeSolicitudes(cancelaciones.length + comprasPend.length);
 
     container.innerHTML = `<div class="view-content">
+      <!-- Tabs -->
       <div style="display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap;
                   background:#f1f5f9;border-radius:12px;padding:.35rem">
-        <button class="farm-tab active" data-tab="sol-cancel"
-                onclick="switchSolTab('sol-cancel')">
+        <button class="farm-tab active" data-tab="sol-cancel" onclick="switchSolTab('sol-cancel')">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg>
-          <span>Cancelaciones</span>
-          ${cancelaciones.length
-            ? `<span class="farm-tab-count" style="background:#ef4444;color:#fff">${cancelaciones.length}</span>`
-            : `<span class="farm-tab-count">0</span>`}
+          Cancelaciones
+          ${cancelaciones.length ? `<span class="farm-tab-count" style="background:#ef4444;color:#fff">${cancelaciones.length}</span>` : '<span class="farm-tab-count">0</span>'}
         </button>
-        <button class="farm-tab" data-tab="sol-compra"
-                onclick="switchSolTab('sol-compra')">
+        <button class="farm-tab" data-tab="sol-compra" onclick="switchSolTab('sol-compra')">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg>
-          <span>Compras pendientes</span>
-          ${comprasPend.length
-            ? `<span class="farm-tab-count" style="background:#ef4444;color:#fff">${comprasPend.length}</span>`
-            : `<span class="farm-tab-count">0</span>`}
+          Compras Walk-in
+          ${comprasPend.length ? `<span class="farm-tab-count" style="background:#ef4444;color:#fff">${comprasPend.length}</span>` : '<span class="farm-tab-count">0</span>'}
         </button>
       </div>
 
-      <!-- Tab: Cancelaciones de citas -->
+      <!-- CANCELACIONES -->
       <div id="sol-cancel">
         ${cancelaciones.length ? `
         <div class="table-container">
@@ -782,51 +1028,54 @@ async function renderSolicitudes(container) {
             <tbody>
               ${cancelaciones.map(s => `<tr>
                 <td>#${String(s.Folio_Cita).padStart(5,'0')}</td>
-                <td>${s.NombreDoctor||''} ${s.ApPaternoDoctor||''}</td>
-                <td>${s.NombrePaciente||''} ${s.ApPaternoPaciente||''}</td>
-                <td style="max-width:180px;white-space:normal">${s.Motivo||'—'}</td>
+                <td>${s.NombreDoctor||''} ${s.ApDoc||''}</td>
+                <td>${s.NombrePaciente||''} ${s.ApPac||''}</td>
+                <td style="max-width:160px;white-space:normal">${s.Motivo||'—'}</td>
                 <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
                 <td style="display:flex;gap:.35rem">
-                  <button class="btn btn-sm btn-primary"
-                    onclick="aprobarCancelacion(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg> Aprobar</button>
-                  <button class="btn btn-sm btn-danger"
-                    onclick="rechazarCancelacion(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg> Rechazar</button>
+                  <button class="btn btn-sm btn-primary" onclick="aprobarCancelacion(${s.Id_Solicitud})">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg> Aprobar
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="rechazarCancelacion(${s.Id_Solicitud})">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg> Rechazar
+                  </button>
                 </td>
               </tr>`).join('')}
             </tbody>
           </table>
         </div>` :
-        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 10L9 12L13 8"/></svg></div><h3>Sin solicitudes de cancelación</h3><p>No hay cancelaciones pendientes.</p></div>'}
+        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 10L9 13L14 7"/><circle cx="10" cy="10" r="7"/></svg></div><h3>Sin solicitudes de cancelación</h3><p>No hay cancelaciones pendientes.</p></div>'}
       </div>
 
-      <!-- Tab: Solicitudes de compra de pacientes -->
+      <!-- COMPRAS WALK-IN -->
       <div id="sol-compra" style="display:none">
         ${comprasPend.length ? `
         <div class="table-container">
           <table>
-            <thead><tr><th>Folio</th><th>Paciente</th><th>Teléfono</th><th>Total</th><th>Fecha</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Folio</th><th>Cliente</th><th>Teléfono</th><th>Total</th><th>Solicitado</th><th>Acciones</th></tr></thead>
             <tbody>
               ${comprasPend.map(s => `<tr>
-                <td>#${String(s.Id_Solicitud).padStart(4,'0')}</td>
-                <td>${s.NombrePaciente} ${s.ApPaternoPaciente}</td>
-                <td>${s.TelefonoPaciente||'—'}</td>
-                <td><strong>$${parseFloat(s.Total).toFixed(2)}</strong></td>
+                <td><strong>#${String(s.Id_Solicitud).padStart(5,'0')}</strong></td>
+                <td>${s.cliente || '—'}</td>
+                <td>${s.Telefono_Cliente||s.TelefonoPaciente||'—'}</td>
+                <td><strong>${utils.formatearMoneda(s.Total)}</strong></td>
                 <td>${utils.formatearFecha(s.Fecha_Solicitud)}</td>
-                <td style="display:flex;gap:.35rem">
-                  <button class="btn btn-sm btn-primary"
-                    onclick="verDetalleSolicitudCompra(${s.Id_Solicitud},'${s.NombrePaciente} ${s.ApPaternoPaciente}',${s.Total})">
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10C2 10 5 5 10 5C15 5 18 10 18 10C18 10 15 15 10 15C5 15 2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg> Ver
+                <td style="display:flex;gap:.35rem;flex-wrap:wrap">
+                  <button class="btn btn-sm btn-secondary" onclick="verTicketCompra(${s.Id_Solicitud})">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10C2 10 5 5 10 5C15 5 18 10 18 10C18 10 15 15 10 15C5 15 2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg> Ver Ticket
                   </button>
-                  <button class="btn btn-sm btn-success"
-                    onclick="procesarCompra(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg> Procesar</button>
-                  <button class="btn btn-sm btn-danger"
-                    onclick="rechazarCompra(${s.Id_Solicitud})"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg> Rechazar</button>
+                  <button class="btn btn-sm btn-success" onclick="procesarCompraWalkin(${s.Id_Solicitud})">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10L8 14L16 6"/></svg> Procesar
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="rechazarCompraWalkin(${s.Id_Solicitud})">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg> Rechazar
+                  </button>
                 </td>
               </tr>`).join('')}
             </tbody>
           </table>
         </div>` :
-        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg></div><h3>Sin solicitudes de compra</h3><p>No hay compras pendientes de pacientes.</p></div>'}
+        '<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg></div><h3>Sin solicitudes de compra walk-in</h3><p>Los clientes pueden solicitarlas desde la página principal.</p></div>'}
       </div>
     </div>`;
 }
@@ -840,73 +1089,89 @@ function switchSolTab(tab) {
         b.classList.toggle('active', b.dataset.tab === tab));
 }
 
-async function verDetalleSolicitudCompra(id, paciente, total) {
-    let detalle = [];
-    try { detalle = await medicamentos.detalleSolicitud(id); } catch(e) {}
+// Ver ticket de compra walk-in (sólo visual, sin comprometer nada)
+async function verTicketCompra(idSolicitud) {
+    let data = null;
+    try { data = await compras.detalle(idSolicitud); } catch(e) {}
+    if (!data) { toast('No se pudo cargar el ticket.','error'); return; }
 
-    const filas = detalle.map(d => `<tr>
-        <td>${d.NombreMedicamento || d.NombreServicio}</td>
-        <td>${d.Cantidad}</td>
-        <td>$${parseFloat(d.Subtotal).toFixed(2)}</td>
-    </tr>`).join('') || '<tr><td colspan="3">Sin detalle</td></tr>';
+    const filas = (data.items||[]).map(it =>
+        `<tr>
+          <td>${it.nombre}</td>
+          <td style="text-align:center">${it.cantidad}</td>
+          <td style="text-align:right">${utils.formatearMoneda(it.precio)}</td>
+          <td style="text-align:right"><strong>${utils.formatearMoneda(it.subtotal)}</strong></td>
+        </tr>`
+    ).join('') || '<tr><td colspan="4">Sin detalle</td></tr>';
 
-    abrirModal(`Solicitud #${String(id).padStart(4,'0')} — ${paciente}`, `
-      <table>
-        <thead><tr><th>Producto / Servicio</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
-        <tbody>${filas}</tbody>
-        <tfoot><tr>
-          <td colspan="2" style="text-align:right;font-weight:700">Total</td>
-          <td style="font-weight:700">$${parseFloat(total).toFixed(2)}</td>
-        </tr></tfoot>
-      </table>`,
-        async () => { await procesarCompra(id); },
-        'Procesar'
+    const fecha = utils.formatearFecha(data.Fecha_Solicitud);
+
+    abrirModal(`Ticket #${String(idSolicitud).padStart(5,'0')}`, `
+      <div class="comprobante">
+        <div class="comprobante-header">
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">MediConnect · Solicitud de Compra</div>
+          <h2>Folio #${String(idSolicitud).padStart(5,'0')}</h2>
+          <div style="font-size:.85rem;color:var(--muted);margin-top:.25rem">${fecha}</div>
+        </div>
+        <div class="comprobante-row"><span class="info-label">Cliente</span><span class="info-value">${data.cliente||'—'}</span></div>
+        ${data.Telefono_Cliente ? `<div class="comprobante-row"><span class="info-label">Teléfono</span><span class="info-value">${data.Telefono_Cliente}</span></div>` : ''}
+        <div style="margin:1rem 0">
+          <table style="width:100%;font-size:.85rem">
+            <thead><tr style="border-bottom:1px solid var(--border)">
+              <th style="text-align:left;padding-bottom:.4rem">Producto/Servicio</th>
+              <th style="text-align:center">Cant.</th>
+              <th style="text-align:right">Precio</th>
+              <th style="text-align:right">Subtotal</th>
+            </tr></thead>
+            <tbody>${filas}</tbody>
+            <tfoot><tr style="border-top:2px solid var(--border)">
+              <td colspan="3" style="text-align:right;font-weight:700;padding-top:.5rem">Total</td>
+              <td style="text-align:right;font-weight:700;padding-top:.5rem;font-size:1.05rem;color:var(--brand-600)">${utils.formatearMoneda(data.Total)}</td>
+            </tr></tfoot>
+          </table>
+        </div>
+        <div class="comprobante-aviso">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10M10 14H10.01"/></svg>
+          Revisa el ticket y haz clic en "Procesar Venta" para confirmar la entrega y descontar stock.
+        </div>
+      </div>`,
+        async () => { await procesarCompraWalkin(idSolicitud); },
+        'Procesar Venta', 'btn-primary'
     );
 }
 
-async function procesarCompra(id) {
+async function procesarCompraWalkin(id) {
     try {
-        const res = await recepcionista.procesarSolicitudCompra(id);
-        toast(`Solicitud procesada. Venta #${String(res.id_venta).padStart(4,'0')} registrada.`, 'success');
+        const res = await compras.procesar(id);
+        toast(`Venta #${String(res.id_venta).padStart(5,'0')} registrada. Total: ${utils.formatearMoneda(res.total)}.`, 'success');
         cerrarModal();
         loadView('solicitudes');
     } catch(e) {
-        toast(e.message || 'Error al procesar.', 'error');
+        toast(e.message || 'Error al procesar la venta.', 'error');
     }
 }
 
-async function rechazarCompra(id) {
-    abrirModal('Rechazar solicitud de compra', `
+async function rechazarCompraWalkin(id) {
+    abrirModal('Rechazar Solicitud de Compra', `
       <div class="form-group">
-        <label>Motivo del rechazo (opcional)</label>
-        <input id="rc-motivo" placeholder="Ej: producto sin stock temporal, solicitar en mostrador…">
+        <label>Motivo del rechazo <small style="color:var(--muted);font-weight:400">(opcional)</small></label>
+        <input id="rw-motivo" placeholder="Ej: stock insuficiente, acercarse en otro horario…">
       </div>`,
         async () => {
-            const motivo = document.getElementById('rc-motivo').value.trim();
-            await recepcionista.rechazarSolicitudCompra(id, motivo);
-            toast('Solicitud rechazada.', 'success');
+            const motivo = document.getElementById('rw-motivo')?.value?.trim() || '';
+            await compras.rechazar(id, motivo);
+            toast('Solicitud rechazada correctamente.', 'success');
             cerrarModal();
             loadView('solicitudes');
         }, 'Rechazar', 'btn-danger');
 }
 
-async function aprobarSolicitud(id) {
-    if (!confirm('¿Aprobar esta cancelación? Se procesará un reembolso del 100% al paciente.')) return;
-    try {
-        await recepcionista.aprobarCancelacion(id);
-        toast('Cancelación aprobada. Reembolso del 100% procesado.','success');
-        loadView('solicitudes');
-    } catch(e) { toast(e.message,'error'); }
+// Alias compatibilidad: compras de paciente registrado (flujo antiguo)
+async function verDetalleSolicitudCompra(id, paciente, total) {
+    return verTicketCompra(id);
 }
-
-async function rechazarSolicitud(id) {
-    if (!confirm('¿Rechazar esta solicitud de cancelación?')) return;
-    try {
-        await recepcionista.rechazarCancelacion(id);
-        toast('Solicitud rechazada.','warning');
-        loadView('solicitudes');
-    } catch(e) { toast(e.message,'error'); }
-}
+async function procesarCompra(id) { return procesarCompraWalkin(id); }
+async function rechazarCompra(id) { return rechazarCompraWalkin(id); }
 
 /* ── MODAL / TOAST ────────────────────────────────── */
 function abrirModal(titulo, body, onOk, btnTxt='Guardar', btnCls='btn-primary') {

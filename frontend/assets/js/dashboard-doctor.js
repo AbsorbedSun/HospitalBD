@@ -132,63 +132,173 @@ async function renderInicio(container, _token) {
     const espNom = perfil ? (perfil.Especialidad || '') : '';
     const turno  = perfil ? (perfil.Turno || '')        : '';
 
+    // ── Agenda de hoy (lista de citas) ──────────────────────────────
+    const hoy = new Date().toISOString().split('T')[0];
+    const citasHoyLista = STATE.misCitas
+        .filter(c => (c.Fecha_Cita||'').startsWith(hoy))
+        .sort((a,b) => (a.Hora_Cita||'').localeCompare(b.Hora_Cita||''));
+
+    let htmlAgenda;
+    if (citasHoyLista.length) {
+        htmlAgenda = '<div class="flex flex-col gap-2">' +
+            citasHoyLista.slice(0, 5).map(c => {
+                const pac  = ((c.NombrePaciente||'') + ' ' + (c.ApPaciPat||'')).trim();
+                const hora = utils.formatearHora(c.Hora_Cita || '');
+                const badge = badgeEstatus(c.Estatus || '');
+                return '<div class="flex items-center justify-between gap-3 rounded-xl bg-brand-50 px-3 py-2.5">' +
+                    '<div class="flex items-center gap-3 min-w-0">' +
+                      '<div class="text-xs font-bold flex-shrink-0" style="color:var(--brand-600);font-family:\'Playfair Display\',serif;min-width:52px">' + hora + '</div>' +
+                      '<div class="text-sm font-medium text-slate-700 truncate">' + (pac || 'Paciente') + '</div>' +
+                    '</div>' +
+                    '<div class="flex-shrink-0">' + badge + '</div>' +
+                  '</div>';
+            }).join('') +
+        '</div>';
+        if (citasHoyLista.length > 5) {
+            htmlAgenda += '<button class="btn btn-secondary btn-sm mt-3 w-full" onclick="irDoctorVista(\'citas\')">Ver las ' + citasHoyLista.length + ' citas de hoy</button>';
+        }
+    } else {
+        htmlAgenda =
+            '<div class="text-center py-4">' +
+              '<div class="empty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>' +
+              '<p class="text-sm" style="color:var(--muted)">No tienes citas programadas para hoy.</p>' +
+            '</div>';
+    }
+
+    // ── Mini ficha profesional ──────────────────────────────────────
+    let htmlFicha;
+    if (perfil) {
+        htmlFicha =
+            '<div class="grid grid-cols-2 gap-3">' +
+              '<div class="rounded-xl bg-brand-50 p-3">' +
+                '<div class="text-xs text-slate-500 font-medium mb-1">Cédula Prof.</div>' +
+                '<div class="text-sm font-bold text-slate-800">' + (perfil.Cedula_prof || '—') + '</div>' +
+              '</div>' +
+              '<div class="rounded-xl bg-brand-50 p-3">' +
+                '<div class="text-xs text-slate-500 font-medium mb-1">Especialidad</div>' +
+                '<div class="text-sm font-bold text-slate-800 truncate">' + (espNom || '—') + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="mt-3 text-sm text-slate-600 leading-relaxed">' +
+              '<span class="font-semibold text-slate-800">Horario:</span> ' +
+              (perfil.Hora_inic ? perfil.Hora_inic.substring(0,5) : '—') + ' – ' + (perfil.Hora_final ? perfil.Hora_final.substring(0,5) : '—') +
+              (turno ? ' · Turno ' + turno : '') +
+            '</div>';
+    } else {
+        htmlFicha = '<p class="text-sm text-slate-500">No se pudo cargar tu información profesional.</p>';
+    }
+
     container.innerHTML =
         '<div class="view-content">' +
 
         // ── Banner ───────────────────────────────────────────────────
-        '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">' +
-          '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
-            '<div style="color:var(--primary);margin-bottom:.5rem"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div>' +
+        '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);border:none">' +
+          '<div class="flex items-center justify-between gap-4 flex-wrap">' +
+            '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
+              '<div style="color:var(--gold-400)"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div>' +
+              '<div>' +
+                '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:#fff;margin-bottom:.25rem">' +
+                  saludo + ', Dr. ' + user.nombre + ' ' + user.ap_paterno +
+                '</h2>' +
+                '<p style="color:rgba(255,255,255,.75);font-size:.95rem">' +
+                  (espNom ? espNom + (turno ? ' · Turno ' + turno : '') : 'Panel médico — MediConnect') +
+                '</p>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn" style="background:var(--gold-400);color:var(--brand-700);flex-shrink:0" onclick="irDoctorVista(\'recetas\')">' +
+              '<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15C15.55 3 16 3.45 16 4V16C16 16.55 15.55 17 15 17H5C4.45 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3Z"/><path d="M7 10H13M7 13H11M7 7H13"/></svg> Emitir Receta' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Stats compactas ──────────────────────────────────────────
+        '<div class="stats-grid-sm">' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + citasHoy + '</div><div class="stat-label-sm">Citas Hoy</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15M5 17H15"/><path d="M6 3C6 3 6 8 10 10C14 12 14 17 14 17"/><path d="M14 3C14 3 14 8 10 10C6 12 6 17 6 17"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + citasPend + '</div><div class="stat-label-sm">Pendientes</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + (STATE.misCitas.length) + '</div><div class="stat-label-sm">Total Citas</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 10L9 12L13 8"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + (STATE.misCitas.filter(c => c.Estatus === 'atendida').length) + '</div><div class="stat-label-sm">Atendidas</div></div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Layout dos columnas ─────────────────────────────────────
+        '<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6 items-start">' +
+
+          // Columna izquierda (2/3): próxima cita + accesos rápidos
+          '<div class="lg:col-span-2 flex flex-col gap-5">' +
+
+            '<div class="info-card">' +
+              '<div class="info-header"><h3>Próxima Cita Programada</h3></div>' +
+              '<div class="info-body" style="margin-top:.5rem">' + htmlProxima + '</div>' +
+            '</div>' +
+
             '<div>' +
-              '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:white;margin-bottom:.25rem">' +
-                saludo + ', Dr. ' + user.nombre + ' ' + user.ap_paterno +
-              '</h2>' +
-              '<p style="color:rgba(255,255,255,.8);font-size:.95rem">' +
-                (espNom ? espNom + (turno ? ' · Turno ' + turno : '') : 'Panel médico — MediConnect') +
+              '<div class="section-heading"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2L3 11H9L9 18L17 9H11L11 2Z"/></svg> Accesos Rápidos</div>' +
+              '<div class="quick-actions-grid">' +
+
+                '<div class="quick-action-tile" onclick="irDoctorVista(\'citas\')">' +
+                  (citasPend > 0 ? '<span class="qa-badge">' + citasPend + '</span>' : '') +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
+                  '<div><div class="qa-title">Mis Citas</div><div class="qa-desc">Agenda y estatus de tus consultas</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irDoctorVista(\'pacientes\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div>' +
+                  '<div><div class="qa-title">Mis Pacientes</div><div class="qa-desc">Consulta historial y datos</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irDoctorVista(\'recetas\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15C15.55 3 16 3.45 16 4V16C16 16.55 15.55 17 15 17H5C4.45 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3Z"/><path d="M7 10H13M7 13H11M7 7H13"/></svg></div>' +
+                  '<div><div class="qa-title">Emitir Receta</div><div class="qa-desc">Crea una receta electrónica</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irDoctorVista(\'datos-doctor\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 16C4 12.69 6.69 10 10 10C13.31 10 16 12.69 16 16"/></svg></div>' +
+                  '<div><div class="qa-title">Mi Perfil</div><div class="qa-desc">Información profesional y horario</div></div>' +
+                '</div>' +
+
+              '</div>' +
+            '</div>' +
+
+          '</div>' +
+
+          // Columna derecha (1/3): agenda de hoy + ficha profesional
+          '<div class="flex flex-col gap-5">' +
+
+            '<div class="info-card">' +
+              '<div class="info-header"><h3>Agenda de Hoy</h3></div>' +
+              '<div class="info-body" style="margin-top:.5rem">' + htmlAgenda + '</div>' +
+            '</div>' +
+
+            '<div class="info-card">' +
+              '<div class="info-header"><h3>Ficha Profesional</h3></div>' +
+              '<div class="info-body" style="margin-top:.5rem">' + htmlFicha + '</div>' +
+            '</div>' +
+
+            '<div class="rounded-2xl p-5" style="background:var(--gold-50);border:1px solid var(--gold-200)">' +
+              '<div class="flex items-center gap-2 mb-2">' +
+                '<div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--gold-400);color:var(--brand-700)">' +
+                  '<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15C15.55 3 16 3.45 16 4V16C16 16.55 15.55 17 15 17H5C4.45 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3Z"/><path d="M7 10H13M7 13H11M7 7H13"/></svg>' +
+                '</div>' +
+                '<div class="font-semibold text-sm" style="color:var(--brand-700)">Recuerda</div>' +
+              '</div>' +
+              '<p class="text-sm leading-relaxed" style="color:var(--brand-700)">' +
+                'Para cancelar una cita debes enviar una solicitud a recepción; ellos procesarán el reembolso correspondiente.' +
               '</p>' +
             '</div>' +
-          '</div>' +
-        '</div>' +
 
-        // ── Stats ────────────────────────────────────────────────────
-        '<div class="stats-grid" style="margin-bottom:1.5rem">' +
-          '<div class="info-card stat-card">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
-            '<div class="stat-value">' + citasHoy + '</div>' +
-            '<div class="stat-label">Citas Hoy</div>' +
           '</div>' +
-          '<div class="info-card stat-card">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15M5 17H15"/><path d="M6 3C6 3 6 8 10 10C14 12 14 17 14 17"/><path d="M14 3C14 3 14 8 10 10C6 12 6 17 6 17"/></svg></div>' +
-            '<div class="stat-value">' + citasPend + '</div>' +
-            '<div class="stat-label">Citas Pendientes</div>' +
-          '</div>' +
-          '<div class="info-card stat-card" style="cursor:pointer" onclick="irDoctorVista(\'citas\')">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
-            '<div class="stat-value">' + (STATE.misCitas.length) + '</div>' +
-            '<div class="stat-label">Total de Citas</div>' +
-          '</div>' +
-          '<div class="info-card stat-card" style="cursor:pointer" onclick="irDoctorVista(\'pacientes\')">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div>' +
-            '<div class="stat-value" style="font-size:1.5rem">Ver</div>' +
-            '<div class="stat-label">Mis Pacientes</div>' +
-          '</div>' +
-        '</div>' +
 
-        // ── Próxima cita ─────────────────────────────────────────────
-        '<div class="info-card" style="margin-bottom:1.5rem">' +
-          '<div class="info-header"><h3>Próxima Cita Programada</h3></div>' +
-          '<div class="info-body" style="margin-top:1rem">' + htmlProxima + '</div>' +
-        '</div>' +
-
-        // ── Acciones rápidas ─────────────────────────────────────────
-        '<div class="info-card">' +
-          '<div class="info-header"><h3>Acciones Rápidas</h3></div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">' +
-            '<button class="btn btn-primary"   onclick="irDoctorVista(\'citas\')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg> Ver Mis Citas</button>' +
-            '<button class="btn btn-secondary" onclick="irDoctorVista(\'pacientes\')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg> Mis Pacientes</button>' +
-            '<button class="btn btn-secondary" onclick="irDoctorVista(\'recetas\')">📄 Recetas Médicas</button>' +
-            '<button class="btn btn-secondary" onclick="irDoctorVista(\'datos-doctor\')">👤 Mis Datos</button>' +
-          '</div>' +
         '</div>' +
 
         '</div>';

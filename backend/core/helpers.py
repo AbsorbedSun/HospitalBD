@@ -98,3 +98,34 @@ def validar_ventana_cita(fecha_cita: date) -> dict:
     if cita_dt > maxima:
         return {'valido': False, 'error': 'La cita no puede agendarse con más de 3 meses de anticipación.'}
     return {'valido': True}
+
+
+def validar_fecha_nacimiento(fecha_nac_str: str, edad_maxima: int = 120) -> dict:
+    """
+    Valida una fecha de nacimiento recibida como string 'YYYY-MM-DD'.
+
+    Reglas:
+      - Debe tener formato de fecha válido.
+      - No puede ser una fecha futura.
+      - La edad resultante no puede ser negativa ni mayor a `edad_maxima` años.
+
+    :return: dict con 'valido' (bool), 'error' (str si no es válido)
+              y 'edad' (int si es válido).
+    """
+    try:
+        fecha_nac = datetime.strptime(fecha_nac_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return {'valido': False, 'error': 'La fecha de nacimiento no tiene un formato válido (YYYY-MM-DD).'}
+
+    hoy = date.today()
+    if fecha_nac > hoy:
+        return {'valido': False, 'error': 'La fecha de nacimiento no puede ser una fecha futura.'}
+
+    edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
+
+    if edad > edad_maxima:
+        return {'valido': False, 'error': f'La fecha de nacimiento indica una edad mayor a {edad_maxima} años. Verifica el dato.'}
+    if edad < 0:
+        return {'valido': False, 'error': 'La fecha de nacimiento es inválida.'}
+
+    return {'valido': True, 'edad': edad}

@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from db.connection import execute_query, execute_non_query, execute_insert_returning_id, get_db
 from core.decorators import requiere_rol
-from core.helpers import rows_to_json
+from core.helpers import rows_to_json, validar_fecha_nacimiento
 
 recep_bp = Blueprint('recepcionistas', __name__)
 
@@ -291,6 +291,13 @@ def crear_recepcionista():
     existe = execute_query('SELECT 1 FROM Usuario WHERE Email = ?', (email,))
     if existe:
         return jsonify({'error': 'El correo ya está registrado.'}), 409
+
+    # ── Validar fecha de nacimiento / edad ──────────────────────
+    val_fecha = validar_fecha_nacimiento(data['fecha_nac'])
+    if not val_fecha['valido']:
+        return jsonify({'error': val_fecha['error']}), 400
+    if val_fecha['edad'] < 18:
+        return jsonify({'error': 'El empleado debe ser mayor de edad (18 años o más).'}), 400
 
     password_hash = bcrypt.hashpw(
         data['password'].encode('utf-8'), bcrypt.gensalt()

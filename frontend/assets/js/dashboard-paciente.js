@@ -80,16 +80,29 @@ function _stale(token) { return _loadingView !== token; }
 
 /* ── INICIO / BIENVENIDA ──────────────────────────── */
 async function renderInicio(container, _token) {
-    // Cargar citas de forma segura — si el backend falla, se muestran ceros
+    const user   = STATE.user;
+    const hora   = new Date().getHours();
+    const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+
+    // Cargar datos de forma segura — si el backend falla, se muestran ceros/placeholders
     let prog = 0, total = 0, htmlProxima = '';
+    let hm = null, recetasCount = 0;
 
     try {
-        const misCitas = await citas.obtenerMisCitas();
+        const [misCitas, historial, recetas] = await Promise.all([
+            citas.obtenerMisCitas(),
+            paciente.obtenerHistorialMedico().catch(() => null),
+            paciente.obtenerMisRecetas().catch(() => [])
+        ]);
+
         STATE.citas = Array.isArray(misCitas) ? misCitas : [];
         total = STATE.citas.length;
         prog  = STATE.citas.filter(
             c => ['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)
         ).length;
+
+        hm = historial || null;
+        recetasCount = Array.isArray(recetas) ? recetas.length : 0;
 
         // Buscar la próxima cita confirmada más cercana
         const futuras = STATE.citas
@@ -99,38 +112,39 @@ async function renderInicio(container, _token) {
         const p = futuras[0] || null;
 
         if (p) {
-            // Construir HTML de la cita futura SIN template literal anidado
             const fecha  = utils.formatearFecha(p.Fecha_Cita  || '');
-            const hora   = utils.formatearHora(p.Hora_Cita    || '');
+            const hora2  = utils.formatearHora(p.Hora_Cita    || '');
             const esp    = p.Especialidad  || '—';
             const docNom = p.NombreDoctor  || '';
             const docAp  = p.ApDocPat      || '';
             const badge  = badgeEstatus(p.Estatus || '');
 
             htmlProxima =
-                '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">' +
-                  '<div style="font-size:2.5rem">🗓️</div>' +
+                '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
+                  '<div class="qa-icon" style="width:52px;height:52px;border-radius:14px;flex-shrink:0">' +
+                    '<svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg>' +
+                  '</div>' +
                   '<div>' +
-                    '<div style="font-size:1.1rem;font-weight:700;color:var(--primary)">' +
-                      fecha + ' a las ' + hora +
+                    '<div style="font-size:1.1rem;font-weight:700;color:var(--text)">' +
+                      fecha + ' a las ' + hora2 +
                     '</div>' +
-                    '<div style="color:var(--text-secondary);margin-top:.25rem">' +
+                    '<div style="color:var(--muted);margin-top:.2rem;font-size:.88rem">' +
                       esp + ' · Dr. ' + docNom + ' ' + docAp +
                     '</div>' +
-                    '<div style="margin-top:.75rem">' + badge + '</div>' +
+                    '<div style="margin-top:.6rem">' + badge + '</div>' +
                   '</div>' +
                 '</div>';
         }
     } catch (e) {
-        console.warn('[Inicio] Error cargando citas:', e.message);
+        console.warn('[Inicio] Error cargando datos:', e.message);
     }
 
     // Fallback si no hay próxima cita
     if (!htmlProxima) {
         htmlProxima =
-            '<div style="text-align:center;padding:1.5rem 0">' +
-              '<div class="empty-icon"><svg width="25" height="25" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>' +
-              '<p style="color:var(--text-secondary);margin-bottom:1rem">' +
+            '<div style="text-align:center;padding:1rem 0">' +
+              '<div class="empty-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>' +
+              '<p style="color:var(--muted);margin-bottom:1rem;font-size:.88rem">' +
                 'No tienes citas confirmadas próximamente.' +
               '</p>' +
               '<button class="btn btn-primary" onclick="irPacienteVista(\'agendar-cita\')">' +
@@ -139,70 +153,147 @@ async function renderInicio(container, _token) {
             '</div>';
     }
 
-    const user   = STATE.user;
-    const h      = new Date().getHours();
-    const saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+    // ── Tarjeta "Resumen de Salud" ──────────────────────────────────
+    let htmlSalud;
+    if (hm) {
+        const imc = calcIMC(hm.Peso, hm.Estatura);
+        htmlSalud =
+            '<div class="grid grid-cols-2 gap-3">' +
+              '<div class="rounded-xl bg-brand-50 p-3">' +
+                '<div class="text-xs text-slate-500 font-medium mb-1">Tipo de Sangre</div>' +
+                '<div class="text-lg font-bold" style="color:var(--brand-600);font-family:\'Playfair Display\',serif">' + (hm.Tipo_sangre || '—') + '</div>' +
+              '</div>' +
+              '<div class="rounded-xl bg-brand-50 p-3">' +
+                '<div class="text-xs text-slate-500 font-medium mb-1">IMC</div>' +
+                '<div class="text-lg font-bold" style="color:var(--brand-600);font-family:\'Playfair Display\',serif">' + imc + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="mt-3 text-sm text-slate-600 leading-relaxed">' +
+              '<span class="font-semibold text-slate-800">Alergias:</span> ' + (hm.Alergias || 'Ninguna reportada') +
+            '</div>';
+    } else {
+        htmlSalud =
+            '<p class="text-sm text-slate-500 mb-3">Aún no has registrado tu historial médico.</p>' +
+            '<button class="btn btn-secondary btn-sm" onclick="irPacienteVista(\'historial-medico\')">Completar historial</button>';
+    }
 
-    // Construir el HTML final sin template literals anidados
+    // Construir el HTML final
     container.innerHTML =
         '<div class="view-content">' +
 
         // ── Banner de bienvenida ──────────────────────────────────────
-        '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none">' +
-          '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
-            '<div style="color:var(--primary);margin-bottom:.5rem"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>' +
+        '<div class="info-card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);border:none">' +
+          '<div class="flex items-center justify-between gap-4 flex-wrap">' +
+            '<div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">' +
+              '<div style="color:var(--gold-400)"><svg width="32" height="32" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></div>' +
+              '<div>' +
+                '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:#fff;margin-bottom:.25rem">' +
+                  saludo + ', ' + user.nombre + ' ' + user.ap_paterno +
+                '</h2>' +
+                '<p style="color:rgba(255,255,255,.75);font-size:.95rem">' +
+                  'Bienvenido a tu panel de salud personal en MediConnect' +
+                '</p>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn" style="background:var(--gold-400);color:var(--brand-700);flex-shrink:0" onclick="irPacienteVista(\'agendar-cita\')">' +
+              '<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V14M6 10H14"/></svg> Agendar Cita' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Tarjetas de resumen compactas ──────────────────────────────
+        '<div class="stats-grid-sm">' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + prog + '</div><div class="stat-label-sm">Citas Activas</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + total + '</div><div class="stat-label-sm">Total de Citas</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 10L9 12L13 8"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + (STATE.citas?.filter(c => c.Estatus === 'atendida').length || 0) + '</div><div class="stat-label-sm">Atendidas</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' + recetasCount + '</div><div class="stat-label-sm">Recetas</div></div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Layout dos columnas: Próxima cita + accesos / Resumen de salud ──
+        '<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6 items-start">' +
+
+          // Columna izquierda (2/3): próxima cita + accesos rápidos
+          '<div class="lg:col-span-2 flex flex-col gap-5">' +
+
+            '<div class="info-card">' +
+              '<div class="info-header"><h3>Tu Próxima Cita</h3></div>' +
+              '<div class="info-body" style="margin-top:.5rem">' + htmlProxima + '</div>' +
+            '</div>' +
+
             '<div>' +
-              '<h2 style="font-size:1.5rem;font-family:\'Playfair Display\',serif;color:white;margin-bottom:.25rem">' +
-                saludo + ', ' + user.nombre + ' ' + user.ap_paterno +
-              '</h2>' +
-              '<p style="color:rgba(255,255,255,.8);font-size:.95rem">' +
-                'Bienvenido a tu panel de salud personal en MediConnect' +
+              '<div class="section-heading"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2L3 11H9L9 18L17 9H11L11 2Z"/></svg> Accesos Rápidos</div>' +
+              '<div class="quick-actions-grid">' +
+
+                '<div class="quick-action-tile" onclick="irPacienteVista(\'agendar-cita\')">' +
+                  '<span class="qa-badge">Nuevo</span>' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V14M6 10H14"/></svg></div>' +
+                  '<div><div class="qa-title">Agendar Cita</div><div class="qa-desc">Reserva con tu especialista en minutos</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irPacienteVista(\'citas-agendadas\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
+                  '<div><div class="qa-title">Mis Citas</div><div class="qa-desc">Revisa estatus, fecha y consultorio</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irPacienteVista(\'historial-medico\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z"/></svg></div>' +
+                  '<div><div class="qa-title">Historial Médico</div><div class="qa-desc">Alergias, tipo de sangre y más</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irPacienteVista(\'mis-recetas\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
+                  '<div><div class="qa-title">Mis Recetas</div><div class="qa-desc">Consulta tus recetas electrónicas</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irPacienteVista(\'farmacia-paciente\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg></div>' +
+                  '<div><div class="qa-title">Medicamentos</div><div class="qa-desc">Solicita medicamentos y servicios</div></div>' +
+                '</div>' +
+
+                '<div class="quick-action-tile" onclick="irPacienteVista(\'datos-personales\')">' +
+                  '<div class="qa-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 16C4 12.69 6.69 10 10 10C13.31 10 16 12.69 16 16"/></svg></div>' +
+                  '<div><div class="qa-title">Mi Perfil</div><div class="qa-desc">Datos personales y de contacto</div></div>' +
+                '</div>' +
+
+              '</div>' +
+            '</div>' +
+
+          '</div>' +
+
+          // Columna derecha (1/3): resumen de salud + tip
+          '<div class="flex flex-col gap-5">' +
+
+            '<div class="info-card">' +
+              '<div class="info-header"><h3>Resumen de Salud</h3></div>' +
+              '<div class="info-body" style="margin-top:.5rem">' + htmlSalud + '</div>' +
+            '</div>' +
+
+            '<div class="rounded-2xl p-5" style="background:var(--gold-50);border:1px solid var(--gold-200)">' +
+              '<div class="flex items-center gap-2 mb-2">' +
+                '<div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--gold-400);color:var(--brand-700)">' +
+                  '<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10M10 14H10.01"/></svg>' +
+                '</div>' +
+                '<div class="font-semibold text-sm" style="color:var(--brand-700)">¿Sabías que?</div>' +
+              '</div>' +
+              '<p class="text-sm leading-relaxed" style="color:var(--brand-700)">' +
+                'Puedes adquirir medicamentos y servicios extra en el mostrador sin necesidad de tener una cita agendada.' +
               '</p>' +
             '</div>' +
-          '</div>' +
-        '</div>' +
 
-        // ── Tarjetas de resumen ───────────────────────────────────────
-        '<div class="stats-grid" style="margin-bottom:1.5rem">' +
-          '<div class="info-card stat-card">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>' +
-            '<div class="stat-value">' + prog + '</div>' +
-            '<div class="stat-label">Citas Activas</div>' +
           '</div>' +
-          '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'citas-agendadas\')">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
-            '<div class="stat-value">' + total + '</div>' +
-            '<div class="stat-label">Total de Citas</div>' +
-          '</div>' +
-          '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'agendar-cita\')">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V14M6 10H14"/></svg></div>' +
-            '<div class="stat-value" style="font-size:1.5rem">Nueva</div>' +
-            '<div class="stat-label">Agendar Cita</div>' +
-          '</div>' +
-          '<div class="info-card stat-card" style="cursor:pointer" onclick="irPacienteVista(\'historial-medico\')">' +
-            '<div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z"/></svg></div>' +
-            '<div class="stat-value" style="font-size:1.5rem">Ver</div>' +
-            '<div class="stat-label">Mi Historial</div>' +
-          '</div>' +
-        '</div>' +
 
-        // ── Próxima cita ──────────────────────────────────────────────
-        '<div class="info-card" style="margin-bottom:1.5rem">' +
-          '<div class="info-header"><h3>Tu Próxima Cita</h3></div>' +
-          '<div class="info-body" style="margin-top:1rem">' + htmlProxima + '</div>' +
-        '</div>' +
-
-        // ── Acciones rápidas ──────────────────────────────────────────
-        '<div class="info-card">' +
-          '<div class="info-header"><h3>Acciones Rápidas</h3></div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem">' +
-            '<button class="btn btn-primary"   onclick="irPacienteVista(\'agendar-cita\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg> Agendar Cita</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'citas-agendadas\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Ver Mis Citas</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'datos-personales\')">👤 Mis Datos</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'historial-medico\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 16.5C10 16.5 3 12 3 7C3 5.34 4.34 4 6 4C7.33 4 8.47 4.83 9 6C9.53 4.83 10.67 4 12 4C13.66 4 15 5.34 15 7C15 12 10 16.5 10 16.5Z"/></svg> Historial Médico</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'mis-recetas\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.24 5.76C15.58 7.1 15.58 9.27 14.24 10.62L10.62 14.24C9.27 15.58 7.1 15.58 5.76 14.24C4.42 12.9 4.42 10.73 5.76 9.38L9.38 5.76C10.73 4.42 12.9 4.42 14.24 5.76Z"/><line x1="7.1" y1="7.1" x2="12.9" y2="12.9"/></svg> Mis Recetas</button>' +
-            '<button class="btn btn-secondary" onclick="irPacienteVista(\'farmacia-paciente\')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6H17L15.5 16H4.5L3 6Z"/><path d="M1 3H19"/><circle cx="7.5" cy="18.5" r="1"/><circle cx="12.5" cy="18.5" r="1"/></svg> Medicamentos</button>' +
-          '</div>' +
         '</div>' +
 
         '</div>';
@@ -587,12 +678,12 @@ async function renderFarmaciaPaciente(container, _token) {
     container.innerHTML = `<div class="view-content">
 
       <!-- Aviso informativo -->
-      <div style="background:#e8f5f4;border-left:4px solid var(--primary,#2D5F5D);
+      <div style="background:#eff2f4;border-left:4px solid var(--primary,#121e31);
                   border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;
                   display:flex;gap:.75rem;align-items:flex-start">
         <span style="color:var(--primary)"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="7" width="14" height="11" rx="1"/><path d="M1 7L10 2L19 7"/><path d="M10 10V15M7.5 12.5H12.5"/></svg></span>
         <div style="font-size:.88rem;color:#334155;line-height:1.5">
-          <strong style="color:#2D5F5D">¿Cómo funciona?</strong><br>
+          <strong style="color:#121e31">¿Cómo funciona?</strong><br>
           Agrega productos o servicios a tu carrito y envía la solicitud.
           La recepcionista la revisará y procesará tu compra. Puedes
           ver el estado de tus solicitudes en la sección inferior.

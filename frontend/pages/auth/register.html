@@ -1,248 +1,214 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro - MediConnect</title>
-    <link rel="stylesheet" href="/assets/css/auth.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <div class="grain-overlay"></div>
-
-    <div class="auth-container">
-        <div class="auth-left">
-            <a href="/" class="back-link">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M15 10H5M5 10L10 15M5 10L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                Volver al inicio
-            </a>
-
-            <div class="auth-content">
-                <div class="logo">
-                    <div class="logo-mark">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <span class="logo-name">MediConnect</span>
-                </div>
-
-                <h1>Crear Cuenta</h1>
-                <p class="subtitle">Únete a MediConnect para gestionar tu salud</p>
-
-                <!-- ID="registerForm" requerido por auth.js -->
-                <form class="auth-form" id="registerForm">
-                    <div class="form-row-2">
-                        <div class="form-group">
-                            <label for="firstName">Nombre(s)</label>
-                            <input id="firstName" type="text" placeholder="Juan" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="lastName">Apellido Paterno</label>
-                            <input id="lastName" type="text" placeholder="Pérez" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="email">Correo Electrónico</label>
-                        <input id="email" type="email" placeholder="ejemplo@correo.com" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="phone">Teléfono</label>
-                        <input id="phone" type="tel" placeholder="5555-1234">
-                    </div>
-
-                    <div class="form-row-2">
-                        <div class="form-group">
-                            <label for="curp">CURP</label>
-                            <input id="curp" type="text" placeholder="CURP18CARACTERES" maxlength="18" style="text-transform:uppercase" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="fechaNac">Fecha de Nacimiento</label>
-                            <input id="fechaNac" type="date" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">Contraseña</label>
-                        <div class="input-wrapper">
-                            <input id="password" type="password" placeholder="Mínimo 8 caracteres" required style="padding-right:2.75rem">
-                            <button type="button" class="toggle-password" onclick="togglePw('password',this)" tabindex="-1" aria-label="Ver contraseña">
-                                <svg class="eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                <svg class="eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="confirmPassword">Confirmar Contraseña</label>
-                        <div class="input-wrapper">
-                            <input id="confirmPassword" type="password" placeholder="Repite tu contraseña" required style="padding-right:2.75rem">
-                            <button type="button" class="toggle-password" onclick="togglePw('confirmPassword',this)" tabindex="-1" aria-label="Ver contraseña">
-                                <svg class="eye-show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                <svg class="eye-hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="termsCheck" name="terms" required>
-                            Acepto los <button type="button" onclick="abrirTerminos()" style="background:none;border:none;padding:0;color:#121e31;font-weight:600;font-size:inherit;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">Términos y Condiciones</button>
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn-submit">
-                        Registrarse
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M5 10H15M15 10L10 5M15 10L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </button>
-                </form>
-
-                <div class="auth-footer">
-                    ¿Ya tienes una cuenta? <a href="/pages/auth/login.html">Inicia Sesión</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="auth-right">
-            <div class="features-list">
-                <h2>Beneficios de tu cuenta</h2>
-
-                <div class="feature-item">
-                    <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg></div>
-                    <div>
-                        <h3>Agendar Citas</h3>
-                        <p>Programa tus consultas médicas en minutos.</p>
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8V5C3 4.44772 3.44772 4 4 4H8L10 6H16C16.5523 6 17 6.44772 17 7V8M3 8H17L15.5 16H4.5L3 8Z"/></svg></div>
-                    <div>
-                        <h3>Historial Digital</h3>
-                        <p>Accede a tu información médica en cualquier momento.</p>
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><ellipse cx="7" cy="10" rx="4" ry="6" transform="rotate(-45 7 10)"/><ellipse cx="13" cy="10" rx="4" ry="6" transform="rotate(-45 13 10)"/><line x1="4.76" y1="12.76" x2="15.24" y2="7.24"/></svg></div>
-                    <div>
-                        <h3>Recetas en Línea</h3>
-                        <p>Consulta y surte tus medicamentos fácilmente.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Modal Términos y Condiciones ── -->
-    <div id="modalTerminos" style="display:none;position:fixed;inset:0;background:rgba(8,13,22,.6);
-         z-index:9000;overflow-y:auto;padding:2rem 1rem" onclick="if(event.target===this)cerrarTerminos()">
-        <div style="background:#fff;border-radius:20px;max-width:680px;margin:0 auto;
-                    padding:2.5rem 2.5rem 2rem;position:relative;
-                    box-shadow:0 24px 80px rgba(18,30,49,.25)">
-
-            <button onclick="cerrarTerminos()" style="position:absolute;top:1.25rem;right:1.25rem;
-                    background:rgba(18,30,49,.06);border:none;width:34px;height:34px;border-radius:50%;
-                    font-size:1rem;cursor:pointer;color:#64748b;display:flex;align-items:center;
-                    justify-content:center" aria-label="Cerrar">✕</button>
-
-            <!-- Header del modal -->
-            <div style="display:flex;align-items:center;gap:.875rem;margin-bottom:1.75rem">
-                <div style="width:42px;height:42px;background:#121e31;border-radius:11px;
-                            display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z" stroke="#e6c280" stroke-width="1.5"/>
-                        <path d="M8 8H12M8 11H12M8 14H10" stroke="#e6c280" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:#0f172a;margin:0">
-                        Términos y Condiciones
-                    </h2>
-                    <p style="font-size:.8rem;color:#64748b;margin:0">MediConnect · Última actualización: 2026</p>
-                </div>
-            </div>
-
-            <!-- Contenido desplazable -->
-            <div style="max-height:60vh;overflow-y:auto;padding-right:.5rem;
-                        font-size:.88rem;line-height:1.75;color:#374151">
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">1. Aceptación de los Términos</h3>
-                <p>Al registrarse y utilizar MediConnect, el usuario acepta expresamente estos Términos y Condiciones. Si no está de acuerdo con alguno de los puntos aquí establecidos, deberá abstenerse de usar el sistema.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">2. Descripción del Servicio</h3>
-                <p>MediConnect es un sistema de gestión hospitalaria desarrollado por el Instituto Politécnico Nacional (IPN) – ESCOM. Permite a los pacientes registrarse, agendar citas médicas, consultar recetas electrónicas, visualizar su historial médico y solicitar medicamentos o servicios de la sección de medicamentos. El sistema opera con tres perfiles de usuario: Paciente, Doctor y Recepcionista.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">3. Registro y Cuentas de Usuario</h3>
-                <p>El paciente puede darse de alta a sí mismo proporcionando nombre, apellidos, fecha de nacimiento, CURP, correo electrónico y contraseña. El usuario es responsable de mantener la confidencialidad de sus credenciales. Las cuentas de doctor y recepcionista son asignadas exclusivamente por el personal administrativo del hospital.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">4. Gestión de Citas Médicas</h3>
-                <p>Las citas deben agendarse con un mínimo de 48 horas de anticipación y con un máximo de 3 meses. Al agendar se genera una línea de pago con vigencia de <strong>8 horas</strong>; si no se confirma el pago, la cita se cancela automáticamente. Política de devolución:</p>
-                <ul style="margin:.5rem 0 .5rem 1.25rem">
-                    <li>48 horas o más de anticipación: <strong>100 %</strong> de devolución.</li>
-                    <li>Entre 24 y 48 horas: <strong>50 %</strong> de devolución.</li>
-                    <li>Menos de 24 horas: <strong>sin devolución</strong>.</li>
-                    <li>Cancelación por el doctor: <strong>100 %</strong> de devolución.</li>
-                </ul>
-                <p>No se pueden reagendar citas; solo cancelar y solicitar una nueva.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">5. Recetas Médicas y Medicamentos</h3>
-                <p>Las recetas electrónicas son emitidas exclusivamente por los doctores del hospital. El paciente puede consultar sus recetas desde su perfil. Para adquirir medicamentos o servicios (inyecciones, vacunas, curaciones, estudios de sangre) no es necesario ser paciente registrado; las ventas son procesadas por la recepcionista del hospital.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">6. Privacidad y Protección de Datos</h3>
-                <p>MediConnect almacena datos personales y médicos con fines exclusivamente clínicos y administrativos. Los datos sensibles (recetas, historial médico) son accesibles únicamente por el personal médico autorizado. Las contraseñas se almacenan cifradas mediante bcrypt. Los datos de identidad (nombre, CURP, fecha de nacimiento) solo pueden ser modificados por el personal administrativo.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">7. Responsabilidades del Usuario</h3>
-                <p>El usuario se compromete a proporcionar información verídica al registrarse, a no compartir sus credenciales con terceros y a notificar de inmediato al hospital cualquier uso no autorizado de su cuenta.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">8. Limitación de Responsabilidad</h3>
-                <p>MediConnect es una herramienta de apoyo administrativo y no sustituye el juicio clínico del médico tratante. El hospital no se responsabiliza por daños derivados del mal uso del sistema o de decisiones médicas tomadas fuera de su ámbito.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">9. Modificaciones</h3>
-                <p>El hospital se reserva el derecho de modificar estos Términos en cualquier momento. Los cambios serán notificados a los usuarios registrados y entrarán en vigor desde su publicación.</p>
-
-                <h3 style="color:#121e31;margin:1.25rem 0 .5rem;font-size:.95rem;font-family:'Playfair Display',serif">10. Legislación Aplicable</h3>
-                <p>Estos términos se rigen por la legislación mexicana, incluyendo la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP) y la NOM-024-SSA3-2012.</p>
-            </div>
-
-            <!-- Acciones -->
-            <div style="margin-top:1.5rem;display:flex;gap:.75rem;justify-content:flex-end;
-                        border-top:1px solid #e2e8f0;padding-top:1.25rem">
-                <button onclick="cerrarTerminos()"
-                        style="padding:.6rem 1.5rem;border:1.5px solid #e2e8f0;border-radius:9px;
-                               background:#fff;color:#374151;font-size:.9rem;cursor:pointer;
-                               font-weight:600;font-family:'Manrope',sans-serif">
-                    Cerrar
-                </button>
-                <button onclick="aceptarTerminos()"
-                        style="padding:.6rem 1.75rem;border:none;border-radius:9px;
-                               background:#121e31;color:#e6c280;font-size:.9rem;cursor:pointer;
-                               font-weight:600;font-family:'Manrope',sans-serif">
-                    Aceptar y cerrar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script src="/assets/js/api.js"></script>
-    <script src="/assets/js/auth.js"></script>
-    <script>
-    function togglePw(id, btn) {
-        const inp  = document.getElementById(id);
-        const show = btn.querySelector('.eye-show');
-        const hide = btn.querySelector('.eye-hide');
-        if (inp.type === 'password') { inp.type = 'text';     show.style.display = 'none'; hide.style.display = ''; }
-        else                         { inp.type = 'password'; show.style.display = '';     hide.style.display = 'none'; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro — MediConnect</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display:['Playfair Display','serif'], body:['Manrope','sans-serif'] },
+          colors: {
+            brand:{50:'#eff2f4',100:'#e5e8eb',200:'#ced2d7',300:'#a7adb4',400:'#6e7682',500:'#3b4555',600:'#121e31',700:'#0e1828',800:'#0b131f',900:'#080e17'},
+            gold:{50:'#fdfaf2',100:'#fbf3dd',200:'#f5e6bb',300:'#eed699',400:'#e6c280',500:'#d4af37',600:'#b3942e',700:'#8a7424'}
+          }
+        }
+      }
     }
-    function abrirTerminos()  { document.getElementById('modalTerminos').style.display = 'block'; document.body.style.overflow = 'hidden'; }
-    function cerrarTerminos() { document.getElementById('modalTerminos').style.display = 'none';  document.body.style.overflow = ''; }
-    function aceptarTerminos() { document.getElementById('termsCheck').checked = true; cerrarTerminos(); }
-    </script>
+  </script>
+  <style>
+    body { font-family:'Manrope',sans-serif; }
+    .font-display { font-family:'Playfair Display',serif; }
+    .input-field { width:100%;padding:.65rem 1rem;border:1.5px solid #e2e8f0;border-radius:.75rem;font-size:.88rem;outline:none;transition:border-color .2s,box-shadow .2s;background:#fafafa;color:#0f172a; }
+    .input-field:focus { border-color:#121e31;box-shadow:0 0 0 3px rgba(18,30,49,.1);background:#fff; }
+    .input-field::placeholder { color:#94a3b8; }
+    .btn-primary { width:100%;padding:.8rem 1.5rem;background:#121e31;color:#e6c280;font-weight:600;border:none;border-radius:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4rem;transition:background .2s,transform .15s,box-shadow .2s;font-family:'Manrope',sans-serif;font-size:.9rem; }
+    .btn-primary:hover { background:#080e17;transform:translateY(-1px);box-shadow:0 6px 20px rgba(18,30,49,.25); }
+    .auth-panel-bg { background:linear-gradient(160deg,#080e17 0%,#121e31 55%,#1e2d4a 100%); }
+    .grain { position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 py-8">
+  <div class="grain"></div>
+
+  <div class="w-full max-w-5xl bg-white rounded-3xl shadow-2xl shadow-slate-200 overflow-hidden flex" style="animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both">
+    <style>@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}</style>
+
+    <!-- LEFT: form -->
+    <div class="flex-1 p-10 overflow-y-auto">
+      <a href="/" class="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-600 text-sm font-medium transition-colors mb-8 self-start">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M15 10H5M5 10L10 15M5 10L10 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Volver al inicio
+      </a>
+
+      <div class="max-w-xl">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 3V17M3 10H17" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </div>
+          <span class="font-display font-700 text-slate-900 text-lg">MediConnect</span>
+        </div>
+
+        <h1 class="font-display font-700 text-3xl text-slate-900 mb-1.5">Crear cuenta</h1>
+        <p class="text-slate-400 text-sm mb-7">Únete a MediConnect para gestionar tu salud</p>
+
+        <form id="registerForm" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Nombre(s)</label>
+              <input id="firstName" type="text" class="input-field" placeholder="Juan" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Apellido Paterno</label>
+              <input id="lastName" type="text" class="input-field" placeholder="Pérez" required>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Correo Electrónico</label>
+            <input id="email" type="email" class="input-field" placeholder="correo@ejemplo.com" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Teléfono</label>
+            <input id="phone" type="tel" class="input-field" placeholder="5555-1234">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">CURP</label>
+              <input id="curp" type="text" class="input-field" placeholder="18 caracteres" maxlength="18" style="text-transform:uppercase" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Fecha de Nacimiento</label>
+              <input id="fechaNac" type="date" class="input-field" required>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Contraseña</label>
+            <div class="relative">
+              <input id="password" type="password" class="input-field" placeholder="Mínimo 8 caracteres" required style="padding-right:3rem">
+              <button type="button" onclick="togglePw('password',this)" tabindex="-1" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1">
+                <svg class="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Confirmar Contraseña</label>
+            <div class="relative">
+              <input id="confirmPassword" type="password" class="input-field" placeholder="Repite tu contraseña" required style="padding-right:3rem">
+              <button type="button" onclick="togglePw('confirmPassword',this)" tabindex="-1" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1">
+                <svg class="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+            <input type="checkbox" id="termsCheck" name="terms" required class="accent-brand-600 w-4 h-4 flex-shrink-0">
+            <span class="text-sm text-slate-500">Acepto los <button type="button" onclick="abrirTerminos()" class="text-brand-600 font-semibold hover:underline bg-transparent border-none p-0 cursor-pointer">Términos y Condiciones</button></span>
+          </label>
+
+          <button type="submit" class="btn-primary mt-2">
+            Crear cuenta
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 10H15M15 10L10 5M15 10L10 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </form>
+
+        <p class="text-center text-sm text-slate-400 mt-5">
+          ¿Ya tienes cuenta? <a href="/pages/auth/login.html" class="text-brand-600 font-semibold hover:text-brand-700 transition-colors">Inicia sesión</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- RIGHT panel -->
+    <div class="hidden lg:flex flex-col justify-center auth-panel-bg text-white p-10 w-80 xl:w-96 relative overflow-hidden">
+      <div class="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/5"></div>
+      <div class="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-white/5"></div>
+      <div class="relative z-10">
+        <h2 class="font-display font-700 text-2xl mb-8 leading-tight">Beneficios de tu cuenta</h2>
+        <div class="space-y-6">
+          <div class="flex gap-4 items-start">
+            <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 text-gold-400">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8H17M7 3V5M13 3V5"/></svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm mb-0.5">Agendar Citas</div>
+              <div class="text-xs opacity-75 leading-relaxed">Programa tus consultas médicas en minutos con 10 especialidades disponibles.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start">
+            <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 text-gold-400">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3H15C15.55 3 16 3.45 16 4V16C16 16.55 15.55 17 15 17H5C4.45 17 4 16.55 4 16V4C4 3.45 4.45 3 5 3Z"/><path d="M7 10H13M7 13H11M7 7H13"/></svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm mb-0.5">Historial Digital</div>
+              <div class="text-xs opacity-75 leading-relaxed">Accede a tu información médica completa desde cualquier dispositivo.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start">
+            <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-content:center flex-shrink-0 text-gold-400 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3H12L13 7H7L8 3Z" stroke-linejoin="round"/><rect x="4" y="7" width="12" height="10" rx="2"/><path d="M10 10V14M8 12H12"/></svg>
+            </div>
+            <div>
+              <div class="font-semibold text-sm mb-0.5">Recetas en Línea</div>
+              <div class="text-xs opacity-75 leading-relaxed">Consulta y surte tus medicamentos directamente con tu receta digital.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Términos -->
+  <div id="modalTerminos" class="hidden fixed inset-0 bg-black/60 z-50 overflow-y-auto p-4 flex items-start justify-center pt-10" onclick="if(event.target===this)cerrarTerminos()">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-8 relative shadow-2xl">
+      <button onclick="cerrarTerminos()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors text-sm">✕</button>
+      <h2 class="font-display font-700 text-xl text-slate-900 mb-1">Términos y Condiciones</h2>
+      <p class="text-xs text-slate-400 mb-6">MediConnect · ESCOM–IPN · 2026</p>
+      <div class="max-h-96 overflow-y-auto text-sm text-slate-600 leading-relaxed space-y-4 pr-2">
+        <p><strong class="text-slate-800">1. Aceptación.</strong> Al usar MediConnect, el usuario acepta estos términos. Si no está de acuerdo, debe abstenerse de usar el sistema.</p>
+        <p><strong class="text-slate-800">2. Servicio.</strong> MediConnect permite gestionar citas médicas, recetas y farmacia bajo 3 perfiles: Paciente, Doctor y Recepcionista.</p>
+        <p><strong class="text-slate-800">3. Registro.</strong> El paciente se auto-registra. Los perfiles de doctor y recepcionista son asignados por el hospital.</p>
+        <p><strong class="text-slate-800">4. Citas.</strong> Con mínimo 48 hrs y máximo 3 meses de anticipación. Línea de pago con vigencia de 8 horas. Devoluciones: 100% (≥48 hrs), 50% (24–48 hrs), 0% (&lt;24 hrs), 100% (cancelación por doctor).</p>
+        <p><strong class="text-slate-800">5. Farmacia.</strong> No requiere ser paciente registrado para adquirir medicamentos o servicios.</p>
+        <p><strong class="text-slate-800">6. Privacidad.</strong> Datos médicos accesibles solo por personal autorizado. Contraseñas cifradas. Datos de identidad modificables solo por el hospital.</p>
+        <p><strong class="text-slate-800">7. Responsabilidades.</strong> El usuario se compromete a proporcionar información verídica y no compartir sus credenciales.</p>
+        <p><strong class="text-slate-800">8. Legislación.</strong> Rigen la LFPDPPP mexicana y la NOM-024-SSA3-2012.</p>
+      </div>
+      <div class="flex gap-3 justify-end mt-6 pt-4 border-t border-slate-100">
+        <button onclick="cerrarTerminos()" class="px-5 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cerrar</button>
+        <button onclick="aceptarTerminos()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-gold-400 rounded-xl text-sm font-semibold transition-colors">Aceptar y cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script>
+    function togglePw(id,btn) {
+      const inp=document.getElementById(id), show=btn.querySelector('.eye-show'), hide=btn.querySelector('.eye-hide');
+      if(inp.type==='password'){inp.type='text';show.classList.add('hidden');hide.classList.remove('hidden');}
+      else{inp.type='password';show.classList.remove('hidden');hide.classList.add('hidden');}
+    }
+    function abrirTerminos(){document.getElementById('modalTerminos').classList.remove('hidden');document.body.style.overflow='hidden';}
+    function cerrarTerminos(){document.getElementById('modalTerminos').classList.add('hidden');document.body.style.overflow='';}
+    function aceptarTerminos(){document.getElementById('termsCheck').checked=true;cerrarTerminos();}
+
+    // Limitar el selector de fecha de nacimiento a un rango de edad razonable (0–120 años)
+    (function configurarFechaNacimiento() {
+      const input = document.getElementById('fechaNac');
+      if (!input) return;
+      const hoy = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+      const max = new Date(hoy); // no se permiten fechas futuras
+      const min = new Date(hoy.getFullYear() - 120, hoy.getMonth(), hoy.getDate());
+
+      input.max = fmt(max);
+      input.min = fmt(min);
+    })();
+  </script>
 </body>
 </html>

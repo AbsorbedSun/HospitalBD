@@ -12,6 +12,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from db.connection import get_db, execute_query, execute_insert_returning_id
+from core.helpers import validar_fecha_nacimiento
 from core.decorators import requiere_auth
 
 auth_bp = Blueprint('auth', __name__)
@@ -124,6 +125,11 @@ def register():
 
     if len(curp) != 18:
         return jsonify({'error': 'El CURP debe tener exactamente 18 caracteres.'}), 400
+
+    # ── Validar fecha de nacimiento / edad ──────────────────────
+    val_fecha = validar_fecha_nacimiento(data['fecha_nac'])
+    if not val_fecha['valido']:
+        return jsonify({'error': val_fecha['error']}), 400
 
     # Verificar duplicados
     try:

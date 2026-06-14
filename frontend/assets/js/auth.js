@@ -16,8 +16,8 @@
             animation:nIn .3s ease;font-family:'Manrope',sans-serif}
         @keyframes nIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
         .notif-error  {border-left:4px solid #DC2626}
-        .notif-success{border-left:4px solid #059669}
-        .notif-info   {border-left:4px solid #2D5F5D}
+        .notif-success{border-left:4px solid #121e31}
+        .notif-info   {border-left:4px solid #121e31}
         .notif-icon   {font-size:1.3rem;flex-shrink:0}
         .notif-body   {flex:1}
         .notif-title  {font-weight:700;font-size:.95rem;margin-bottom:.2rem}
@@ -47,6 +47,32 @@ function showNotification(message, type = 'info', title = '') {
     // Auto-cerrar según tipo
     const delay = type === 'error' ? 8000 : 4000;
     setTimeout(() => el.parentElement && el.remove(), delay);
+}
+
+// ── Validación de fecha de nacimiento / edad ─────────────────────
+/**
+ * Calcula la edad a partir de una fecha de nacimiento (YYYY-MM-DD).
+ * Devuelve null si la fecha es inválida (formato incorrecto o no es una fecha real).
+ * En caso contrario devuelve { edad, fechaFutura }.
+ */
+function calcularEdad(fechaNacStr) {
+    if (!fechaNacStr) return null;
+
+    const fechaNac = new Date(fechaNacStr + 'T00:00:00');
+    if (isNaN(fechaNac.getTime())) return null;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const fechaFutura = fechaNac.getTime() > hoy.getTime();
+
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mesActual = hoy.getMonth() - fechaNac.getMonth();
+    if (mesActual < 0 || (mesActual === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
+    }
+
+    return { edad, fechaFutura };
 }
 
 // ── Inicialización ──────────────────────────────────────────────
@@ -148,6 +174,18 @@ function initRegisterForm() {
         if (!email)     { errores.push('Correo electrónico es requerido.'); mark('email'); }
         if (!curp || curp.length !== 18) { errores.push('CURP debe tener 18 caracteres.'); mark('curp'); }
         if (!fechaNac)  { errores.push('Fecha de nacimiento es requerida.'); mark('fechaNac'); }
+        else {
+            const edadInfo = calcularEdad(fechaNac);
+            if (edadInfo === null) {
+                errores.push('La fecha de nacimiento no es válida.'); mark('fechaNac');
+            } else if (edadInfo.fechaFutura) {
+                errores.push('La fecha de nacimiento no puede ser una fecha futura.'); mark('fechaNac');
+            } else if (edadInfo.edad > 120) {
+                errores.push('La fecha de nacimiento indica una edad mayor a 120 años. Verifica el dato.'); mark('fechaNac');
+            } else if (edadInfo.edad < 0) {
+                errores.push('La fecha de nacimiento es inválida (edad negativa).'); mark('fechaNac');
+            }
+        }
         if (!password)  { errores.push('Contraseña es requerida.'); mark('password'); }
         if (password.length > 0 && password.length < 8) {
             errores.push('La contraseña debe tener al menos 8 caracteres.'); mark('password');

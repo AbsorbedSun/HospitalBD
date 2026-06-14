@@ -115,6 +115,15 @@ CREATE TABLE Historial_medico (
     Tipo_sangre       CHAR(5)        NOT NULL,
     Estatura          DECIMAL(5,2)   NOT NULL,
     Peso              DECIMAL(5,2)   NOT NULL,
+    -- Alergias y Padecimientos se mantienen como campos de texto libre (VARCHAR) de forma
+    -- intencional. Separarlos en tablas propias (tabla Alergia + tabla puente Paciente_Alergia)
+    -- sería correcto si se necesitara un catálogo estructurado de alergias para filtros, reportes
+    -- o alertas automáticas. En el alcance de este proyecto (RF-011), se tratan como observaciones
+    -- médicas narrativas — equivalentes al campo "Observaciones" de Receta — por lo que no
+    -- violan 1FN/2FN/3FN al ser atributos descriptivos únicos por registro. El requerimiento
+    -- del documento de diseño (tabla Historial_medico, página 14 del PDF) también los modela
+    -- explícitamente como VARCHAR. Una futura mejora sería migrarlos a catálogos si el sistema
+    -- requiriera reportes por alergia específica o alertas de contraindicaciones.
     Alergias          VARCHAR(500)   NULL,
     Padecimientos     VARCHAR(500)   NULL
 );
@@ -145,11 +154,14 @@ CREATE UNIQUE INDEX UX_Cita_Doctor_FechaHora
     WHERE Id_EstatusCita IN (1, 2);
 GO
 
--- PAGOS
+-- PAGOS DE CITAS
+-- Nota: las compras de farmacia/servicios de mostrador NO usan esta tabla;
+-- se registran en Venta + Detalle_Venta (ver más abajo). Pago es exclusivo
+-- para el cobro de consultas médicas (Cita), por lo que Folio_Cita es obligatorio.
 
 CREATE TABLE Pago (
     Id_Pago        INT            IDENTITY(1,1) PRIMARY KEY,
-    Folio_Cita     INT            NULL REFERENCES Cita(Folio_Cita),  -- NULL si es venta de mostrador
+    Folio_Cita     INT            NOT NULL REFERENCES Cita(Folio_Cita),
     MetodoPago     VARCHAR(50)    NOT NULL
         CHECK (MetodoPago IN ('Efectivo','Tarjeta','Transferencia')),
     Monto          DECIMAL(10,2)  NOT NULL,
@@ -348,14 +360,22 @@ PRINT 'Schema HospitalDB creado exitosamente.';
 
 CREATE TABLE SolicitudCompra (
     Id_Solicitud      INT            IDENTITY(1,1) PRIMARY KEY,
-    Id_Paciente       INT            NOT NULL REFERENCES Paciente(Id_Paciente),
-    Id_Recepcionista  INT            NULL     REFERENCES Recepcionista(Id_Recepcionista),
+    -- Id_Paciente es NULL cuando el cliente no está registrado en el hospital (RF-020/RF-021).
+    -- En ese caso se usan Nombre_Cliente y Telefono_Cliente para identificarlo.
+    Id_Paciente       INT            NULL REFERENCES Paciente(Id_Paciente),
+    Nombre_Cliente    VARCHAR(150)   NULL,  -- para clientes no registrados
+    Telefono_Cliente  VARCHAR(20)    NULL,  -- para clientes no registrados
+    Id_Recepcionista  INT            NULL   REFERENCES Recepcionista(Id_Recepcionista),
     Estatus           VARCHAR(20)    NOT NULL DEFAULT 'Pendiente'
         CHECK (Estatus IN ('Pendiente','Procesada','Rechazada')),
     Fecha_Solicitud   DATETIME       NOT NULL DEFAULT GETDATE(),
     Fecha_Proceso     DATETIME       NULL,
     Notas             VARCHAR(500)   NULL,
-    Total             DECIMAL(10,2)  NOT NULL
+    Total             DECIMAL(10,2)  NOT NULL,
+    CONSTRAINT CK_SolicitudCompra_Cliente CHECK (
+        -- Debe identificarse por paciente registrado O por datos de cliente anónimo
+        Id_Paciente IS NOT NULL OR Nombre_Cliente IS NOT NULL
+    )
 );
 GO
 

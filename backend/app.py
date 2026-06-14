@@ -27,6 +27,7 @@ from api.doctores       import doctor_bp
 from api.citas          import citas_bp
 from api.recepcionistas import recep_bp
 from api.medicamentos   import medicamentos_bp
+from api.compras        import compras_bp
 
 
 def create_app(**flask_kwargs):
@@ -61,6 +62,7 @@ def create_app(**flask_kwargs):
     app.register_blueprint(citas_bp,     url_prefix='/api/citas')
     app.register_blueprint(recep_bp,     url_prefix='/api/recepcionistas')
     app.register_blueprint(medicamentos_bp, url_prefix='/api/medicamentos')
+    app.register_blueprint(compras_bp,   url_prefix='/api/compras')
 
     # ── Health check ─────────────────────────────────────────────
     @app.route('/api/health')
