@@ -449,9 +449,10 @@ def dar_baja_doctor(id_doctor):
     citas_activas = execute_query(
         """
         SELECT COUNT(*) AS total
-        FROM Cita
-        WHERE Id_Doctor = ?
-          AND Estado_Cita IN ('agendada_pendiente_pago', 'pagada_pendiente_atender')
+        FROM Cita c
+        JOIN EstatusCita ec ON c.Id_EstatusCita = ec.Id_EstatusCita
+        WHERE c.Id_Doctor = ?
+          AND ec.Clave IN ('agendada_pendiente_pago', 'pagada_pendiente_atender')
         """,
         (id_doctor,)
     )
@@ -467,7 +468,7 @@ def dar_baja_doctor(id_doctor):
         """
         SELECT COUNT(*) AS total
         FROM Pago p
-        JOIN Cita  c ON p.Folio_Cita = c.Folio_Cita
+        JOIN Cita c ON p.Folio_Cita = c.Folio_Cita
         WHERE c.Id_Doctor = ?
           AND p.Estado    = 'Pendiente'
         """,

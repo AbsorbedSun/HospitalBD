@@ -145,6 +145,8 @@ const citas = {
     confirmarPago:  (folio, metodo) => apiRequest('/citas/pagar', {
         method: 'POST', body: JSON.stringify({ folio_cita: folio, metodo_pago: metodo })
     }),
+    consultarPoliticaCancelacion: (folio) => apiRequest(`/citas/${folio}/politica-cancelacion`),
+    detallePago:    (folio) => apiRequest(`/citas/${folio}/detalle-pago`),
     marcarAtendida:  (folio)    => apiRequest(`/citas/${folio}/atender`,   { method:'PUT' }),
     marcarNoAcudio:  (folio)    => apiRequest(`/citas/${folio}/no-acudio`, { method:'PUT' }),
     obtenerHorariosDisponibles: (idDoc, fi, ff) =>

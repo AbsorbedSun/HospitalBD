@@ -449,39 +449,164 @@ async function filtrarCitas() {
 }
 
 async function cancelarCitaUI(folio) {
-    abrirModal('Cancelar Cita', `
-      <p>¿Cancelar la cita <strong>#${String(folio).padStart(5,'0')}</strong>?</p>
-      <p style="margin-top:.5rem;font-size:.9rem;color:var(--text-secondary)">La devolución aplica según política de cancelación.</p>
-      <div class="form-group" style="margin-top:1rem"><label>Motivo (opcional)</label><input id="c-motivo" placeholder="Motivo..."></div>`,
-        async () => {
-            const res = await citas.cancelarCita(folio, document.getElementById('c-motivo').value);
-            toast(`Cita cancelada. ${res.monto_devuelto > 0 ? 'Devolución: '+utils.formatearMoneda(res.monto_devuelto) : 'Sin devolución.'}`, 'success');
-            cerrarModal(); loadView('citas-agendadas');
-        }, 'Confirmar Cancelación', 'btn-danger');
+    // Mostrar modal de carga mientras consultamos la política
+    abrirModal('Cancelar Cita', '<div class="loading-spinner"><div class="spinner"></div></div>', null, 'Cargando…');
+
+    let politica = null;
+    try {
+        politica = await citas.consultarPoliticaCancelacion(folio);
+    } catch(e) {
+        cerrarModal();
+        toast(e.message || 'No se pudo consultar la política de cancelación.', 'error');
+        return;
+    }
+
+    const yaP       = politica.ya_pagada;
+    const montoP    = utils.formatearMoneda(politica.monto_pagado);
+    const montoD    = utils.formatearMoneda(politica.monto_devolucion);
+    const pct       = politica.politica;
+    const desc      = politica.descripcion;
+    const tieneDev  = politica.monto_devolucion > 0;
+
+    // Color de la tarjeta según porcentaje de devolución
+    const colorBg = pct === '100%' ? '#dcfce7' : pct === '50%' ? '#fef9c3' : '#fee2e2';
+    const colorBd = pct === '100%' ? '#bbf7d0' : pct === '50%' ? '#fde68a' : '#fecaca';
+    const colorTx = pct === '100%' ? '#166534' : pct === '50%' ? '#854d0e' : '#991b1b';
+
+    const politicaHTML = yaP ? `
+      <div style="background:${colorBg};border:1px solid ${colorBd};border-radius:12px;padding:1rem;margin:1rem 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+          <span style="font-weight:700;font-size:.85rem;color:${colorTx}">Política de Cancelación</span>
+          <span style="font-size:1.1rem;font-weight:700;color:${colorTx}">${pct} devuelto</span>
+        </div>
+        <div style="font-size:.82rem;color:${colorTx};margin-bottom:.5rem">${desc}</div>
+        <div style="display:flex;justify-content:space-between;font-size:.88rem;border-top:1px solid ${colorBd};padding-top:.5rem;margin-top:.25rem">
+          <span style="color:${colorTx}">Monto pagado:</span>
+          <strong style="color:${colorTx}">${montoP}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700;margin-top:.25rem">
+          <span style="color:${colorTx}">Monto a devolver:</span>
+          <strong style="color:${colorTx};font-size:1.05rem">${montoD}</strong>
+        </div>
+      </div>` :
+      `<div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;padding:.875rem;margin:1rem 0;font-size:.85rem;color:#475569">
+        La cita aún no ha sido pagada. No aplica devolución.
+      </div>`;
+
+    // Actualizar el contenido del modal ya abierto
+    const modalBody = document.querySelector('.modal > div:first-child') || document.querySelector('.modal');
+    const modalContent = document.querySelector('.modal');
+    if (modalContent) {
+        // Reconstruir modal con contenido completo
+        cerrarModal();
+        setTimeout(() => {
+            abrirModal(`Cancelar Cita #${String(folio).padStart(5,'0')}`, `
+              <div style="font-size:.9rem;color:var(--text)">¿Confirmas que deseas cancelar esta cita?</div>
+              ${politicaHTML}
+              <div class="form-group" style="margin-top:.5rem">
+                <label>Motivo <small style="color:var(--muted);font-weight:400">(opcional)</small></label>
+                <input id="c-motivo" placeholder="Ingresa el motivo de cancelación…">
+              </div>`,
+                async () => {
+                    const motivo = document.getElementById('c-motivo')?.value?.trim() || '';
+                    const res = await citas.cancelarCita(folio, motivo);
+                    const msg = tieneDev
+                        ? `Cita cancelada. Se te devolverán ${utils.formatearMoneda(res.monto_devuelto)}.`
+                        : 'Cita cancelada correctamente.';
+                    toast(msg, 'success');
+                    cerrarModal();
+                    loadView('citas-agendadas');
+                }, 'Confirmar Cancelación', 'btn-danger');
+        }, 50);
+    }
 }
 
 async function pagarCitaUI(folio) {
-    abrirModal('Confirmar Pago', `
-      <p>Pagar cita <strong>#${String(folio).padStart(5,'0')}</strong></p>
-      <div class="form-group" style="margin-top:1rem"><label>Método de Pago</label>
-        <select id="p-metodo"><option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option><option value="Transferencia">Transferencia</option></select>
-      </div>`,
-        async () => {
-            try {
-                await citas.confirmarPago(folio, document.getElementById('p-metodo').value);
-                toast('¡Pago confirmado! Tu cita está reservada.', 'success');
-            } catch (e) {
-                // El backend rechazó el pago (cita vencida, ya cancelada, etc.)
-                // Mostramos el error y recargamos la lista para que el estatus
-                // actualizado sea visible sin necesidad de refrescar la página.
-                toast(e.message || 'No se pudo procesar el pago.', 'error');
-            } finally {
-                // Siempre cerramos el modal y recargamos la lista,
-                // tanto si el pago fue exitoso como si fue rechazado.
-                cerrarModal();
-                loadView('citas-agendadas');
-            }
-        }, 'Confirmar Pago', 'btn-success');
+    // Mostrar modal de carga mientras obtenemos el detalle del pago
+    abrirModal('Confirmar Pago', '<div class="loading-spinner"><div class="spinner"></div></div>', null, 'Cargando…');
+
+    let detalle = null;
+    try {
+        detalle = await citas.detallePago(folio);
+    } catch(e) {
+        cerrarModal();
+        toast(e.message || 'No se pudo obtener el detalle del pago.', 'error');
+        return;
+    }
+
+    if (detalle.tiempo_vencido) {
+        cerrarModal();
+        toast('El tiempo para pagar esta cita ha vencido. La cita fue cancelada automáticamente.', 'error');
+        loadView('citas-agendadas');
+        return;
+    }
+
+    const monto  = utils.formatearMoneda(detalle.monto);
+    const hrs    = Math.floor(detalle.minutos_restantes / 60);
+    const mins   = detalle.minutos_restantes % 60;
+    const tiempoStr = hrs > 0 ? `${hrs}h ${mins}min` : `${mins} minutos`;
+
+    cerrarModal();
+    setTimeout(() => {
+        abrirModal(`Pagar Cita #${String(folio).padStart(5,'0')}`, `
+          <!-- Resumen de la cita -->
+          <div style="background:#eff2f4;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+            <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">Detalle de la Cita</div>
+            <div style="display:flex;justify-content:space-between;padding:.3rem 0;font-size:.88rem">
+              <span style="color:#64748b">Especialidad</span><strong>${detalle.especialidad}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:.3rem 0;font-size:.88rem">
+              <span style="color:#64748b">Doctor</span><strong>${detalle.doctor}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:.3rem 0;font-size:.88rem">
+              <span style="color:#64748b">Consultorio</span><strong>${detalle.consultorio}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:.3rem 0;font-size:.88rem">
+              <span style="color:#64748b">Fecha y Hora</span><strong>${utils.formatearFecha(detalle.fecha)} ${utils.formatearHora(detalle.hora)}</strong>
+            </div>
+          </div>
+
+          <!-- Aviso de tiempo restante -->
+          <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;font-size:.83rem;color:#854d0e">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10L13 12"/></svg>
+            Tiempo restante para pagar: <strong>${tiempoStr}</strong>
+          </div>
+
+          <!-- Monto a pagar -->
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#121e31;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+            <span style="color:rgba(255,255,255,.7);font-size:.85rem">Total a pagar</span>
+            <span style="color:#e6c280;font-size:1.5rem;font-weight:700;font-family:'Playfair Display',serif">${monto}</span>
+          </div>
+
+          <!-- Método de pago -->
+          <div class="form-group">
+            <label>Método de Pago</label>
+            <select id="p-metodo">
+              <option value="Efectivo">💵 Efectivo</option>
+              <option value="Tarjeta">💳 Tarjeta (débito/crédito)</option>
+              <option value="Transferencia">📱 Transferencia</option>
+            </select>
+          </div>
+
+          <!-- Política de cancelación informativa -->
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.875rem;margin-top:.75rem;font-size:.78rem;color:#475569">
+            <div style="font-weight:700;color:#334155;margin-bottom:.4rem">Política de cancelación</div>
+            <div>• 48h o más de anticipación → <strong>100% de devolución</strong></div>
+            <div>• 24 a 48h de anticipación → <strong>50% de devolución</strong></div>
+            <div>• Menos de 24h → <strong>Sin devolución</strong></div>
+          </div>`,
+            async () => {
+                try {
+                    await citas.confirmarPago(folio, document.getElementById('p-metodo').value);
+                    toast(`¡Pago de ${monto} confirmado! Tu cita está reservada.`, 'success');
+                } catch(e) {
+                    toast(e.message || 'No se pudo procesar el pago.', 'error');
+                } finally {
+                    cerrarModal();
+                    loadView('citas-agendadas');
+                }
+            }, `Pagar ${monto}`, 'btn-primary');
+    }, 50);
 }
 
 /* ── AGENDAR CITA (4 pasos) ───────────────────────── */
@@ -1184,6 +1309,7 @@ function abrirModal(titulo, body, onOk, btnTxt='Guardar', btnCls='btn-primary') 
       </div></div>`;
     document.body.appendChild(o);
     document.getElementById('modal-ok').addEventListener('click', async () => {
+        if (!onOk) return;
         const btn = document.getElementById('modal-ok');
         btn.disabled=true; btn.textContent='Procesando…';
         try { await onOk(); } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent=btnTxt; }

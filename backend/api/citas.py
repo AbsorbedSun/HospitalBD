@@ -356,6 +356,136 @@ def confirmar_pago():
 # ------------------------------------------------------------------
 # POST /api/citas/cancelar/<folio>
 # ------------------------------------------------------------------
+# GET /api/citas/<folio>/politica-cancelacion
+# Devuelve el monto que se reembolsaría y la etiqueta de política
+# ANTES de cancelar, para mostrar al usuario en el modal de confirmación.
+# ------------------------------------------------------------------
+@citas_bp.route('/<int:folio_cita>/politica-cancelacion', methods=['GET'])
+@requiere_auth
+def consultar_politica_cancelacion(folio_cita):
+    claims     = get_jwt()
+    rol        = claims.get('rol')
+    id_esp     = claims.get('id_especifico')
+
+    cita = execute_query(
+        """
+        SELECT c.Folio_Cita, c.Fecha_Cita, c.Hora_Cita, c.Id_Paciente,
+               ec.Clave AS Estatus, e.Precio,
+               ISNULL(p.Monto, 0) AS MontoPagado,
+               p.Estado AS EstadoPago
+        FROM Cita c
+        JOIN EstatusCita ec ON c.Id_EstatusCita = ec.Id_EstatusCita
+        JOIN Doctor d        ON c.Id_Doctor       = d.Id_Doctor
+        JOIN Especialidad e  ON d.Id_Especialidad  = e.Id_Especialidad
+        LEFT JOIN Pago p     ON p.Folio_Cita = c.Folio_Cita AND p.Estado = 'Pagado'
+        WHERE c.Folio_Cita = ?
+        """,
+        (folio_cita,)
+    )
+    if not cita:
+        return jsonify({'error': 'Cita no encontrada.'}), 404
+
+    c = cita[0]
+
+    # Solo el dueño de la cita (o personal autorizado) puede consultar
+    if rol == 'paciente' and c['Id_Paciente'] != id_esp:
+        return jsonify({'error': 'No autorizado.'}), 403
+
+    if c['Estatus'] not in ('agendada_pendiente_pago', 'pagada_pendiente_atender'):
+        return jsonify({'error': 'La cita no está en estado cancelable.'}), 422
+
+    monto_pagado = float(c['MontoPagado'] or 0)
+
+    if monto_pagado == 0:
+        # No hay pago registrado → no hay reembolso posible
+        return jsonify({
+            'folio_cita':     folio_cita,
+            'monto_pagado':   0.0,
+            'monto_devolucion': 0.0,
+            'politica':       'Sin pago registrado',
+            'descripcion':    'La cita no ha sido pagada, no aplica devolución.',
+            'ya_pagada':      False
+        }), 200
+
+    # Calcular mediante la función SQL
+    res = execute_query(
+        "SELECT dbo.FN_MontoDevolucion(?, GETDATE()) AS monto", (folio_cita,)
+    )
+    monto_devolucion = float(res[0]['monto']) if res else 0.0
+
+    politica = calcular_politica_cancelacion(c['Fecha_Cita'], c['Hora_Cita'])
+
+    return jsonify({
+        'folio_cita':       folio_cita,
+        'monto_pagado':     monto_pagado,
+        'monto_devolucion': monto_devolucion,
+        'politica':         politica['politica'],
+        'descripcion':      politica['descripcion'],
+        'ya_pagada':        True
+    }), 200
+
+
+# ------------------------------------------------------------------
+# GET /api/citas/<folio>/detalle-pago
+# Devuelve el monto y método de pago sugerido para mostrar en el
+# modal de confirmación de pago antes de procesar.
+# ------------------------------------------------------------------
+@citas_bp.route('/<int:folio_cita>/detalle-pago', methods=['GET'])
+@requiere_auth
+def detalle_pago_cita(folio_cita):
+    claims = get_jwt()
+    rol    = claims.get('rol')
+    id_esp = claims.get('id_especifico')
+
+    cita = execute_query(
+        """
+        SELECT c.Folio_Cita, c.Solicitud_Cita, ec.Clave AS Estatus,
+               e.Precio, e.Especialidad,
+               CONCAT('Dr. ', u.Nombre, ' ', u.Ap_Paterno) AS NombreDoctor,
+               ISNULL(co.Nombre, CONCAT('Consultorio ', c.Id_Consultorio)) AS Consultorio,
+               c.Fecha_Cita, c.Hora_Cita, c.Id_Paciente
+        FROM Cita c
+        JOIN EstatusCita ec  ON c.Id_EstatusCita  = ec.Id_EstatusCita
+        JOIN Doctor d        ON c.Id_Doctor        = d.Id_Doctor
+        JOIN Especialidad e  ON d.Id_Especialidad  = e.Id_Especialidad
+        JOIN Usuario u       ON d.Id_Usuario       = u.Id_Usuario
+        LEFT JOIN Consultorio co ON c.Id_Consultorio = co.Id_Consultorio
+        WHERE c.Folio_Cita = ?
+        """,
+        (folio_cita,)
+    )
+    if not cita:
+        return jsonify({'error': 'Cita no encontrada.'}), 404
+
+    c = cita[0]
+
+    if rol == 'paciente' and c['Id_Paciente'] != id_esp:
+        return jsonify({'error': 'No autorizado.'}), 403
+
+    if c['Estatus'] != 'agendada_pendiente_pago':
+        return jsonify({'error': f'La cita no está pendiente de pago (estado: {c["Estatus"]}).'}), 422
+
+    # Calcular tiempo restante para pagar
+    solicitud_dt = c['Solicitud_Cita']
+    if isinstance(solicitud_dt, str):
+        solicitud_dt = datetime.fromisoformat(solicitud_dt)
+    limite = solicitud_dt + timedelta(hours=8)
+    minutos_restantes = int((limite - datetime.now()).total_seconds() / 60)
+
+    return jsonify({
+        'folio_cita':        folio_cita,
+        'monto':             float(c['Precio']),
+        'especialidad':      c['Especialidad'],
+        'doctor':            c['NombreDoctor'],
+        'consultorio':       c['Consultorio'],
+        'fecha':             str(c['Fecha_Cita']),
+        'hora':              str(c['Hora_Cita']),
+        'minutos_restantes': max(0, minutos_restantes),
+        'tiempo_vencido':    minutos_restantes <= 0,
+    }), 200
+
+
+# ------------------------------------------------------------------
 @citas_bp.route('/cancelar/<int:folio_cita>', methods=['POST'])
 @requiere_auth
 def cancelar_cita(folio_cita):

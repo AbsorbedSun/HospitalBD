@@ -362,6 +362,7 @@ async function carritoEnviar() {
 
 function _mostrarTicketConfirmacion(data) {
     const overlay = document.createElement('div');
+    overlay.id = 'ticket-confirmacion';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fadeIn .2s ease';
 
     const total = parseFloat(data.total).toFixed(2);
@@ -396,7 +397,7 @@ function _mostrarTicketConfirmacion(data) {
           El personal confirmará tu solicitud, realizará el cobro y entregará tus productos.
         </div>
 
-        <button onclick="this.closest('div[style]').remove()" style="width:100%;padding:.8rem;background:#121e31;color:#e6c280;font-weight:700;border:none;border-radius:12px;cursor:pointer;font-family:'Manrope',sans-serif;font-size:.9rem">
+        <button onclick="document.getElementById('ticket-confirmacion').remove()" style="width:100%;padding:.8rem;background:#121e31;color:#e6c280;font-weight:700;border:none;border-radius:12px;cursor:pointer;font-family:'Manrope',sans-serif;font-size:.9rem">
           Entendido
         </button>
       </div>`;

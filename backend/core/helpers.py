@@ -68,11 +68,14 @@ def calcular_politica_cancelacion(fecha_cita: date, hora_cita) -> dict:
     horas_restantes = diferencia.total_seconds() / 3600
 
     if horas_restantes >= 48:
-        return {'porcentaje': 100, 'politica': '100%'}
+        return {'porcentaje': 100, 'politica': '100%',
+                'descripcion': 'Cancelación con 48h o más de anticipación → reembolso del 100%.'}
     elif horas_restantes >= 24:
-        return {'porcentaje': 50, 'politica': '50%'}
+        return {'porcentaje': 50, 'politica': '50%',
+                'descripcion': 'Cancelación con entre 24h y 48h de anticipación → reembolso del 50%.'}
     else:
-        return {'porcentaje': 0, 'politica': '0%'}
+        return {'porcentaje': 0, 'politica': '0%',
+                'descripcion': 'Cancelación con menos de 24h de anticipación → sin reembolso.'}
 
 
 def calcular_monto_devolucion(monto_pagado: float, porcentaje: int) -> float:

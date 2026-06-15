@@ -30,6 +30,11 @@ BEGIN -- Toma la fecha de nacimiento y realiza la diferencia de edad mediante DA
 END;
 GO
 
+-- CASE
+SELECT dbo.FN_CalcularEdad('2006-09-23') AS EdadActual
+-- No CASE
+SELECT dbo.FN_CalcularEdad('2006-04-23') AS EdadActual
+
 -- ------------------------------------------------------------
 
 
@@ -54,6 +59,9 @@ BEGIN
 END;
 GO
 
+-- Devuelve 1 o 0
+SELECT dbo.FN_DoctorDisponible(3, '2026-06-15', '10:00:00') AS EstaLibre; -- 1 Si / 0 No
+
 -- ------------------------------------------------------------
 
 
@@ -73,6 +81,9 @@ BEGIN -- Misma logica que la funcion anterior pero cruzando a Paciente con Docto
     RETURN 0; -- No tiene cita
 END;
 GO
+
+-- Devuelve 1 o 0
+SELECT dbo.FN_PacienteTieneCitaPendiente(10, 5) AS YaTieneCita; -- 1 Si / 0 No
 
 -- ------------------------------------------------------------
 
@@ -119,6 +130,15 @@ BEGIN
 END;
 GO
 
+-- Escenario 1: Cancelación con mucha anticipación (100%)
+SELECT dbo.FN_MontoDevolucion(1, '2026-06-01 10:00:00') AS ReembolsoTotal;
+
+-- Escenario 2: Cancelación un día antes (50%)
+SELECT dbo.FN_MontoDevolucion(1, '2026-06-05 10:00:00') AS ReembolsoMitad;
+
+-- Escenario 3: Cancelación el mismo día (0%)
+SELECT dbo.FN_MontoDevolucion(1, '2026-06-06 09:00:00') AS SinReembolso;
+
 -- ------------------------------------------------------------
 
 
@@ -143,6 +163,10 @@ BEGIN
     RETURN 0;
 END;
 GO
+
+-- "Quiero 5 cajas de X medicmento con ID 12. ¿Hay suficientes?"
+SELECT dbo.FN_StockSuficiente(12, 5) AS HayStock; -- 1 Si / 0 No
+
 
 -- ============================================================
 -- VISTAS
@@ -211,6 +235,8 @@ LEFT JOIN (
     FROM Pago WHERE Folio_Cita IS NOT NULL) pg ON pg.Folio_Cita = c.Folio_Cita AND pg.rn = 1;
 GO
 
+SELECT * FROM VW_CitasCompletas;
+
 -- ------------------------------------------------------------
 -- VW_AgendaDoctor
 -- Vista de la agenda de cada doctor. Muestra solo citas activas (pendientes de pago o confirmadas)
@@ -254,6 +280,10 @@ LEFT JOIN Consultorio co ON c.Id_Consultorio = co.Id_Consultorio
 WHERE ec.Clave IN ('agendada_pendiente_pago', 'pagada_pendiente_atender');
 GO
 
+SELECT * FROM VW_AgendaDoctor WHERE Id_Doctor = 8 ORDER BY Fecha_Cita, Hora_Cita;
+
+SELECT * FROM VW_AgendaDoctor
+
 
 -- ------------------------------------------------------------
 -- VW_InventarioMedicamentos
@@ -277,6 +307,8 @@ SELECT f.Id_Medicamento, f.Nombre, f.Descripcion, f.Precio, f.Unidad, f.Stock,
                                 END AS BIT) AS Disponible
 FROM Medicamentos f;
 GO
+
+SELECT * FROM VW_InventarioMedicamentos
 
 
 -- ------------------------------------------------------------
@@ -332,41 +364,6 @@ LEFT JOIN Usuario ud ON d.Id_Usuario = ud.Id_Usuario
 LEFT JOIN Especialidad e ON d.Id_Especialidad = e.Id_Especialidad
 LEFT JOIN Receta r  ON r.Folio_Cita = c.Folio_Cita;
 GO
-
--- ----------------------------------------------------------------
--- CASE
-SELECT dbo.FN_CalcularEdad('2006-09-23') AS EdadActual
--- No CASE
-SELECT dbo.FN_CalcularEdad('2006-04-23') AS EdadActual
-
--- Devuelve 1 o 0
-SELECT dbo.FN_DoctorDisponible(3, '2026-06-15', '10:00:00') AS EstaLibre; -- 1 Si / 0 No
-
--- Devuelve 1 o 0
-SELECT dbo.FN_PacienteTieneCitaPendiente(10, 5) AS YaTieneCita; -- 1 Si / 0 No
-
-
--- Escenario 1: Cancelación con mucha anticipación (100%)
-SELECT dbo.FN_MontoDevolucion(1, '2026-06-01 10:00:00') AS ReembolsoTotal;
-
--- Escenario 2: Cancelación un día antes (50%)
-SELECT dbo.FN_MontoDevolucion(1, '2026-06-05 10:00:00') AS ReembolsoMitad;
-
--- Escenario 3: Cancelación el mismo día (0%)
-SELECT dbo.FN_MontoDevolucion(1, '2026-06-06 09:00:00') AS SinReembolso;
-
--- "Quiero 5 cajas de X medicmento con ID 12. ¿Hay suficientes?"
-SELECT dbo.FN_StockSuficiente(12, 5) AS HayStock; -- 1 Si / 0 No
-
--- ----------------------------------------------------------------
-
-SELECT * FROM VW_CitasCompletas;
-
-
-SELECT * FROM VW_AgendaDoctor WHERE Id_Doctor = 8 ORDER BY Fecha_Cita, Hora_Cita;
-SELECT * FROM VW_AgendaDoctor
-
-SELECT * FROM VW_InventarioMedicamentos
 
 SELECT * FROM VW_HistorialPaciente
 
