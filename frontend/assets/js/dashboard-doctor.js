@@ -102,7 +102,7 @@ async function renderInicio(container, _token) {
         if (p) {
             const fecha  = utils.formatearFecha(p.Fecha_Cita || '');
             const hora   = utils.formatearHora(p.Hora_Cita   || '');
-            const pac    = (p.NombrePaciente || '') + ' ' + (p.ApPaciPat || '');
+            const pac    = (p.NombrePaciente || '') + ' ' + (p.ApPaternoPaciente || '');
             const esp    = p.Especialidad || '—';
             htmlProxima =
                 '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">' +
@@ -142,7 +142,7 @@ async function renderInicio(container, _token) {
     if (citasHoyLista.length) {
         htmlAgenda = '<div class="flex flex-col gap-2">' +
             citasHoyLista.slice(0, 5).map(c => {
-                const pac  = ((c.NombrePaciente||'') + ' ' + (c.ApPaciPat||'')).trim();
+                const pac  = ((c.NombrePaciente||'') + ' ' + (c.ApPaternoPaciente||'')).trim();
                 const hora = utils.formatearHora(c.Hora_Cita || '');
                 const badge = badgeEstatus(c.Estatus || '');
                 return '<div class="flex items-center justify-between gap-3 rounded-xl bg-brand-50 px-3 py-2.5">' +
@@ -372,14 +372,14 @@ function dibujarTablaCitas(container, lista) {
         <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
         <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
         <td>${utils.formatearHora(c.Hora_Cita)}</td>
-        <td>${c.NombrePaciente||''} ${c.ApPaciPat||''}</td>
+        <td>${c.NombrePaciente||''} ${c.ApPaternoPaciente||''}</td>
         <td>${c.Especialidad}</td>
         <td>${badgeEstatus(c.Estatus)}</td>
         <td>
           ${c.Estatus==='pagada_pendiente_atender'?`
             <button class="btn btn-sm btn-success" onclick="atenderCitaUI(${c.Folio_Cita})">✓ Atendida</button>
             <button class="btn btn-sm btn-secondary" onclick="noAcudioUI(${c.Folio_Cita})">No acudió</button>
-            <button class="btn btn-sm" onclick="crearRecetaModal(${c.Folio_Cita},'${c.NombrePaciente} ${c.ApPaciPat}')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Receta</button>
+            <button class="btn btn-sm" onclick="crearRecetaModal(${c.Folio_Cita},'${c.NombrePaciente} ${c.ApPaternoPaciente}')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Receta</button>
           `:''} 
           ${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?`
             <button class="btn btn-sm btn-danger" onclick="solicitarCancelUI(${c.Folio_Cita})">Solicitar Canc.</button>
@@ -515,7 +515,7 @@ async function renderRecetas(container, _token) {
     const filas = STATE.misRecetas.length ? STATE.misRecetas.map(r => `<tr>
         <td><strong>#${String(r.Id_Receta).padStart(5,'0')}</strong></td>
         <td>${utils.formatearFecha(r.FechaEmision)}</td>
-        <td>${r.NombrePaciente} ${r.Ap_Paterno}</td>
+        <td>${r.NombrePaciente} ${r.ApPaternoPaciente}</td>
         <td>${r.EdadPaciente} años</td>
         <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.Medicamento}</td>
         <td><button class="btn btn-sm btn-secondary" onclick="verRecetaModal(${r.Id_Receta})">Ver</button></td>
@@ -541,7 +541,7 @@ async function crearRecetaModal(folioPreselect, nombrePaciente) {
         <div class="form-group" style="grid-column:1/-1"><label>Cita</label>
           <select id="r-cita">
             ${atendibles.map(c => `<option value="${c.Folio_Cita}" ${folioPreselect==c.Folio_Cita?'selected':''}>
-              #${String(c.Folio_Cita).padStart(5,'0')} – ${c.NombrePaciente} ${c.ApPaciPat} – ${utils.formatearFecha(c.Fecha_Cita)}
+              #${String(c.Folio_Cita).padStart(5,'0')} – ${c.NombrePaciente} ${c.ApPaternoPaciente} – ${utils.formatearFecha(c.Fecha_Cita)}
             </option>`).join('')}
           </select></div>
         <div class="form-group" style="grid-column:1/-1"><label>Diagnóstico / Medicamento(s)</label>
@@ -574,7 +574,7 @@ async function verRecetaModal(idReceta) {
         ${cr('Doctor',     `Dr. ${p?.Nombre||''} ${p?.Ap_Paterno||''}`)}
         ${cr('Cédula',     p?.Cedula_prof||'—')}
         ${cr('Fecha',      utils.formatearFecha(r.FechaEmision))}
-        ${cr('Paciente',   `${r.NombrePaciente} ${r.Ap_Paterno}`)}
+        ${cr('Paciente',   `${r.NombrePaciente} ${r.ApPaternoPaciente}`)}
         ${cr('Edad',       `${r.EdadPaciente} años`)}
         <div style="margin-top:1rem">
           <p style="font-size:.85rem;font-weight:600;margin-bottom:.4rem">Medicamento(s)</p>

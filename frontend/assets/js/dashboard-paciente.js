@@ -53,6 +53,12 @@ async function loadView(viewName) {
     const myToken = Symbol(viewName);
     _loadingView  = myToken;
 
+    // Limpiar el auto-refresco de citas si el usuario navega fuera de esa vista
+    if (window._citasRefreshTimer) {
+        clearInterval(window._citasRefreshTimer);
+        window._citasRefreshTimer = null;
+    }
+
     const container = document.getElementById('contentContainer');
     const info = VIEWS[viewName] || {};
     document.getElementById('pageTitle').textContent    = info.title    || viewName;
@@ -116,7 +122,7 @@ async function renderInicio(container, _token) {
             const hora2  = utils.formatearHora(p.Hora_Cita    || '');
             const esp    = p.Especialidad  || '—';
             const docNom = p.NombreDoctor  || '';
-            const docAp  = p.ApDocPat      || '';
+            const docAp  = p.ApPaternoDoctor  || '';
             const badge  = badgeEstatus(p.Estatus || '');
 
             htmlProxima =
@@ -397,43 +403,107 @@ function abrirModalEditar() {
 /* ── CITAS AGENDADAS ──────────────────────────────── */
 async function renderCitas(container, _token) {
     if (_stale(_token)) return;
-    // Forzar cancelación automática de citas vencidas (> 8 hrs sin pago)
-    // antes de traer la lista, para que el estado sea siempre el correcto.
+    // Cancelar automáticamente citas vencidas (> 8h sin pago) antes de mostrar
     try { await citas.verificarVencidas(); } catch (_) {}
     STATE.citas = await citas.obtenerMisCitas();
     dibujarTablaCitas(container, STATE.citas);
+
+    // Auto-refrescar cada 60s para capturar vencimientos mientras el usuario
+    // permanece en esta vista sin navegar fuera
+    if (window._citasRefreshTimer) clearInterval(window._citasRefreshTimer);
+    window._citasRefreshTimer = setInterval(async () => {
+        // Detener si el usuario ya cambió de vista
+        if (!document.getElementById('f-estatus')) {
+            clearInterval(window._citasRefreshTimer);
+            return;
+        }
+        try { await citas.verificarVencidas(); } catch (_) {}
+        const frescas = await citas.obtenerMisCitas();
+        const huboVencimiento = frescas.some((c, i) =>
+            STATE.citas[i] && c.Estatus !== STATE.citas[i].Estatus
+        );
+        STATE.citas = frescas;
+        if (huboVencimiento) dibujarTablaCitas(container, STATE.citas);
+    }, 60000);
 }
 
 function dibujarTablaCitas(container, lista) {
-    const filas = lista.length ? lista.map(c => `<tr>
-        <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
-        <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
-        <td>${utils.formatearHora(c.Hora_Cita)}</td>
-        <td>${c.Especialidad}</td>
-        <td>Dr. ${c.NombreDoctor} ${c.ApDocPat}</td>
-        <td>${badgeEstatus(c.Estatus)}</td>
-        <td>${c.Monto ? utils.formatearMoneda(c.Monto) : '—'}</td>
-        <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
-          ${(['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)) ? `<button class="btn btn-sm btn-danger" onclick="cancelarCitaUI(${c.Folio_Cita})">Cancelar</button>` : ''}
-          ${c.Estatus==='agendada_pendiente_pago' ? `<button class="btn btn-sm btn-success" onclick="pagarCitaUI(${c.Folio_Cita})">Pagar</button>` : ''}
-        </td></tr>`).join('') :
-        `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3><p>No tienes citas aún.</p></div></td></tr>`;
+    const filas = lista.length ? lista.map(c => {
+        // Nombre del doctor — la API devuelve ApPaternoDoctor (no ApDocPat)
+        const nombreDoc = `Dr. ${c.NombreDoctor || ''} ${c.ApPaternoDoctor || ''}`.trim();
+
+        // Monto pagado — la API devuelve MontoPago
+        const monto = c.MontoPago
+            ? utils.formatearMoneda(c.MontoPago)
+            : (c.PrecioEspecialidad ? utils.formatearMoneda(c.PrecioEspecialidad) : '—');
+
+        // Reembolso — solo visible en citas canceladas con pago previo
+        const esCancelada = (c.Estatus || '').startsWith('cancelada');
+        const montoDevuelto = c.MontoDevuelto && parseFloat(c.MontoDevuelto) > 0
+            ? utils.formatearMoneda(c.MontoDevuelto)
+            : null;
+
+        let reembolsoCell;
+        if (esCancelada) {
+            if (montoDevuelto) {
+                reembolsoCell = `<span style="color:#166534;font-weight:700">${montoDevuelto}</span>`;
+            } else if (c.MontoPago && parseFloat(c.MontoPago) > 0) {
+                reembolsoCell = `<span style="color:#991b1b;font-size:.8rem">Sin reembolso</span>`;
+            } else {
+                reembolsoCell = `<span style="color:#94a3b8;font-size:.8rem">—</span>`;
+            }
+        } else {
+            reembolsoCell = `<span style="color:#94a3b8;font-size:.8rem">—</span>`;
+        }
+
+        // Botones de acción
+        const cancelable = ['agendada_pendiente_pago', 'pagada_pendiente_atender'].includes(c.Estatus);
+        const pagable    = c.Estatus === 'agendada_pendiente_pago';
+
+        return `<tr>
+            <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
+            <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
+            <td>${utils.formatearHora(c.Hora_Cita)}</td>
+            <td>${c.Especialidad || '—'}</td>
+            <td>${nombreDoc}</td>
+            <td>${badgeEstatus(c.Estatus)}</td>
+            <td>${monto}</td>
+            <td>${reembolsoCell}</td>
+            <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                ${cancelable ? `<button class="btn btn-sm btn-danger" onclick="cancelarCitaUI(${c.Folio_Cita})">Cancelar</button>` : ''}
+                ${pagable    ? `<button class="btn btn-sm btn-success" onclick="pagarCitaUI(${c.Folio_Cita})">Pagar</button>` : ''}
+            </td>
+        </tr>`;
+    }).join('') :
+    `<tr><td colspan="9"><div class="empty-state">
+        <div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>
+        <h3>Sin citas</h3><p>No tienes citas aún.</p>
+    </div></td></tr>`;
+
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Mis Citas</h3>
         <div class="table-filters">
           <input type="date" class="filter-input" id="f-fecha">
           <select class="filter-select" id="f-estatus">
-            <option value="">Todos</option>
+            <option value="">Todas</option>
             <option value="agendada_pendiente_pago">Pend. Pago</option>
             <option value="pagada_pendiente_atender">Confirmada</option>
             <option value="atendida">Atendida</option>
             <option value="cancelada_paciente">Cancelada</option>
+            <option value="canceladas">Todas Canceladas</option>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="filtrarCitas()">Filtrar</button>
         </div>
       </div>
-      <table><thead><tr><th>Folio</th><th>Fecha</th><th>Hora</th><th>Especialidad</th><th>Doctor</th><th>Estatus</th><th>Monto</th><th>Acciones</th></tr></thead>
-      <tbody>${filas}</tbody></table></div></div>`;
+      <div style="overflow-x:auto">
+      <table style="min-width:900px"><thead><tr>
+        <th>Folio</th><th>Fecha</th><th>Hora</th><th>Especialidad</th>
+        <th>Doctor</th><th>Estatus</th><th>Monto</th>
+        <th title="Monto reembolsado al cancelar">Reembolso</th><th>Acciones</th>
+      </tr></thead>
+      <tbody>${filas}</tbody></table>
+      </div>
+    </div></div>`;
 }
 
 async function filtrarCitas() {
@@ -599,10 +669,18 @@ async function pagarCitaUI(folio) {
                 try {
                     await citas.confirmarPago(folio, document.getElementById('p-metodo').value);
                     toast(`¡Pago de ${monto} confirmado! Tu cita está reservada.`, 'success');
-                } catch(e) {
-                    toast(e.message || 'No se pudo procesar el pago.', 'error');
-                } finally {
                     cerrarModal();
+                    loadView('citas-agendadas');
+                } catch(e) {
+                    cerrarModal();
+                    const msg = e.message || '';
+                    // Si el tiempo venció, el backend ya canceló la cita automáticamente.
+                    // Recargamos la vista para que el estado actualizado sea visible.
+                    if (msg.toLowerCase().includes('venc') || msg.toLowerCase().includes('8 hora') || msg.toLowerCase().includes('cancelad')) {
+                        toast('El tiempo para pagar venció. La cita fue cancelada automáticamente.', 'error');
+                    } else {
+                        toast(msg || 'No se pudo procesar el pago.', 'error');
+                    }
                     loadView('citas-agendadas');
                 }
             }, `Pagar ${monto}`, 'btn-primary');
@@ -1282,7 +1360,7 @@ async function renderHistorialMedico(container, _token) {
         <table><thead><tr><th>Fecha</th><th>Doctor</th><th>Especialidad</th></tr></thead>
         <tbody>${atendidas.length ? atendidas.map(c => `<tr>
             <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
-            <td>Dr. ${c.NombreDoctor} ${c.ApDocPat}</td>
+            <td>Dr. ${c.NombreDoctor} ${c.ApPaternoDoctor}</td>
             <td>${c.Especialidad}</td></tr>`).join('') :
             `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div><h3>Sin consultas atendidas</h3></div></td></tr>`}
         </tbody></table>
