@@ -111,21 +111,27 @@ def mis_pacientes():
     claims = get_jwt()
     id_doctor = claims.get('id_especifico')
 
-    # VW_AgendaDoctor incluye los datos del paciente por cita;
-    # usamos DISTINCT para obtener pacientes únicos del doctor
+    # Usamos VW_CitasCompletas (no VW_AgendaDoctor) para incluir pacientes
+    # de citas ya atendidas, canceladas, etc. — no solo las citas activas.
+    # DISTINCT sobre Id_Paciente garantiza un registro por paciente único.
     rows = execute_query(
         """
         SELECT DISTINCT
-               Id_Paciente, Id_UsuarioPaciente,
-               NombrePaciente    AS Nombre,
-               ApPaternoPaciente AS Ap_Paterno,
-               ApMaternoPaciente AS Ap_Materno,
-               TelefonoPaciente  AS Telefono,
-               EmailPaciente     AS Email,
-               EdadPaciente      AS Edad
-        FROM VW_AgendaDoctor
-        WHERE Id_Doctor = ?
-        ORDER BY Ap_Paterno
+               vc.Id_Paciente,
+               vc.NombrePaciente,
+               vc.ApPaternoPaciente     AS Ap_Paterno,
+               up.Ap_Materno,
+               up.Telefono,
+               up.Email,
+               dbo.FN_CalcularEdad(up.Fecha_Nac) AS Edad,
+               hm.Tipo_sangre,
+               hm.Alergias
+        FROM VW_CitasCompletas vc
+        JOIN Paciente  pa ON vc.Id_Paciente  = pa.Id_Paciente
+        JOIN Usuario   up ON pa.Id_Usuario   = up.Id_Usuario
+        LEFT JOIN Historial_medico hm ON hm.Id_Paciente = pa.Id_Paciente
+        WHERE vc.Id_Doctor = ?
+        ORDER BY vc.ApPaternoPaciente, vc.NombrePaciente
         """,
         (id_doctor,)
     )

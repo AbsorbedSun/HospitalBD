@@ -222,12 +222,14 @@ async function renderInicio(container, _token) {
             '<div class="stat-info"><div class="stat-value-sm">' + citasPend + '</div><div class="stat-label-sm">Pendientes</div></div>' +
           '</div>' +
           '<div class="stat-card-sm">' +
-            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div>' +
-            '<div class="stat-info"><div class="stat-value-sm">' + (STATE.misCitas.length) + '</div><div class="stat-label-sm">Total Citas</div></div>' +
-          '</div>' +
-          '<div class="stat-card-sm">' +
             '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7 10L9 12L13 8"/></svg></div>' +
             '<div class="stat-info"><div class="stat-value-sm">' + (STATE.misCitas.filter(c => c.Estatus === 'atendida').length) + '</div><div class="stat-label-sm">Atendidas</div></div>' +
+          '</div>' +
+          '<div class="stat-card-sm">' +
+            '<div class="stat-icon-sm"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div>' +
+            '<div class="stat-info"><div class="stat-value-sm">' +
+              new Set(STATE.misCitas.map(c => c.Id_Paciente)).size +
+            '</div><div class="stat-label-sm">Pacientes</div></div>' +
           '</div>' +
         '</div>' +
 
@@ -367,25 +369,45 @@ async function renderCitas(container, _token) {
 }
 
 function dibujarTablaCitas(container, lista) {
-    const hoy = new Date().toISOString().split('T')[0];
-    const filas = lista.length ? lista.map(c => `<tr>
-        <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
-        <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
-        <td>${utils.formatearHora(c.Hora_Cita)}</td>
-        <td>${c.NombrePaciente||''} ${c.ApPaternoPaciente||''}</td>
-        <td>${c.Especialidad}</td>
-        <td>${badgeEstatus(c.Estatus)}</td>
-        <td>
-          ${c.Estatus==='pagada_pendiente_atender'?`
-            <button class="btn btn-sm btn-success" onclick="atenderCitaUI(${c.Folio_Cita})">✓ Atendida</button>
-            <button class="btn btn-sm btn-secondary" onclick="noAcudioUI(${c.Folio_Cita})">No acudió</button>
-            <button class="btn btn-sm" onclick="crearRecetaModal(${c.Folio_Cita},'${c.NombrePaciente} ${c.ApPaternoPaciente}')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg> Receta</button>
-          `:''} 
-          ${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?`
-            <button class="btn btn-sm btn-danger" onclick="solicitarCancelUI(${c.Folio_Cita})">Solicitar Canc.</button>
-          `:''}
-        </td></tr>`).join('') :
-        `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3></div></td></tr>`;
+    const filas = lista.length ? lista.map(c => {
+        const esCancelada = (c.Estatus||'').startsWith('cancelada');
+        const monto = c.MontoPago
+            ? utils.formatearMoneda(c.MontoPago)
+            : (c.PrecioEspecialidad ? utils.formatearMoneda(c.PrecioEspecialidad) : '—');
+        let reembolsoCell;
+        if (esCancelada) {
+            const dev = parseFloat(c.MontoDevuelto || 0);
+            if (dev > 0)
+                reembolsoCell = `<span style="color:#166534;font-weight:700">${utils.formatearMoneda(dev)}</span>`;
+            else if (c.MontoPago && parseFloat(c.MontoPago) > 0)
+                reembolsoCell = `<span style="color:#991b1b;font-size:.8rem">Sin reembolso</span>`;
+            else
+                reembolsoCell = `<span style="color:#94a3b8;font-size:.8rem">—</span>`;
+        } else {
+            reembolsoCell = `<span style="color:#94a3b8;font-size:.8rem">—</span>`;
+        }
+        return `<tr>
+            <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
+            <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
+            <td>${utils.formatearHora(c.Hora_Cita)}</td>
+            <td>${c.NombrePaciente||''} ${c.ApPaternoPaciente||''}</td>
+            <td>${c.Especialidad||'—'}</td>
+            <td>${badgeEstatus(c.Estatus)}</td>
+            <td>${monto}</td>
+            <td>${reembolsoCell}</td>
+            <td style="display:flex;gap:.35rem;flex-wrap:wrap">
+              ${c.Estatus==='pagada_pendiente_atender'?`
+                <button class="btn btn-sm btn-success" onclick="atenderCitaUI(${c.Folio_Cita})">✓ Atendida</button>
+                <button class="btn btn-sm btn-secondary" onclick="noAcudioUI(${c.Folio_Cita})">No acudió</button>
+                <button class="btn btn-sm" onclick="crearRecetaModal(${c.Folio_Cita},'${c.NombrePaciente} ${c.ApPaternoPaciente}')">📄 Receta</button>
+              `:''}
+              ${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?`
+                <button class="btn btn-sm btn-danger" onclick="solicitarCancelUI(${c.Folio_Cita})">Solicitar Canc.</button>
+              `:''}
+            </td>
+        </tr>`;
+    }).join('') :
+    `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3></div></td></tr>`
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Mis Citas</h3>
         <div class="table-filters">
@@ -399,8 +421,8 @@ function dibujarTablaCitas(container, lista) {
           <button class="btn btn-secondary btn-sm" onclick="filtrarCitas()">Filtrar</button>
         </div>
       </div>
-      <table><thead><tr><th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Especialidad</th><th>Estatus</th><th>Acciones</th></tr></thead>
-      <tbody>${filas}</tbody></table></div></div>`;
+      <div style="overflow-x:auto"><table style="min-width:980px"><thead><tr><th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Especialidad</th><th>Estatus</th><th>Monto</th><th title="Monto reembolsado">Reembolso</th><th>Acciones</th></tr></thead>
+      <tbody>${filas}</tbody></table></div></div></div>`;
 }
 
 async function filtrarCitas() {
@@ -453,20 +475,51 @@ async function solicitarCancelUI(folio) {
 async function renderPacientes(container, _token) {
     if (_stale(_token)) return;
     STATE.misPacientes = await doctor.obtenerPacientes();
-    const filas = STATE.misPacientes.length ? STATE.misPacientes.map(p => `<tr>
-        <td><strong>${p.Nombre} ${p.Ap_Paterno} ${p.Ap_Materno||''}</strong></td>
-        <td>${p.Email}</td>
-        <td>${p.Telefono||'—'}</td>
-        <td>${p.Edad} años</td>
-        <td>
-          <button class="btn btn-sm btn-secondary" onclick="verHistorialPaciente(${p.Id_Paciente},'${p.Nombre} ${p.Ap_Paterno}')">Ver Historial</button>
-          <button class="btn btn-sm" onclick="editarHistorialModal(${p.Id_Paciente})">✏️ Historial</button>
-        </td></tr>`).join('') :
-        `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div><h3>Sin pacientes</h3><p>Aún no has atendido pacientes.</p></div></td></tr>`;
+    const filas = STATE.misPacientes.length ? STATE.misPacientes.map(p => {
+        // La API ahora devuelve NombrePaciente (no Nombre) desde VW_CitasCompletas
+        const nombre = `${p.NombrePaciente||p.Nombre||''} ${p.Ap_Paterno||''}${p.Ap_Materno ? ' '+p.Ap_Materno : ''}`.trim();
+        return `<tr>
+            <td><strong>${nombre}</strong></td>
+            <td>${p.Email||'—'}</td>
+            <td>${p.Telefono||'—'}</td>
+            <td>${p.Edad != null ? p.Edad+' años' : '—'}</td>
+            <td>${p.Tipo_sangre
+                ? `<span class="badge badge-error" style="font-size:.75rem">${p.Tipo_sangre}</span>`
+                : '<span style="color:#94a3b8;font-size:.8rem">—</span>'}</td>
+            <td>${p.Alergias||'<span style="color:#94a3b8;font-size:.8rem">Ninguna</span>'}</td>
+            <td style="display:flex;gap:.4rem;flex-wrap:wrap">
+                <button class="btn btn-sm btn-secondary" onclick="verHistorialPaciente(${p.Id_Paciente},'${nombre.replace(/'/g,"\\'")}')">Ver Historial</button>
+                <button class="btn btn-sm" onclick="editarHistorialModal(${p.Id_Paciente})">✏️ Editar</button>
+            </td>
+        </tr>`;
+    }).join('') :
+    `<tr><td colspan="7"><div class="empty-state">
+        <div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div>
+        <h3>Sin pacientes</h3>
+        <p>Aún no tienes pacientes registrados (citas atendidas, activas o canceladas).</p>
+    </div></td></tr>`;
+
     container.innerHTML = `<div class="view-content"><div class="table-container">
-      <div class="table-header"><h3>Mis Pacientes</h3></div>
-      <table><thead><tr><th>Paciente</th><th>Email</th><th>Teléfono</th><th>Edad</th><th>Acciones</th></tr></thead>
-      <tbody>${filas}</tbody></table></div></div>`;
+      <div class="table-header"><h3>Mis Pacientes</h3>
+        <div class="table-filters">
+          <input type="text" class="filter-input" id="dp-buscar" placeholder="Buscar paciente…" oninput="filtrarPacientesDoc()">
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+      <table style="min-width:860px"><thead><tr>
+        <th>Paciente</th><th>Email</th><th>Teléfono</th><th>Edad</th>
+        <th>Tipo Sangre</th><th>Alergias</th><th>Acciones</th>
+      </tr></thead>
+      <tbody id="dp-tbody">${filas}</tbody></table>
+      </div>
+    </div></div>`;
+}
+
+function filtrarPacientesDoc() {
+    const q = (document.getElementById('dp-buscar')?.value || '').toLowerCase();
+    document.querySelectorAll('#dp-tbody tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
 }
 
 async function verHistorialPaciente(id, nombre) {

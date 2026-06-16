@@ -350,19 +350,49 @@ async function renderCitas(container) {
 }
 
 function dibujarTablaCitas(container, lista) {
-    const filas = lista.length ? lista.map(c => `<tr>
-        <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
-        <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
-        <td>${utils.formatearHora(c.Hora_Cita)}</td>
-        <td>${c.NombrePaciente||''} ${c.ApPaciPat||''}</td>
-        <td>Dr. ${c.NombreDoctor||''} ${c.ApDocPat||''}</td>
-        <td>${c.Especialidad}</td>
-        <td>${badgeEstatus(c.Estatus)}</td>
-        <td>${c.Monto?utils.formatearMoneda(c.Monto):'—'}</td>
-        <td>${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?
-          `<button class="btn btn-sm btn-danger" onclick="cancelarCitaRecep(${c.Folio_Cita})">Cancelar</button>`:''}
-        </td></tr>`).join('') :
-        `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3></div></td></tr>`;
+    const filas = lista.length ? lista.map(c => {
+        const nomPac = `${c.NombrePaciente||''} ${c.ApPaternoPaciente||''}`.trim();
+        const nomDoc = `Dr. ${c.NombreDoctor||''} ${c.ApPaternoDoctor||''}`.trim();
+
+        const monto = c.MontoPago
+            ? utils.formatearMoneda(c.MontoPago)
+            : (c.PrecioEspecialidad ? utils.formatearMoneda(c.PrecioEspecialidad) : '—');
+
+        const esCancelada = (c.Estatus||'').startsWith('cancelada');
+        let reembolsoCell;
+        if (esCancelada) {
+            const dev = parseFloat(c.MontoDevuelto || 0);
+            if (dev > 0)
+                reembolsoCell = `<span style="color:#166534;font-weight:700">${utils.formatearMoneda(dev)}</span>`;
+            else if (c.MontoPago && parseFloat(c.MontoPago) > 0)
+                reembolsoCell = `<span style="color:#991b1b;font-size:.8rem">Sin reembolso</span>`;
+            else
+                reembolsoCell = `<span style="color:#94a3b8;font-size:.8rem">—</span>`;
+        } else {
+            reembolsoCell = `<span style="color:#94a3b8;font-size:.8rem">—</span>`;
+        }
+
+        const cancelable = ['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus);
+        return `<tr>
+            <td><strong>#${String(c.Folio_Cita).padStart(5,'0')}</strong></td>
+            <td>${utils.formatearFecha(c.Fecha_Cita)}</td>
+            <td>${utils.formatearHora(c.Hora_Cita)}</td>
+            <td>${nomPac}</td>
+            <td>${nomDoc}</td>
+            <td>${c.Especialidad||'—'}</td>
+            <td>${badgeEstatus(c.Estatus)}</td>
+            <td>${monto}</td>
+            <td>${reembolsoCell}</td>
+            <td>${cancelable
+                ? `<button class="btn btn-sm btn-danger" onclick="cancelarCitaRecep(${c.Folio_Cita})">Cancelar</button>`
+                : ''}</td>
+        </tr>`;
+    }).join('') :
+    `<tr><td colspan="10"><div class="empty-state">
+        <div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>
+        <h3>Sin citas</h3>
+    </div></td></tr>`;
+
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Todas las Citas</h3>
         <div class="table-filters">
@@ -370,22 +400,30 @@ function dibujarTablaCitas(container, lista) {
           <select class="filter-select" id="rf-est">
             <option value="">Todos los estados</option>
             <option value="agendada_pendiente_pago">Pend. Pago</option>
-            <option value="pagada_pendiente_atender"> Confirmadas</option>
+            <option value="pagada_pendiente_atender">Confirmadas</option>
             <option value="atendida">Atendidas</option>
-            <option value="no_acudio">— No Acudió</option>
-            <optgroup label="── Cancelaciones ──">
-              <option value="canceladas"> Todas las cancelaciones</option>
-              <option value="cancelada_paciente">↩ Cancelada - Paciente</option>
+            <option value="no_acudio">No Acudió</option>
+            <optgroup label="Cancelaciones">
+              <option value="canceladas">Todas las cancelaciones</option>
+              <option value="cancelada_paciente">Cancelada - Paciente</option>
               <option value="cancelada_doctor">Cancelada - Doctor</option>
-              <option value="cancelada_falta_pago">💳 Cancelada - Sin pago</option>
+              <option value="cancelada_falta_pago">Cancelada - Sin pago</option>
             </optgroup>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="filtrarCitasRecep()">Filtrar</button>
         </div>
       </div>
-      <table><thead><tr><th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Doctor</th><th>Especialidad</th><th>Estatus</th><th>Monto</th><th>Acción</th></tr></thead>
-      <tbody>${filas}</tbody></table></div></div>`;
+      <div style="overflow-x:auto">
+      <table style="min-width:1000px"><thead><tr>
+        <th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Doctor</th>
+        <th>Especialidad</th><th>Estatus</th><th>Monto</th>
+        <th title="Monto reembolsado al cancelar">Reembolso</th><th>Acción</th>
+      </tr></thead>
+      <tbody>${filas}</tbody></table>
+      </div>
+    </div></div>`;
 }
+
 
 async function filtrarCitasRecep() {
     const f={};
