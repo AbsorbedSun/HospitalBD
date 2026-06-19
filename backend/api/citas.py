@@ -47,10 +47,15 @@ def listar_citas():
         filtros.append('Fecha_Cita <= ?')
         params.append(fecha_fin)
     if estatus_f:
-        # Valor especial: agrupa los tres tipos de cancelación
+        # Valores especiales que agrupan múltiples estados
         if estatus_f == 'canceladas':
             filtros.append(
                 "Estatus IN ('cancelada_paciente', 'cancelada_doctor', 'cancelada_falta_pago')"
+            )
+        elif estatus_f == 'activas':
+            # Solo las citas que requieren acción operacional (vista de recepcionista por defecto)
+            filtros.append(
+                "Estatus IN ('agendada_pendiente_pago', 'pagada_pendiente_atender')"
             )
         else:
             filtros.append('Estatus = ?')

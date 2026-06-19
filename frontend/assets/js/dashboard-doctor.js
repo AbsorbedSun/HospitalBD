@@ -394,6 +394,9 @@ function dibujarTablaCitas(container, lista) {
             <td>${c.Especialidad||'—'}</td>
             <td>${badgeEstatus(c.Estatus)}</td>
             <td>${monto}</td>
+            <td>${c.MetodoPago
+                ? `<span class="badge badge-neutral" style="font-size:.72rem">${c.MetodoPago}</span>`
+                : '<span style="color:#94a3b8;font-size:.8rem">—</span>'}</td>
             <td>${reembolsoCell}</td>
             <td style="display:flex;gap:.35rem;flex-wrap:wrap">
               ${c.Estatus==='pagada_pendiente_atender'?`
@@ -407,7 +410,7 @@ function dibujarTablaCitas(container, lista) {
             </td>
         </tr>`;
     }).join('') :
-    `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3></div></td></tr>`
+    `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div><h3>Sin citas</h3></div></td></tr>`
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Mis Citas</h3>
         <div class="table-filters">
@@ -421,7 +424,7 @@ function dibujarTablaCitas(container, lista) {
           <button class="btn btn-secondary btn-sm" onclick="filtrarCitas()">Filtrar</button>
         </div>
       </div>
-      <div style="overflow-x:auto"><table style="min-width:980px"><thead><tr><th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Especialidad</th><th>Estatus</th><th>Monto</th><th title="Monto reembolsado">Reembolso</th><th>Acciones</th></tr></thead>
+      <div style="overflow-x:auto"><table style="min-width:1100px"><thead><tr><th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Especialidad</th><th>Estatus</th><th>Monto</th><th title="Cómo pagó el paciente">Método Pago</th><th title="Monto reembolsado">Reembolso</th><th>Acciones</th></tr></thead>
       <tbody>${filas}</tbody></table></div></div></div>`;
 }
 

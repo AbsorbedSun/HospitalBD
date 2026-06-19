@@ -468,6 +468,9 @@ function dibujarTablaCitas(container, lista) {
             <td>${nombreDoc}</td>
             <td>${badgeEstatus(c.Estatus)}</td>
             <td>${monto}</td>
+            <td>${c.MetodoPago
+                ? `<span class="badge badge-neutral" style="font-size:.72rem">${c.MetodoPago}</span>`
+                : '<span style="color:#94a3b8;font-size:.8rem">—</span>'}</td>
             <td>${reembolsoCell}</td>
             <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
                 ${cancelable ? `<button class="btn btn-sm btn-danger" onclick="cancelarCitaUI(${c.Folio_Cita})">Cancelar</button>` : ''}
@@ -475,7 +478,7 @@ function dibujarTablaCitas(container, lista) {
             </td>
         </tr>`;
     }).join('') :
-    `<tr><td colspan="9"><div class="empty-state">
+    `<tr><td colspan="10"><div class="empty-state">
         <div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>
         <h3>Sin citas</h3><p>No tienes citas aún.</p>
     </div></td></tr>`;
@@ -496,9 +499,10 @@ function dibujarTablaCitas(container, lista) {
         </div>
       </div>
       <div style="overflow-x:auto">
-      <table style="min-width:900px"><thead><tr>
+      <table style="min-width:1020px"><thead><tr>
         <th>Folio</th><th>Fecha</th><th>Hora</th><th>Especialidad</th>
         <th>Doctor</th><th>Estatus</th><th>Monto</th>
+        <th title="Cómo pagaste esta cita">Método Pago</th>
         <th title="Monto reembolsado al cancelar">Reembolso</th><th>Acciones</th>
       </tr></thead>
       <tbody>${filas}</tbody></table>

@@ -345,11 +345,14 @@ function irVista(v) {
 
 /* ── CITAS ────────────────────────────────────────── */
 async function renderCitas(container) {
-    STATE.todasCitas = await citas.obtenerMisCitas();
-    dibujarTablaCitas(container, STATE.todasCitas);
+    // Por defecto mostramos solo las citas ACTIVAS (que requieren acción operacional).
+    // El recepcionista puede usar los filtros para ver cualquier estado adicional.
+    const activas = await citas.obtenerMisCitas({ estatus: 'activas' });
+    STATE.todasCitas = activas;
+    dibujarTablaCitas(container, STATE.todasCitas, true);
 }
 
-function dibujarTablaCitas(container, lista) {
+function dibujarTablaCitas(container, lista, soloActivas) {
     const filas = lista.length ? lista.map(c => {
         const nomPac = `${c.NombrePaciente||''} ${c.ApPaternoPaciente||''}`.trim();
         const nomDoc = `Dr. ${c.NombreDoctor||''} ${c.ApPaternoDoctor||''}`.trim();
@@ -382,24 +385,29 @@ function dibujarTablaCitas(container, lista) {
             <td>${c.Especialidad||'—'}</td>
             <td>${badgeEstatus(c.Estatus)}</td>
             <td>${monto}</td>
+            <td>${c.MetodoPago
+                ? `<span class=\"badge badge-neutral\" style=\"font-size:.72rem\">${c.MetodoPago}</span>`
+                : '<span style=\"color:#94a3b8;font-size:.8rem\">—</span>'}</td>
             <td>${reembolsoCell}</td>
             <td>${cancelable
                 ? `<button class="btn btn-sm btn-danger" onclick="cancelarCitaRecep(${c.Folio_Cita})">Cancelar</button>`
                 : ''}</td>
         </tr>`;
     }).join('') :
-    `<tr><td colspan="10"><div class="empty-state">
+    `<tr><td colspan="11"><div class="empty-state">
         <div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10H7L9 13H11L13 10H17"/><path d="M3 10V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V10L14.5 4H5.5L3 10Z"/></svg></div>
         <h3>Sin citas</h3>
     </div></td></tr>`;
 
     container.innerHTML = `<div class="view-content"><div class="table-container">
       <div class="table-header"><h3>Todas las Citas</h3>
+        ${soloActivas ? `<span class="badge badge-info" style="margin-left:.5rem">Mostrando solo citas activas</span>` : ''}
         <div class="table-filters">
           <input type="date" class="filter-input" id="rf-fecha">
           <select class="filter-select" id="rf-est">
-            <option value="">Todos los estados</option>
-            <option value="agendada_pendiente_pago">Pend. Pago</option>
+            <option value="activas">⚡ Solo Activas (por defecto)</option>
+            <option value="">Todas las citas (histórico)</option>
+            <option value="agendada_pendiente_pago">Pendientes de Pago</option>
             <option value="pagada_pendiente_atender">Confirmadas</option>
             <option value="atendida">Atendidas</option>
             <option value="no_acudio">No Acudió</option>
@@ -417,6 +425,7 @@ function dibujarTablaCitas(container, lista) {
       <table style="min-width:1000px"><thead><tr>
         <th>Folio</th><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Doctor</th>
         <th>Especialidad</th><th>Estatus</th><th>Monto</th>
+        <th title="Cómo pagó el paciente">Método Pago</th>
         <th title="Monto reembolsado al cancelar">Reembolso</th><th>Acción</th>
       </tr></thead>
       <tbody>${filas}</tbody></table>
@@ -426,15 +435,17 @@ function dibujarTablaCitas(container, lista) {
 
 
 async function filtrarCitasRecep() {
-    const f={};
-    const fecha=document.getElementById('rf-fecha')?.value;
-    const est=document.getElementById('rf-est')?.value;
-    if (fecha) { f.fecha_inicio=fecha; f.fecha_fin=fecha; }
-    if (est) f.estatus=est;
-    const c=document.getElementById('contentContainer');
-    c.innerHTML='<div class="loading-spinner"><div class="spinner"></div></div>';
+    const f = {};
+    const fecha = document.getElementById('rf-fecha')?.value;
+    const est   = document.getElementById('rf-est')?.value;
+    if (fecha) { f.fecha_inicio = fecha; f.fecha_fin = fecha; }
+    // Pasar el filtro de estatus al backend (incluyendo 'activas' y 'canceladas'
+    // que son valores especiales que el API expande en múltiples claves).
+    if (est !== undefined && est !== null && est !== '') f.estatus = est;
+    const c = document.getElementById('contentContainer');
+    c.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
     STATE.todasCitas = await citas.obtenerMisCitas(f);
-    dibujarTablaCitas(c, STATE.todasCitas);
+    dibujarTablaCitas(c, STATE.todasCitas, est === 'activas');
 }
 
 async function cancelarCitaRecep(folio) {
