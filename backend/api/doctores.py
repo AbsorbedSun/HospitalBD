@@ -3,6 +3,7 @@ Rutas del perfil Doctor.
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt
+from datetime import date as dt_date
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -144,38 +145,99 @@ def mis_pacientes():
 @doctor_bp.route('/recetas', methods=['POST'])
 @requiere_rol('doctor')
 def crear_receta():
-    claims = get_jwt()
+    claims    = get_jwt()
     id_doctor = claims.get('id_especifico')
-    data = request.get_json(silent=True) or {}
+    data      = request.get_json(silent=True) or {}
 
-    required = ['folio_cita', 'medicamento', 'tratamiento']
+    # ── Validar campos obligatorios ──────────────────────────────────
+    required = ['folio_cita', 'diagnostico', 'tratamiento', 'duracion']
     missing  = [f for f in required if not data.get(f)]
+    medicamentos = data.get('medicamentos') or []
+    if not isinstance(medicamentos, list) or len(medicamentos) == 0:
+        missing.append('medicamentos (al menos uno)')
     if missing:
         return jsonify({'error': f'Campos faltantes: {", ".join(missing)}'}), 400
 
-    # Verificar que la cita pertenece a este doctor
+    # ── Verificar que la cita pertenece a este doctor ────────────────
     cita = execute_query(
-        'SELECT Folio_Cita FROM Cita WHERE Folio_Cita = ? AND Id_Doctor = ?',
+        '''SELECT c.Folio_Cita, c.Fecha_Cita, ec.Clave AS Estatus
+           FROM Cita c
+           JOIN EstatusCita ec ON c.Id_EstatusCita = ec.Id_EstatusCita
+           WHERE c.Folio_Cita = ? AND c.Id_Doctor = ?''',
         (data['folio_cita'], id_doctor)
     )
     if not cita:
         return jsonify({'error': 'Cita no encontrada o no pertenece a este doctor.'}), 403
 
-    id_receta = execute_insert_returning_id(
-        """
-        INSERT INTO Receta (Folio_Cita, Medicamento, Tratamiento, Observaciones)
-        OUTPUT INSERTED.Id_Receta
-        VALUES (?, ?, ?, ?)
-        """,
-        (
-            data['folio_cita'],
-            data['medicamento'],
-            data['tratamiento'],
-            data.get('observaciones')
-        )
+    c = cita[0]
+    if c['Estatus'] != 'pagada_pendiente_atender':
+        return jsonify({'error': 'La cita no está en estado confirmado para atenderse.'}), 422
+
+    # ── Validar que hoy es el día de la cita (rúbrica) ───────────────
+    fecha_cita = c['Fecha_Cita']
+    if hasattr(fecha_cita, 'date'):
+        fecha_cita = fecha_cita.date()
+    if fecha_cita != dt_date.today():
+        return jsonify({
+            'error': f'La receta solo puede emitirse el día de la cita ({fecha_cita}). '
+                     f'Hoy es {dt_date.today()}.'
+        }), 422
+
+    # ── Resumen legacy (columna Medicamento original) ─────────────────
+    med_resumen = ', '.join(
+        m.get('nombre', '') for m in medicamentos if m.get('nombre')
     )
 
-    # Registrar en bitácora historial
+    # ── Transacción: receta + medicamentos individuales + estatus cita ─
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+
+        # 1. Insertar la receta con todos los campos requeridos
+        cursor.execute(
+            '''INSERT INTO Receta
+                   (Folio_Cita, Diagnostico, Medicamento, Tratamiento, Duracion, Observaciones)
+               OUTPUT INSERTED.Id_Receta
+               VALUES (?, ?, ?, ?, ?, ?)''',
+            (data['folio_cita'],
+             data['diagnostico'].strip(),
+             med_resumen,
+             data['tratamiento'].strip(),
+             data['duracion'].strip(),
+             (data.get('observaciones') or '').strip() or None)
+        )
+        id_receta = int(cursor.fetchone()[0])
+
+        # 2. Insertar un registro por cada medicamento (rúbrica)
+        for med in medicamentos:
+            nombre = (med.get('nombre') or '').strip()
+            if nombre:
+                cursor.execute(
+                    '''INSERT INTO Receta_Medicamento (Id_Receta, Nombre, Dosis, Frecuencia)
+                       VALUES (?, ?, ?, ?)''',
+                    (id_receta,
+                     nombre,
+                     (med.get('dosis') or '').strip() or None,
+                     (med.get('frecuencia') or '').strip() or None)
+                )
+
+        # 3. Actualizar estatus de la cita → atendida (rúbrica)
+        estatus = execute_query(
+            "SELECT Id_EstatusCita FROM EstatusCita WHERE Clave = 'atendida'"
+        )
+        cursor.execute(
+            'UPDATE Cita SET Id_EstatusCita = ? WHERE Folio_Cita = ?',
+            (estatus[0]['Id_EstatusCita'], data['folio_cita'])
+        )
+
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({'error': str(exc)}), 500
+    finally:
+        conn.close()
+
+    # Registrar en bitácora (fuera de la transacción principal)
     _registrar_bitacora_historial(data['folio_cita'], id_receta, 'Atendida', claims)
 
     return jsonify({'id_receta': id_receta, 'mensaje': 'Receta creada correctamente.'}), 201
@@ -187,25 +249,64 @@ def crear_receta():
 @doctor_bp.route('/recetas', methods=['GET'])
 @requiere_rol('doctor')
 def listar_recetas():
-    claims = get_jwt()
+    claims    = get_jwt()
     id_doctor = claims.get('id_especifico')
 
-    # VW_HistorialPaciente incluye citas + recetas + datos del paciente.
-    # Filtramos por el doctor y solo filas que tienen receta emitida.
     rows = execute_query(
         """
         SELECT Id_Receta, Folio_Cita, FechaEmision,
-               Medicamento, Tratamiento, Observaciones,
+               Diagnostico, Medicamento, Tratamiento, Duracion, Observaciones,
                NombrePaciente, ApPaternoPaciente,
                Edad AS EdadPaciente
         FROM VW_HistorialPaciente
-        WHERE Id_Doctor   = ?
+        WHERE Id_Doctor  = ?
           AND Id_Receta IS NOT NULL
         ORDER BY FechaEmision DESC
         """,
         (id_doctor,)
     )
     return jsonify(rows_to_json(rows)), 200
+
+
+# ------------------------------------------------------------------
+# GET /api/doctores/recetas/<id>  (detalle con medicamentos individuales)
+# ------------------------------------------------------------------
+@doctor_bp.route('/recetas/<int:id_receta>', methods=['GET'])
+@requiere_rol('doctor')
+def obtener_receta_detalle(id_receta):
+    claims    = get_jwt()
+    id_doctor = claims.get('id_especifico')
+
+    receta = execute_query(
+        """
+        SELECT r.Id_Receta, r.Folio_Cita, r.FechaEmision,
+               r.Diagnostico, r.Medicamento, r.Tratamiento, r.Duracion, r.Observaciones,
+               up.Nombre AS NombrePaciente, up.Ap_Paterno AS ApPaternoPaciente,
+               dbo.FN_CalcularEdad(up.Fecha_Nac) AS EdadPaciente
+        FROM   Receta   r
+        JOIN   Cita     c  ON r.Folio_Cita  = c.Folio_Cita
+        JOIN   Paciente pa ON c.Id_Paciente  = pa.Id_Paciente
+        JOIN   Usuario  up ON pa.Id_Usuario  = up.Id_Usuario
+        WHERE  r.Id_Receta = ? AND c.Id_Doctor = ?
+        """,
+        (id_receta, id_doctor)
+    )
+    if not receta:
+        return jsonify({'error': 'Receta no encontrada.'}), 404
+
+    meds = execute_query(
+        """
+        SELECT Id_RecetaMed, Nombre, Dosis, Frecuencia
+        FROM   Receta_Medicamento
+        WHERE  Id_Receta = ?
+        ORDER BY Id_RecetaMed
+        """,
+        (id_receta,)
+    )
+
+    resultado              = rows_to_json(receta[0])
+    resultado['Medicamentos'] = rows_to_json(meds) if meds else []
+    return jsonify(resultado), 200
 
 
 # ------------------------------------------------------------------

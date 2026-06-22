@@ -619,8 +619,18 @@ async function renderRecetas(container, _token) {
 
 async function crearRecetaModal(folioPreselect, nombrePaciente) {
     if (!STATE.misCitas.length) STATE.misCitas = await citas.obtenerMisCitas();
-    const atendibles = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender' && !c.SolicitudCancelacionPendiente);
-    if (!atendibles.length) { toast('No tienes citas confirmadas para emitir receta.','warning'); return; }
+
+    // Filtrar solo citas de HOY (rúbrica: solo habilitar si ya es la fecha de la cita)
+    const hoy = new Date().toISOString().split('T')[0];
+    const atendibles = STATE.misCitas.filter(c =>
+        c.Estatus === 'pagada_pendiente_atender' &&
+        !c.SolicitudCancelacionPendiente &&
+        (c.Fecha_Cita || '').startsWith(hoy)
+    );
+    if (!atendibles.length) {
+        toast('No tienes citas confirmadas para HOY. La receta solo puede emitirse el día de la cita.', 'warning');
+        return;
+    }
     abrirModal('Nueva Receta Médica', `
       <div class="form-grid">
         <div class="form-group" style="grid-column:1/-1"><label>Cita</label>
@@ -629,53 +639,142 @@ async function crearRecetaModal(folioPreselect, nombrePaciente) {
               #${String(c.Folio_Cita).padStart(5,'0')} – ${c.NombrePaciente} ${c.ApPaternoPaciente} – ${utils.formatearFecha(c.Fecha_Cita)}
             </option>`).join('')}
           </select></div>
-        <div class="form-group" style="grid-column:1/-1"><label>Diagnóstico / Medicamento(s)</label>
-          <textarea id="r-med" placeholder="Paracetamol 500mg cada 8h, Ibuprofeno 400mg..." style="min-height:80px"></textarea></div>
+
+        <div class="form-group" style="grid-column:1/-1"><label>Diagnóstico</label>
+          <textarea id="r-diag" placeholder="Diagnóstico del paciente..." style="min-height:70px"></textarea></div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Medicamentos <small style="font-weight:normal;color:var(--text-secondary)">(agrega uno por uno)</small></label>
+          <div id="meds-list" style="margin-bottom:.5rem"></div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="agregarMedicamento()">+ Agregar medicamento</button>
+        </div>
+
         <div class="form-group" style="grid-column:1/-1"><label>Tratamiento</label>
-          <textarea id="r-trat" placeholder="Reposo, hidratación, seguimiento en 7 días..." style="min-height:70px"></textarea></div>
-        <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label>
+          <textarea id="r-trat" placeholder="Indicaciones del tratamiento..." style="min-height:70px"></textarea></div>
+
+        <div class="form-group"><label>Duración</label>
+          <input id="r-dur" type="text" placeholder="Ej: 7 días, 2 semanas..."></div>
+
+        <div class="form-group"><label>Observaciones</label>
           <textarea id="r-obs" placeholder="Observaciones adicionales..." style="min-height:60px"></textarea></div>
       </div>`,
         async () => {
             const folio = parseInt(document.getElementById('r-cita').value);
-            const med   = document.getElementById('r-med').value.trim();
+            const diag  = document.getElementById('r-diag').value.trim();
             const trat  = document.getElementById('r-trat').value.trim();
-            if (!med || !trat) throw new Error('Medicamento y tratamiento son requeridos.');
-            await doctor.crearReceta({ folio_cita: folio, medicamento: med, tratamiento: trat, observaciones: document.getElementById('r-obs').value });
-            toast('Receta emitida correctamente.','success'); cerrarModal(); loadView('recetas');
+            const dur   = document.getElementById('r-dur').value.trim();
+
+            // Recopilar medicamentos dinámicos
+            const meds = [];
+            document.querySelectorAll('.med-row').forEach(row => {
+                const nombre = row.querySelector('.med-nombre')?.value?.trim();
+                if (nombre) meds.push({
+                    nombre,
+                    dosis:      row.querySelector('.med-dosis')?.value?.trim() || '',
+                    frecuencia: row.querySelector('.med-frec')?.value?.trim()  || ''
+                });
+            });
+
+            if (!diag)        throw new Error('El diagnóstico es requerido.');
+            if (!meds.length) throw new Error('Agrega al menos un medicamento.');
+            if (!trat)        throw new Error('El tratamiento es requerido.');
+            if (!dur)         throw new Error('La duración del tratamiento es requerida.');
+
+            await doctor.crearReceta({
+                folio_cita:    folio,
+                diagnostico:   diag,
+                medicamentos:  meds,
+                tratamiento:   trat,
+                duracion:      dur,
+                observaciones: document.getElementById('r-obs').value
+            });
+            toast('Receta emitida correctamente.', 'success');
+            cerrarModal();
+            loadView('recetas');
         }, 'Emitir Receta');
+
+    // Agregar primera fila de medicamento automáticamente
+    agregarMedicamento();
+}
+
+function agregarMedicamento() {
+    const list = document.getElementById('meds-list');
+    if (!list) return;
+    const idx = list.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'med-row';
+    row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:.4rem;margin-bottom:.4rem;align-items:center';
+    row.innerHTML =
+        `<input class="med-nombre" placeholder="Medicamento ${idx} (nombre)" style="width:100%">` +
+        `<input class="med-dosis"  placeholder="Dosis (ej: 500mg)"  style="width:100%">` +
+        `<input class="med-frec"   placeholder="Frec. (ej: c/8h)"   style="width:100%">` +
+        `<button type="button" class="btn btn-sm btn-danger" style="padding:.25rem .5rem" ` +
+          `onclick="this.closest('.med-row').remove()" title="Eliminar">×</button>`;
+    list.appendChild(row);
 }
 
 async function verRecetaModal(idReceta) {
-    const r = STATE.misRecetas.find(x => x.Id_Receta === idReceta);
+    // Obtener receta completa con medicamentos individuales del endpoint dedicado
+    let r = null;
+    try {
+        r = await doctor.obtenerReceta(idReceta);
+    } catch(e) {
+        // Fallback al estado local si el endpoint falla
+        r = STATE.misRecetas.find(x => x.Id_Receta === idReceta);
+    }
     if (!r) return;
     const p = STATE.perfil;
+
+    // Construir tabla de medicamentos individuales
+    let htmlMeds = '';
+    if (r.Medicamentos && r.Medicamentos.length) {
+        htmlMeds =
+            '<table style="width:100%;font-size:.85rem;border-collapse:collapse;margin-top:.5rem">' +
+            '<thead><tr style="border-bottom:2px solid var(--border)">' +
+              '<th style="text-align:left;padding:.3rem .5rem">Medicamento</th>' +
+              '<th style="text-align:left;padding:.3rem .5rem">Dosis</th>' +
+              '<th style="text-align:left;padding:.3rem .5rem">Frecuencia</th>' +
+            '</tr></thead><tbody>' +
+            r.Medicamentos.map((m, i) =>
+                `<tr style="background:${i%2?'transparent':'var(--bg2)'}">` +
+                  `<td style="padding:.3rem .5rem">${m.Nombre}</td>` +
+                  `<td style="padding:.3rem .5rem">${m.Dosis||'—'}</td>` +
+                  `<td style="padding:.3rem .5rem">${m.Frecuencia||'—'}</td>` +
+                '</tr>'
+            ).join('') +
+            '</tbody></table>';
+    } else {
+        htmlMeds = `<p style="font-size:.9rem">${r.Medicamento||'—'}</p>`;
+    }
+
     abrirModal('Receta Médica', `
       <div class="comprobante">
         <div class="comprobante-header">
           <h2>Receta Médica</h2>
           <p style="font-size:.85rem;color:var(--text-secondary)">Folio #${String(r.Id_Receta).padStart(5,'0')}</p>
         </div>
-        ${cr('Doctor',     `Dr. ${p?.Nombre||''} ${p?.Ap_Paterno||''}`)}
-        ${cr('Cédula',     p?.Cedula_prof||'—')}
-        ${cr('Fecha',      utils.formatearFecha(r.FechaEmision))}
-        ${cr('Paciente',   `${r.NombrePaciente} ${r.ApPaternoPaciente}`)}
-        ${cr('Edad',       `${r.EdadPaciente} años`)}
+        ${cr('Doctor',      `Dr. ${p?.Nombre||''} ${p?.Ap_Paterno||''}`)}
+        ${cr('Cédula',      p?.Cedula_prof||'—')}
+        ${cr('Fecha',       utils.formatearFecha(r.FechaEmision))}
+        ${cr('Paciente',    `${r.NombrePaciente} ${r.ApPaternoPaciente}`)}
+        ${cr('Edad',        `${r.EdadPaciente} años`)}
+        ${cr('Diagnóstico', r.Diagnostico||'—')}
         <div style="margin-top:1rem">
-          <p style="font-size:.85rem;font-weight:600;margin-bottom:.4rem">Medicamento(s)</p>
-          <p style="font-size:.9rem">${r.Medicamento}</p>
+          <p style="font-size:.85rem;font-weight:600;margin-bottom:.4rem">Medicamentos</p>
+          ${htmlMeds}
         </div>
         <div style="margin-top:.75rem">
           <p style="font-size:.85rem;font-weight:600;margin-bottom:.4rem">Tratamiento</p>
           <p style="font-size:.9rem">${r.Tratamiento}</p>
         </div>
+        ${cr('Duración', r.Duracion||'—')}
         ${r.Observaciones?`<div style="margin-top:.75rem">
           <p style="font-size:.85rem;font-weight:600;margin-bottom:.4rem">Observaciones</p>
           <p style="font-size:.9rem">${r.Observaciones}</p>
-        </div>`:''}
-      </div>`,
+        </div>`:''}</div>`,
         async () => cerrarModal(), 'Cerrar', 'btn-secondary');
 }
+
 
 /* ── MODAL / TOAST ────────────────────────────────── */
 function abrirModal(titulo, body, onOk, btnTxt='Guardar', btnCls='btn-primary') {

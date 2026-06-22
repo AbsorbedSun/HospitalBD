@@ -186,6 +186,7 @@ const doctor = {
     obtenerPacientes:     ()    => apiRequest('/doctores/pacientes'),
     crearReceta:          (d)   => apiRequest('/doctores/recetas', { method:'POST', body:JSON.stringify(d) }),
     listarRecetas:        ()    => apiRequest('/doctores/recetas'),
+    obtenerReceta:        (id)  => apiRequest(`/doctores/recetas/${id}`),
     solicitarCancelacion: (folio, motivo) => apiRequest('/doctores/solicitar-cancelacion', {
         method:'POST', body:JSON.stringify({ folio_cita: folio, motivo })
     }),
