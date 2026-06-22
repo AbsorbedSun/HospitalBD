@@ -1129,6 +1129,37 @@ async function renderSolicitudes(container) {
     </div>`;
 }
 
+// Aprobar una solicitud de cancelación enviada por un doctor.
+// Aplica la política de cancelación por doctor (100% de reembolso).
+async function aprobarCancelacion(id) {
+    abrirModal('Aprobar Cancelación', `
+      <p>¿Aprobar la solicitud de cancelación <strong>#${String(id).padStart(5,'0')}</strong>?</p>
+      <p style="font-size:.9rem;color:var(--text-secondary);margin-top:.5rem">
+        Se cancelará la cita y se procesará un reembolso del <strong>100%</strong> al paciente
+        (política de cancelación por doctor).
+      </p>`,
+        async () => {
+            await recepcionista.aprobarCancelacion(id);
+            toast('Solicitud aprobada. Cita cancelada y reembolso procesado.', 'success');
+            cerrarModal();
+            loadView('solicitudes');
+        }, 'Aprobar', 'btn-primary');
+}
+
+// Rechazar una solicitud de cancelación enviada por un doctor.
+// La cita permanece activa tal como estaba.
+async function rechazarCancelacion(id) {
+    abrirModal('Rechazar Cancelación', `
+      <p>¿Rechazar la solicitud de cancelación <strong>#${String(id).padStart(5,'0')}</strong>?</p>
+      <p style="font-size:.9rem;color:var(--text-secondary);margin-top:.5rem">La cita seguirá activa, sin cambios.</p>`,
+        async () => {
+            await recepcionista.rechazarCancelacion(id);
+            toast('Solicitud rechazada.', 'success');
+            cerrarModal();
+            loadView('solicitudes');
+        }, 'Rechazar', 'btn-danger');
+}
+
 function switchSolTab(tab) {
     ['sol-cancel','sol-compra'].forEach(id => {
         const el = document.getElementById(id);

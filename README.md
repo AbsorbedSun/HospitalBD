@@ -151,8 +151,11 @@ MediConnect/
 │   └── db/                         # Capa de acceso a datos
 │       ├── connection.py           # Pool de conexiones pyodbc
 │       └── scripts/                # Scripts SQL separados del código Python
-│           ├── schema.sql          # DDL: tablas, constraints, triggers
-│           └── seed.sql            # Datos de prueba
+│           ├── schema.sql          # DDL: tablas, constraints, catálogos
+│           ├── seed.sql            # Datos de prueba
+│           ├── views_and_functions.sql  # Vistas y funciones
+│           ├── triggers.sql        # Los 6 triggers (INSERT/UPDATE/DELETE)
+│           └── procedures.sql      # Stored procedures
 │
 └── frontend/
     ├── index.html                  # Landing page pública (raíz)
@@ -205,12 +208,24 @@ MediConnect/
 Abrir **SQL Server Management Studio (SSMS)** y ejecutar en orden:
 
 ```sql
--- 1. Crea HospitalDB, tablas, catálogos y triggers
+-- 1. Crea HospitalDB, tablas y catálogos
 backend/db/scripts/schema.sql
 
 -- 2. Inserta datos de prueba (especialidades, doctores, usuarios)
 backend/db/scripts/seed.sql
+
+-- 3. Crea las vistas y funciones (VW_CitasCompletas, FN_CalcularEdad, etc.)
+backend/db/scripts/views_and_functions.sql
+
+-- 4. Crea los 6 triggers (INSERT/UPDATE/DELETE)
+backend/db/scripts/triggers.sql
+
+-- 5. Crea los stored procedures
+backend/db/scripts/procedures.sql
 ```
+
+> El backend (`VW_CitasCompletas`, `VW_HistorialPaciente`, `FN_CalcularEdad`, etc.) depende de los pasos 3-5,
+> por lo que **deben ejecutarse los 5 scripts, en ese orden**, antes de levantar la API.
 
 ### Paso 2 – Configurar credenciales
 

@@ -315,14 +315,39 @@ function irDoctorVista(vista) {
 /* ── DATOS DOCTOR ─────────────────────────────────── */
 async function renderDatosDoctor(container, _token) {
     if (_stale(_token)) return;
-    const p = await doctor.obtenerPerfil();
+
+    // Se piden perfil, citas, pacientes y recetas en paralelo en lugar de
+    // depender de que el usuario ya haya visitado antes las vistas
+    // "Mis Citas", "Pacientes" o "Recetas" (que son las que normalmente
+    // llenan STATE.misCitas/misPacientes/misRecetas). Así los contadores
+    // de esta tarjeta siempre muestran datos reales desde la primera vez
+    // que se entra a "Mi Perfil", sin necesidad de recargar la página.
+    const [perfilResult, citasResult, pacientesResult, recetasResult] = await Promise.allSettled([
+        doctor.obtenerPerfil(),
+        citas.obtenerMisCitas(),
+        doctor.obtenerPacientes(),
+        doctor.listarRecetas()
+    ]);
+
+    if (_stale(_token)) return;
+
+    if (perfilResult.status !== 'fulfilled') {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L18 17H2L10 3Z"/><path d="M10 10V13M10 15.5V16"/></svg></div><h3>Error</h3><p>No se pudo cargar tu perfil.</p></div>`;
+        return;
+    }
+    const p = perfilResult.value;
     STATE.perfil = p;
+
+    if (citasResult.status === 'fulfilled')     STATE.misCitas     = Array.isArray(citasResult.value) ? citasResult.value : [];
+    if (pacientesResult.status === 'fulfilled') STATE.misPacientes = Array.isArray(pacientesResult.value) ? pacientesResult.value : [];
+    if (recetasResult.status === 'fulfilled')   STATE.misRecetas   = Array.isArray(recetasResult.value) ? recetasResult.value : [];
+
     const citasHoy = STATE.misCitas.filter(c => c.Fecha_Cita === new Date().toISOString().split('T')[0]).length;
     container.innerHTML = `<div class="view-content">
       <div class="stats-grid">
         <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="14" cy="14" r="2.5"/><path d="M6 4V9C6 11.21 7.79 13 10 13H11.5"/><path d="M4 4H8M6 2V6"/></svg></div><div class="stat-value">${citasHoy}</div><div class="stat-label">Citas Hoy</div></div>
-        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div><div class="stat-value">${STATE.misPacientes.length||'—'}</div><div class="stat-label">Pacientes</div></div>
-        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div><div class="stat-value">${STATE.misRecetas.length||'—'}</div><div class="stat-label">Recetas Emitidas</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 9C7.1 9 8 8.1 8 7C8 5.9 7.1 5 6 5C4.9 5 4 5.9 4 7C4 8.1 4.9 9 6 9Z"/><path d="M14 9C15.1 9 16 8.1 16 7C16 5.9 15.1 5 14 5C12.9 5 12 5.9 12 7C12 8.1 12.9 9 14 9Z"/><path d="M2 14C2 11.79 3.79 10 6 10C8.21 10 10 11.79 10 14M12 14C12 11.79 13.79 10 16 10C18.21 10 20 11.79 20 14"/></svg></div><div class="stat-value">${STATE.misPacientes.length}</div><div class="stat-label">Pacientes</div></div>
+        <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4H14C14.55 4 15 4.45 15 5V16C15 16.55 14.55 17 14 17H6C5.45 17 5 16.55 5 16V5C5 4.45 5.45 4 6 4Z"/><path d="M8 8H12M8 11H12M8 14H10"/><path d="M12 2V5M8 2V5"/></svg></div><div class="stat-value">${STATE.misRecetas.length}</div><div class="stat-label">Recetas Emitidas</div></div>
         <div class="info-card stat-card"><div class="stat-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6V10L13 12"/></svg></div><div class="stat-value">${p.Turno||'—'}</div><div class="stat-label">Turno Laboral</div></div>
       </div>
       <div class="info-grid">
@@ -399,14 +424,18 @@ function dibujarTablaCitas(container, lista) {
                 : '<span style="color:#94a3b8;font-size:.8rem">—</span>'}</td>
             <td>${reembolsoCell}</td>
             <td style="display:flex;gap:.35rem;flex-wrap:wrap">
-              ${c.Estatus==='pagada_pendiente_atender'?`
-                <button class="btn btn-sm btn-success" onclick="atenderCitaUI(${c.Folio_Cita})">✓ Atendida</button>
-                <button class="btn btn-sm btn-secondary" onclick="noAcudioUI(${c.Folio_Cita})">No acudió</button>
-                <button class="btn btn-sm" onclick="crearRecetaModal(${c.Folio_Cita},'${c.NombrePaciente} ${c.ApPaternoPaciente}')">📄 Receta</button>
-              `:''}
-              ${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?`
-                <button class="btn btn-sm btn-danger" onclick="solicitarCancelUI(${c.Folio_Cita})">Solicitar Canc.</button>
-              `:''}
+              ${c.SolicitudCancelacionPendiente ? `
+                <span class="badge badge-warning" style="font-size:.72rem" title="Esperando aprobación de la recepcionista">⏳ Cancelación solicitada</span>
+              ` : `
+                ${c.Estatus==='pagada_pendiente_atender'?`
+                  <button class="btn btn-sm btn-success" onclick="atenderCitaUI(${c.Folio_Cita})">✓ Atendida</button>
+                  <button class="btn btn-sm btn-secondary" onclick="noAcudioUI(${c.Folio_Cita})">No acudió</button>
+                  <button class="btn btn-sm" onclick="crearRecetaModal(${c.Folio_Cita},'${c.NombrePaciente} ${c.ApPaternoPaciente}')">📄 Receta</button>
+                `:''}
+                ${['agendada_pendiente_pago','pagada_pendiente_atender'].includes(c.Estatus)?`
+                  <button class="btn btn-sm btn-danger" onclick="solicitarCancelUI(${c.Folio_Cita})">Solicitar Canc.</button>
+                `:''}
+              `}
             </td>
         </tr>`;
     }).join('') :
@@ -567,7 +596,7 @@ async function renderRecetas(container, _token) {
     if (_stale(_token)) return;
     STATE.misRecetas = await doctor.listarRecetas();
     if (!STATE.misCitas.length) STATE.misCitas = await citas.obtenerMisCitas();
-    const citasAtendibles = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender');
+    const citasAtendibles = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender' && !c.SolicitudCancelacionPendiente);
     const filas = STATE.misRecetas.length ? STATE.misRecetas.map(r => `<tr>
         <td><strong>#${String(r.Id_Receta).padStart(5,'0')}</strong></td>
         <td>${utils.formatearFecha(r.FechaEmision)}</td>
@@ -590,7 +619,7 @@ async function renderRecetas(container, _token) {
 
 async function crearRecetaModal(folioPreselect, nombrePaciente) {
     if (!STATE.misCitas.length) STATE.misCitas = await citas.obtenerMisCitas();
-    const atendibles = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender');
+    const atendibles = STATE.misCitas.filter(c => c.Estatus === 'pagada_pendiente_atender' && !c.SolicitudCancelacionPendiente);
     if (!atendibles.length) { toast('No tienes citas confirmadas para emitir receta.','warning'); return; }
     abrirModal('Nueva Receta Médica', `
       <div class="form-grid">

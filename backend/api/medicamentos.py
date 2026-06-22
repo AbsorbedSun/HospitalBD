@@ -383,18 +383,26 @@ def realizar_venta():
         if len(tipos_set) == 1:
             tipo_venta = tipos_set.pop()
 
-        # Insertar Venta
+        # Insertar Venta — SET NOCOUNT ON + bucle nextset() para evitar
+        # "No results. Previous SQL was not a query." cuando hay
+        # múltiples statements en el mismo batch.
         cursor.execute(
             """
+            SET NOCOUNT ON;
             INSERT INTO Venta (Id_Recepcionista, Total, Tipo_Venta)
             VALUES (?, ?, ?);
             SELECT SCOPE_IDENTITY();
             """,
             (id_recepcionista, round(total, 2), tipo_venta)
         )
-        id_venta = int(cursor.fetchone()[0])
+        row = cursor.fetchone()
+        while row is None and cursor.nextset():
+            row = cursor.fetchone()
+        id_venta = int(row[0])
 
-        # Insertar Detalles y actualizar stock
+        # Insertar Detalles — el trigger TR_DetalleVenta_DescontarStock
+        # se encarga de descontar el Stock automáticamente. Ya NO se
+        # hace UPDATE Medicamentos manual aquí (evita doble descuento).
         for d in detalles:
             id_serv = d['id'] if d['tipo'] == 'servicio' else None
             id_med = d['id'] if d['tipo'] == 'medicamento' else None
@@ -406,12 +414,6 @@ def realizar_venta():
                 """,
                 (id_venta, id_serv, id_med, d["cantidad"], d["subtotal"])
             )
-
-            if d["tipo"] == "medicamento":
-                cursor.execute(
-                    'UPDATE Medicamentos SET Stock = Stock - ? WHERE Id_Medicamento = ?',
-                    (d['cantidad'], d['id'])
-                )
 
         conn.commit()
         return jsonify({
@@ -497,13 +499,21 @@ def crear_solicitud_compra():
 
         cursor.execute(
             """
+            SET NOCOUNT ON;
+            DECLARE @OutSolicitud TABLE (Id_Solicitud INT);
+
             INSERT INTO SolicitudCompra (Id_Paciente, Total, Notas)
-            OUTPUT INSERTED.Id_Solicitud
-            VALUES (?, ?, ?)
+            OUTPUT INSERTED.Id_Solicitud INTO @OutSolicitud
+            VALUES (?, ?, ?);
+
+            SELECT Id_Solicitud FROM @OutSolicitud;
             """,
             (id_paciente, round(total, 2), data.get('notas', ''))
         )
-        id_solicitud = int(cursor.fetchone()[0])
+        row = cursor.fetchone()
+        while row is None and cursor.nextset():
+            row = cursor.fetchone()
+        id_solicitud = int(row[0])
 
         for item in items_validados:
             id_serv = item['id'] if item['tipo'] == 'servicio' else None

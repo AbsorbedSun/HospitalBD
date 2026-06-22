@@ -202,7 +202,7 @@ def listar_solicitudes():
 @recep_bp.route('/solicitudes-cancelacion/<int:id_solicitud>/aprobar', methods=['POST'])
 @requiere_rol('recepcionista', 'admin')
 def aprobar_solicitud(id_solicitud):
-    claims          = get_jwt()
+    claims           = get_jwt()
     id_recepcionista = claims.get('id_especifico')
 
     solicitud = execute_query(
@@ -212,10 +212,14 @@ def aprobar_solicitud(id_solicitud):
     if not solicitud:
         return jsonify({'error': 'Solicitud no encontrada o ya resuelta.'}), 404
 
-    sol = solicitud[0]
-    folio_cita = sol['Folio_Cita']
-
-    # Aprobar solicitud
+    # Solo actualizar el estatus.
+    # El trigger TRG_SolicitudCancelacion_Aprobada (triggers.sql) se activa
+    # automáticamente con este UPDATE y se encarga de:
+    #   1. Cambiar el estatus de la Cita a 'cancelada_doctor'
+    #   2. Marcar el Pago como 'Cancelado' con MontoDevuelto = Monto (100%)
+    #   3. Insertar en Bitacora_EstatusCita con los valores correctos
+    # Hacer esas tres operaciones también desde Python generaría registros
+    # duplicados en la bitácora — por eso se eliminó el código manual.
     execute_non_query(
         """
         UPDATE SolicitudCancelacion
@@ -224,33 +228,6 @@ def aprobar_solicitud(id_solicitud):
         """,
         (id_recepcionista, id_solicitud)
     )
-
-    # Cancelar la cita (cancelada_doctor → 100% reembolso)
-    from api.citas import _cambiar_estatus
-    cita = execute_query(
-        """
-        SELECT d.Id_Especialidad, e.Precio
-        FROM Cita c
-        JOIN Doctor d ON c.Id_Doctor = d.Id_Doctor
-        JOIN Especialidad e ON d.Id_Especialidad = e.Id_Especialidad
-        WHERE c.Folio_Cita = ?
-        """,
-        (folio_cita,)
-    )
-    if cita:
-        precio = float(cita[0]['Precio'])
-        id_esp = int(cita[0]['Id_Especialidad'])
-        _cambiar_estatus(folio_cita, 'cancelada_doctor', precio, id_esp, '100%', precio)
-        # Actualizar pago
-        pago = execute_query(
-            "SELECT Id_Pago, Monto FROM Pago WHERE Folio_Cita = ? AND Estado = 'Pagado'",
-            (folio_cita,)
-        )
-        if pago:
-            execute_non_query(
-                "UPDATE Pago SET MontoDevuelto = Monto WHERE Id_Pago = ?",
-                (pago[0]['Id_Pago'],)
-            )
 
     return jsonify({'mensaje': 'Cancelación aprobada. Se procesó reembolso del 100%.'}), 200
 

@@ -65,6 +65,12 @@ def listar_citas():
 
     # Usa VW_CitasCompletas — centraliza el JOIN complejo de
     # Cita + Paciente + Doctor + Especialidad + Consultorio + Pago
+    #
+    # SolicitudCancelacionPendiente: indica si esta cita tiene una
+    # solicitud de cancelación del doctor esperando aprobación de la
+    # recepcionista. El frontend usa esta bandera para ocultar/deshabilitar
+    # las acciones (Atendida, No acudió, Receta, Solicitar Cancelación)
+    # mientras la solicitud sigue pendiente.
     rows = execute_query(
         f"""
         SELECT Folio_Cita, Fecha_Cita, Hora_Cita, Solicitud_Cita,
@@ -77,7 +83,12 @@ def listar_citas():
                Id_Especialidad, Especialidad, PrecioEspecialidad,
                Id_Consultorio, NombreConsultorio, PisoConsultorio,
                Id_Pago, MetodoPago, MontoPago, FechaPago,
-               EstadoPago, MontoDevuelto
+               EstadoPago, MontoDevuelto,
+               CASE WHEN EXISTS (
+                   SELECT 1 FROM SolicitudCancelacion sc
+                   WHERE sc.Folio_Cita = VW_CitasCompletas.Folio_Cita
+                     AND sc.Estatus = 'Pendiente'
+               ) THEN 1 ELSE 0 END AS SolicitudCancelacionPendiente
         FROM VW_CitasCompletas
         {where}
         ORDER BY Fecha_Cita DESC, Hora_Cita DESC
@@ -196,13 +207,19 @@ def agendar_cita():
         # (INSERT + SELECT SCOPE_IDENTITY() en un solo execute() deja el cursor en el
         #  resultado del INSERT, que no tiene filas, y fetchone() lanza el error
         #  "No results. Previous SQL was not a query.")
+        # NOTA: la tabla Cita tiene triggers (bitácora), por lo que SQL Server no
+        # permite "OUTPUT INSERTED.X" sin "INTO". Se usa una tabla de variable de
+        # tipo tabla (@OutCita) para cumplir esa regla sin tocar la lógica del trigger.
         cursor.execute(
             """
+            SET NOCOUNT ON;
+            DECLARE @OutCita TABLE (Folio_Cita INT);
             INSERT INTO Cita
                 (Id_Doctor, Id_Paciente, Id_Consultorio, Id_EstatusCita,
                  Fecha_Cita, Hora_Cita)
-            OUTPUT INSERTED.Folio_Cita
-            VALUES (?, ?, ?, ?, ?, ?)
+            OUTPUT INSERTED.Folio_Cita INTO @OutCita
+            VALUES (?, ?, ?, ?, ?, ?);
+            SELECT Folio_Cita FROM @OutCita;
             """,
             (id_doctor, id_paciente, id_consultorio, id_estatus, fecha_str, hora_str)
         )
@@ -222,7 +239,9 @@ def agendar_cita():
         )
         id_pago = int(cursor.fetchone()[0])
 
-        # Bitácora estatus
+        # Bitácora estatus — se mantiene aquí porque TRG_Cita_Insert solo
+        # llena Bitacora_HistorialCitas (no Bitacora_EstatusCita). Este
+        # INSERT registra el estatus inicial "agendada_pendiente_pago".
         cursor.execute(
             """
             INSERT INTO Bitacora_EstatusCita
@@ -337,17 +356,21 @@ def confirmar_pago():
             (estatus[0]['Id_EstatusCita'], folio_cita)
         )
 
-        # Bitácora
+        # Registrar cambio de estatus en bitácora.
+        # TRG_Cita_Update ya NO inserta en Bitacora_EstatusCita (se eliminó
+        # el insert del trigger para evitar duplicados — ver triggers.sql).
+        # Cada llamador inserta explícitamente con los valores correctos.
         cursor.execute(
             """
             INSERT INTO Bitacora_EstatusCita
                 (Folio_Cita, Estatus_Cita, Fecha_Cita, Id_Especialidad,
                  Costo, Politica_Cancela, Monto_Devuelto)
             SELECT ?, 'pagada_pendiente_atender', Fecha_Cita, ?, ?, NULL, 0
-            FROM Cita WHERE Folio_Cita = ?
+            FROM   Cita WHERE Folio_Cita = ?
             """,
-            (folio_cita, c['Id_Especialidad'], float(c['Precio']), folio_cita)
+            (folio_cita, int(c['Id_Especialidad']), float(c['Precio']), folio_cita)
         )
+
         conn.commit()
         return jsonify({'mensaje': 'Pago confirmado. Cita lista para ser atendida.'}), 200
 
@@ -526,46 +549,54 @@ def cancelar_cita(folio_cita):
     if rol == 'paciente' and c['Id_Paciente'] != id_esp:
         return jsonify({'error': 'No puedes cancelar la cita de otro paciente.'}), 403
 
-    # Calcular política de cancelación
-    # Si cancela el doctor (vía recepcionista), siempre 100%
+    # ── CASO 1: Cancelación por doctor (vía recepcionista / admin) ──────────
+    # _cambiar_estatus se encarga de UPDATE Cita + INSERT Bitacora con datos correctos
     if rol in ('recepcionista', 'admin') and data.get('cancelacion_doctor'):
         clave_nuevo_estatus = 'cancelada_doctor'
         etiqueta            = '100%'
-        # Cancelación por doctor: reembolso total directo
         pago = execute_query(
             "SELECT Id_Pago, Monto FROM Pago WHERE Folio_Cita = ? AND Estado = 'Pagado'",
             (folio_cita,)
         )
         monto_devuelto = float(pago[0]['Monto']) if pago else 0.0
+
+        _cambiar_estatus(folio_cita, clave_nuevo_estatus, float(c['Precio']),
+                         int(c['Id_Especialidad']), etiqueta, monto_devuelto)
+
+        if pago and monto_devuelto > 0:
+            execute_non_query(
+                'UPDATE Pago SET MontoDevuelto = ? WHERE Id_Pago = ?',
+                (monto_devuelto, pago[0]['Id_Pago'])
+            )
+
+    # ── CASO 2: Cancelación por paciente (o recep actuando por él) ──────────
+    # Se delega a SP_CancelarCitaPaciente, que ejecuta en una sola transacción:
+    #   UPDATE Cita + UPDATE Pago + INSERT Bitacora_EstatusCita (con política y monto)
     else:
-        clave_nuevo_estatus = 'cancelada_paciente'
-        # FN_MontoDevolucion aplica la política de cancelación del hospital
-        # según las horas de anticipación: >= 48h = 100%, >= 24h = 50%, < 24h = 0%
+        # Calcular los valores por adelantado para incluirlos en la respuesta JSON
         res = execute_query(
-            "SELECT dbo.FN_MontoDevolucion(?, GETDATE()) AS monto",
-            (folio_cita,)
+            "SELECT dbo.FN_MontoDevolucion(?, GETDATE()) AS monto", (folio_cita,)
         )
         monto_devuelto = float(res[0]['monto']) if res else 0.0
-        pago = execute_query(
-            "SELECT Id_Pago FROM Pago WHERE Folio_Cita = ? AND Estado = 'Pagado'",
-            (folio_cita,)
-        )
-        # Determinar etiqueta de política para la bitácora
         politica   = calcular_politica_cancelacion(c['Fecha_Cita'], c['Hora_Cita'])
         etiqueta   = politica['politica']
 
-    _cambiar_estatus(folio_cita, clave_nuevo_estatus, float(c['Precio']),
-                     int(c['Id_Especialidad']), etiqueta, monto_devuelto)
-
-    # Actualizar pago si había
-    if pago and monto_devuelto > 0:
-        execute_non_query(
-            'UPDATE Pago SET MontoDevuelto = ? WHERE Id_Pago = ?',
-            (monto_devuelto, pago[0]['Id_Pago'])
-        )
+        conn = get_db()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "EXEC SP_CancelarCitaPaciente @Folio_Cita = ?, @Id_Paciente = ?",
+                (folio_cita, int(c['Id_Paciente']))   # siempre el Id_Paciente real de la cita
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            return jsonify({'error': str(e)}), 500
+        finally:
+            conn.close()
 
     return jsonify({
-        'mensaje':         f'Cita cancelada correctamente.',
+        'mensaje':         'Cita cancelada correctamente.',
         'politica':        etiqueta,
         'monto_devuelto':  monto_devuelto
     }), 200
@@ -658,6 +689,130 @@ def verificar_vencidas():
         count += 1
 
     return jsonify({'canceladas': count, 'mensaje': f'{count} citas canceladas por vencimiento de pago.'}), 200
+
+
+# ------------------------------------------------------------------
+# POST /api/citas/solicitar-cancelacion/<folio_cita>
+# El Doctor solicita cancelar una de sus citas (por una emergencia,
+# imprevisto, etc.). La solicitud queda 'Pendiente' hasta que la
+# Recepcionista la apruebe o la rechace.
+# ------------------------------------------------------------------
+@citas_bp.route('/solicitar-cancelacion/<int:folio_cita>', methods=['POST'])
+@requiere_rol('doctor')
+def solicitar_cancelacion(folio_cita):
+    claims    = get_jwt()
+    id_doctor = claims.get('id_especifico')
+    data      = request.get_json(silent=True) or {}
+    motivo    = (data.get('motivo') or '').strip()
+
+    if not motivo:
+        return jsonify({'error': 'Debes indicar el motivo de la cancelación.'}), 400
+
+    # Verificar que la cita exista, sea de este doctor y esté en un
+    # estatus que tenga sentido cancelar
+    cita = execute_query(
+        """
+        SELECT c.Folio_Cita, ec.Clave AS Estatus
+        FROM Cita c
+        JOIN EstatusCita ec ON c.Id_EstatusCita = ec.Id_EstatusCita
+        WHERE c.Folio_Cita = ? AND c.Id_Doctor = ?
+        """,
+        (folio_cita, id_doctor)
+    )
+    if not cita:
+        return jsonify({'error': 'Cita no encontrada o no te pertenece.'}), 404
+
+    if cita[0]['Estatus'] not in ('agendada_pendiente_pago', 'pagada_pendiente_atender'):
+        return jsonify({'error': f'La cita no puede cancelarse (estado: {cita[0]["Estatus"]}).'}), 422
+
+    # Evitar duplicar una solicitud ya pendiente para la misma cita
+    existente = execute_query(
+        "SELECT 1 FROM SolicitudCancelacion WHERE Folio_Cita = ? AND Estatus = 'Pendiente'",
+        (folio_cita,)
+    )
+    if existente:
+        return jsonify({'error': 'Ya existe una solicitud de cancelación pendiente para esta cita.'}), 409
+
+    execute_non_query(
+        """
+        INSERT INTO SolicitudCancelacion (Folio_Cita, Id_Doctor, Motivo)
+        VALUES (?, ?, ?)
+        """,
+        (folio_cita, id_doctor, motivo)
+    )
+
+    return jsonify({'mensaje': 'Solicitud de cancelación enviada. Quedará pendiente de aprobación.'}), 201
+
+
+# ------------------------------------------------------------------
+# GET /api/citas/solicitudes-cancelacion
+# La Recepcionista lista las solicitudes de cancelación pendientes.
+# ------------------------------------------------------------------
+@citas_bp.route('/solicitudes-cancelacion', methods=['GET'])
+@requiere_rol('recepcionista', 'admin')
+def listar_solicitudes_cancelacion():
+    filas = execute_query(
+        """
+        SELECT
+            sc.Id_Solicitud, sc.Folio_Cita, sc.Motivo, sc.Estatus,
+            sc.Fecha_Solicitud,
+            c.Fecha_Cita, c.Hora_Cita,
+            ud.Nombre + ' ' + ud.Ap_Paterno AS Doctor,
+            up.Nombre + ' ' + up.Ap_Paterno AS Paciente
+        FROM SolicitudCancelacion sc
+        JOIN Cita c       ON c.Folio_Cita   = sc.Folio_Cita
+        JOIN Doctor d     ON d.Id_Doctor    = sc.Id_Doctor
+        JOIN Usuario ud   ON ud.Id_Usuario  = d.Id_Usuario
+        JOIN Paciente pa  ON pa.Id_Paciente = c.Id_Paciente
+        JOIN Usuario up   ON up.Id_Usuario  = pa.Id_Usuario
+        WHERE sc.Estatus = 'Pendiente'
+        ORDER BY sc.Fecha_Solicitud ASC
+        """
+    )
+    return jsonify(rows_to_json(filas)), 200
+
+
+# ------------------------------------------------------------------
+# PUT /api/citas/solicitudes-cancelacion/<id_solicitud>
+# La Recepcionista aprueba o rechaza una solicitud de cancelación.
+# Si se aprueba, el TRIGGER TRG_SolicitudCancelacion_Aprobada se
+# encarga automáticamente de cancelar la cita y reembolsar el 100%.
+# ------------------------------------------------------------------
+@citas_bp.route('/solicitudes-cancelacion/<int:id_solicitud>', methods=['PUT'])
+@requiere_rol('recepcionista', 'admin')
+def resolver_solicitud_cancelacion(id_solicitud):
+    claims          = get_jwt()
+    id_recepcionista = claims.get('id_especifico')
+    data            = request.get_json(silent=True) or {}
+    decision        = data.get('decision')  # 'Aprobada' o 'Rechazada'
+
+    if decision not in ('Aprobada', 'Rechazada'):
+        return jsonify({'error': "decision debe ser 'Aprobada' o 'Rechazada'."}), 400
+
+    solicitud = execute_query(
+        "SELECT Id_Solicitud, Estatus FROM SolicitudCancelacion WHERE Id_Solicitud = ?",
+        (id_solicitud,)
+    )
+    if not solicitud:
+        return jsonify({'error': 'Solicitud no encontrada.'}), 404
+
+    if solicitud[0]['Estatus'] != 'Pendiente':
+        return jsonify({'error': f'La solicitud ya fue resuelta (estado: {solicitud[0]["Estatus"]}).'}), 422
+
+    # Este UPDATE es el que dispara el trigger automáticamente cuando
+    # decision == 'Aprobada' (cancela la cita y reembolsa el 100%).
+    execute_non_query(
+        """
+        UPDATE SolicitudCancelacion
+        SET Estatus = ?, Id_Recepcionista = ?, Fecha_Resolucion = GETDATE()
+        WHERE Id_Solicitud = ?
+        """,
+        (decision, id_recepcionista, id_solicitud)
+    )
+
+    mensaje = ('Solicitud aprobada. La cita fue cancelada y se reembolsó el 100% del pago.'
+               if decision == 'Aprobada' else 'Solicitud rechazada.')
+    return jsonify({'mensaje': mensaje}), 200
 
 
 # ------------------------------------------------------------------
